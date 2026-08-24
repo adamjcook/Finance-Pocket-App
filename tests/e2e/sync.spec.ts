@@ -217,3 +217,87 @@ test('custom partner colours apply throughout the app and persist', async ({ pag
   await page.reload();
   await expect(page.locator('.name-a')).toHaveCSS('color', 'rgb(18, 52, 86)');
 });
+
+test('share-target: a Nearby-Share-style hand-off merges automatically', async ({ page }) => {
+  await completeSetup(page, 'Adam', 'Sam');
+  await addAccount(page, 'My Card', 'Credit card', '1000');
+
+  // Wait for the service worker to be active before simulating the hand-off
+  // — a real Nearby Share arrives as a fresh navigation-mode POST, which is
+  // only intercepted once the SW has activated.
+  await page.evaluate(() => navigator.serviceWorker.ready);
+
+  const partnerPayload = {
+    v: 1,
+    deviceId: 'partner-device',
+    sentAt: new Date().toISOString(),
+    settings: {
+      id: 'settings',
+      partnerAName: 'Adam',
+      partnerBName: 'Sam',
+      currency: 'GBP',
+      debtBaselineMinor: null,
+      updatedAt: '2020-01-01T00:00:00.000Z',
+      updatedBy: 'partner-device',
+    },
+    accounts: [
+      {
+        id: 'partner-card',
+        name: 'Partner Card',
+        institution: '',
+        kind: 'credit_card',
+        owner: 'B',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        updatedBy: 'partner-device',
+      },
+    ],
+    aliases: [],
+    snapshots: [
+      {
+        id: 'partner-snap',
+        accountId: 'partner-card',
+        balance: 50000,
+        at: '2026-01-01T00:00:00.000Z',
+        deviceId: 'partner-device',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ],
+    voids: [],
+  };
+
+  // A real multipart form navigation to the share-target action — exactly
+  // what the browser sends when Android hands a Nearby Share file to the
+  // app — so the service worker's fetch handler is exercised for real.
+  // requestSubmit() is called from within the same evaluate() so the
+  // navigation it triggers doesn't depend on the button being clickable
+  // (Playwright's actionability checks don't apply to a synthetic element).
+  await Promise.all([
+    page.waitForURL(/#\/sync/),
+    page
+      .evaluate((payloadJson) => {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = './share-target/';
+        form.enctype = 'multipart/form-data';
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.name = 'payload';
+        const dt = new DataTransfer();
+        dt.items.add(new File([payloadJson], 'sync.json', { type: 'application/json' }));
+        input.files = dt.files;
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.requestSubmit();
+      }, JSON.stringify(partnerPayload))
+      .catch(() => {}), // the navigation this triggers destroys evaluate()'s own context
+  ]);
+
+  // Booted fresh on the Sync screen, found the pending share via IndexedDB,
+  // and merged it without any user action.
+  await expect(page.getByRole('heading', { name: 'Now show this back' })).toBeVisible();
+  await page.goto('.#/accounts');
+  await expect(page.locator('.account-row', { hasText: 'Partner Card' }).getByText(/Sam ·/)).toBeVisible();
+  await expect(page.locator('.account-row', { hasText: 'Partner Card' })).toContainText('£500.00');
+});

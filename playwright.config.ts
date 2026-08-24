@@ -9,6 +9,8 @@ export default defineConfig({
     // In environments with a pre-installed browser (no `playwright install`),
     // point CHROMIUM_PATH at it; unset means Playwright's own download.
     launchOptions: { executablePath: process.env.CHROMIUM_PATH || undefined },
+    // The share-target and update-prompt flows depend on a real service worker.
+    serviceWorkers: 'allow',
   },
   webServer: {
     command: 'npm run preview',

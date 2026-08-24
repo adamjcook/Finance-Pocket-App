@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.sw.json && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -15,7 +15,8 @@
     "idb": "^8.0.0",
     "jsqr": "^1.4.0",
     "preact": "^10.24.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "workbox-precaching": "^7.3.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
