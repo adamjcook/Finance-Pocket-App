@@ -11,13 +11,6 @@ import { formatMoney } from '../logic/money';
 import { Chart } from './components/Chart';
 import { ProgressRing } from './components/ProgressRing';
 
-function daysAgo(iso: string): string {
-  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  if (days <= 0) return 'today';
-  if (days === 1) return 'yesterday';
-  return `${days} days ago`;
-}
-
 function formatDay(day: string): string {
   return new Date(day + 'T00:00:00Z').toLocaleDateString('en-GB', {
     day: 'numeric',
@@ -29,15 +22,13 @@ function formatDay(day: string): string {
 export function Dashboard() {
   const app = useApp();
   if (!app) return null;
-  const { state, device } = app;
+  const { state } = app;
   const { settings } = state;
   const currency = settings.currency;
   const today = toDay(todayISO());
   const debt = debtProgress(state, today);
   const growth = growthProgress(state, today);
   const loans = loanTotals(state, today);
-  const syncOverdue =
-    device.lastSyncAt !== null && Date.now() - new Date(device.lastSyncAt).getTime() > 14 * 86400000;
 
   const debtTargetDate = settings.debtTargetDate ?? null;
   const debtMonthly = monthlyToTarget(debt.current, 0, 'down', debtTargetDate, today);
@@ -170,24 +161,6 @@ export function Dashboard() {
         )}
       </div>
 
-      <div class="stack" style="margin-top:18px">
-        <a class="btn btn-primary btn-big" href="#/update">
-          Update balances
-        </a>
-        <a class="btn btn-big" href="#/sync">
-          Sync with partner
-          {device.lastSyncAt ? (
-            <span class="muted small"> — last synced {daysAgo(device.lastSyncAt)}</span>
-          ) : (
-            <span class="muted small"> — never synced</span>
-          )}
-        </a>
-        {syncOverdue && (
-          <p class="muted small" style="text-align:center">
-            It's been a while since your phones talked — worth a sync next time you're together.
-          </p>
-        )}
-      </div>
     </div>
   );
 }
