@@ -63,6 +63,10 @@ export function Settings() {
 
       <h2>Names &amp; currency</h2>
       <div class="card">
+        <p class="muted small" style="margin-bottom:10px">
+          These names are shared between both phones and label who owns each account — keep them
+          the same on both sides.
+        </p>
         <label class="field">
           <span>Partner 1</span>
           <input
@@ -110,6 +114,58 @@ export function Settings() {
             <button onClick={() => saveField({ debtBaselineMinor: null })}>Use auto</button>
           )}
         </div>
+      </div>
+
+      <h2>Goals</h2>
+      <div class="card">
+        <label class="field">
+          <span>Clear the credit cards by</span>
+          <div class="row">
+            <input
+              type="date"
+              value={state.settings.debtTargetDate ?? ''}
+              onChange={(e) =>
+                saveField({ debtTargetDate: (e.target as HTMLInputElement).value || null })
+              }
+            />
+            {state.settings.debtTargetDate && (
+              <button onClick={() => saveField({ debtTargetDate: null })}>Clear</button>
+            )}
+          </div>
+        </label>
+        <label class="field">
+          <span>Savings &amp; investments target</span>
+          <div class="row">
+            <MoneyInput
+              initial={state.settings.savingsTargetMinor ?? null}
+              symbol={currencySymbol(currency)}
+              placeholder="no target"
+              onChange={(minor) => saveField({ savingsTargetMinor: minor })}
+            />
+            {state.settings.savingsTargetMinor != null && (
+              <button onClick={() => saveField({ savingsTargetMinor: null })}>Clear</button>
+            )}
+          </div>
+        </label>
+        <label class="field">
+          <span>Reach the savings target by (optional)</span>
+          <div class="row">
+            <input
+              type="date"
+              value={state.settings.savingsTargetDate ?? ''}
+              onChange={(e) =>
+                saveField({ savingsTargetDate: (e.target as HTMLInputElement).value || null })
+              }
+            />
+            {state.settings.savingsTargetDate && (
+              <button onClick={() => saveField({ savingsTargetDate: null })}>Clear</button>
+            )}
+          </div>
+        </label>
+        <p class="muted small">
+          The dashboard shows roughly how much per month gets you there. Goals sync to your
+          partner's phone like everything else.
+        </p>
       </div>
 
       <h2>Fix a mistyped balance</h2>

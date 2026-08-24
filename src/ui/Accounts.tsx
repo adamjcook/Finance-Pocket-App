@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import { useApp, mutate, getStore } from '../model/store';
 import { addSnapshots, aliasForAccount, latestBalances } from '../model/repo';
 import type { Account } from '../model/types';
-import { ACCOUNT_KIND_LABELS, DEBT_KINDS, GROWTH_KINDS } from '../model/types';
+import { ACCOUNT_KIND_LABELS, GROWTH_KINDS, OWED_KINDS } from '../model/types';
 import { formatMoney } from '../logic/money';
 import { MoneyInput, currencySymbol } from './components/MoneyInput';
 import { navigate } from '../app';
@@ -34,11 +34,11 @@ export function Accounts() {
 
   const visible = state.accounts.filter((a) => showArchived || !a.archived);
   const groups: { title: string; accounts: Account[] }[] = [
-    { title: 'Debt', accounts: visible.filter((a) => DEBT_KINDS.includes(a.kind)) },
+    { title: 'Debt', accounts: visible.filter((a) => OWED_KINDS.includes(a.kind)) },
     { title: 'Savings & investments', accounts: visible.filter((a) => GROWTH_KINDS.includes(a.kind)) },
     {
       title: 'Everything else',
-      accounts: visible.filter((a) => !DEBT_KINDS.includes(a.kind) && !GROWTH_KINDS.includes(a.kind)),
+      accounts: visible.filter((a) => !OWED_KINDS.includes(a.kind) && !GROWTH_KINDS.includes(a.kind)),
     },
   ];
 

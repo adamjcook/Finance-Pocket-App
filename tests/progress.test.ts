@@ -5,6 +5,9 @@ import {
   effectiveSnapshots,
   growthProgress,
   latestBalance,
+  loanTotals,
+  monthlyToTarget,
+  monthsUntil,
 } from '../src/logic/progress';
 import { aliasSeries, latestBalances, repointAlias } from '../src/model/repo';
 import { account, alias, settings, snapshot, state } from './helpers';
@@ -133,6 +136,55 @@ describe('growthProgress', () => {
     expect(p.first).toBe(1500_00);
     expect(p.growth).toBe(600_00);
     expect(p.delta30).toBe(600_00);
+  });
+});
+
+describe('loans stay separate from the card goal', () => {
+  it('excludes loans from debtProgress and reports them via loanTotals', () => {
+    const s = state({
+      accounts: [
+        account({ id: 'card-1', kind: 'credit_card' }),
+        account({ id: 'loan-1', kind: 'loan' }),
+      ],
+      snapshots: [
+        snapshot({ accountId: 'card-1', balance: 1000_00, at: '2026-01-01T00:00:00.000Z' }),
+        snapshot({ accountId: 'loan-1', balance: 9000_00, at: '2026-01-01T00:00:00.000Z' }),
+      ],
+    });
+    expect(debtProgress(s, '2026-01-01').current).toBe(1000_00);
+    expect(loanTotals(s, '2026-01-01').current).toBe(9000_00);
+    expect(growthProgress(s, '2026-01-01').current).toBe(0);
+  });
+});
+
+describe('goal maths', () => {
+  it('computes fractional months until a date', () => {
+    expect(monthsUntil('2026-01-01', '2026-01-01')).toBe(0);
+    expect(monthsUntil('2026-01-01', '2026-12-31')).toBeCloseTo(364 / 30.4375, 5);
+    expect(monthsUntil('2026-01-02', '2026-01-01')).toBeLessThan(0);
+  });
+
+  it('estimates the monthly amount to clear debt by a date', () => {
+    // £3,000 to clear in ~6 months
+    const monthly = monthlyToTarget(3000_00, 0, 'down', '2026-07-01', '2026-01-01');
+    expect(monthly).not.toBeNull();
+    expect(monthly!).toBeGreaterThan(490_00);
+    expect(monthly!).toBeLessThan(520_00);
+  });
+
+  it('estimates the monthly amount to reach a savings target', () => {
+    const monthly = monthlyToTarget(2000_00, 8000_00, 'up', '2027-01-01', '2026-01-01');
+    expect(monthly).not.toBeNull();
+    expect(monthly!).toBeGreaterThan(490_00);
+    expect(monthly!).toBeLessThan(510_00);
+  });
+
+  it('returns null with no date, a passed date, or a met target', () => {
+    expect(monthlyToTarget(3000_00, 0, 'down', null, '2026-01-01')).toBeNull();
+    expect(monthlyToTarget(3000_00, 0, 'down', undefined, '2026-01-01')).toBeNull();
+    expect(monthlyToTarget(3000_00, 0, 'down', '2025-12-01', '2026-01-01')).toBeNull();
+    expect(monthlyToTarget(0, 0, 'down', '2026-07-01', '2026-01-01')).toBeNull();
+    expect(monthlyToTarget(9000_00, 8000_00, 'up', '2026-07-01', '2026-01-01')).toBeNull(); // exceeded
   });
 });
 

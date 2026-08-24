@@ -1,7 +1,7 @@
 import { useRef, useState } from 'preact/hooks';
 import { useApp, mutate, getStore } from '../model/store';
 import { addSnapshots, latestBalances } from '../model/repo';
-import { ACCOUNT_KIND_LABELS } from '../model/types';
+import { ACCOUNT_KIND_LABELS, OWED_KINDS } from '../model/types';
 import { formatMoney } from '../logic/money';
 import { MoneyInput, currencySymbol } from './components/MoneyInput';
 import { navigate } from '../app';
@@ -67,7 +67,7 @@ export function UpdateBalances() {
             <div class="account-main">
               <div class="account-name">{a.name}</div>
               <div class="muted small">
-                {a.kind === 'credit_card' ? 'owed: ' : ''}
+                {OWED_KINDS.includes(a.kind) ? 'owed: ' : ''}
                 {balances.has(a.id)
                   ? `now ${formatMoney(balances.get(a.id)!.balance, currency)}`
                   : ACCOUNT_KIND_LABELS[a.kind]}

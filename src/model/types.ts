@@ -7,7 +7,7 @@ export interface Meta {
   updatedBy: string; // deviceId that made the change
 }
 
-export type AccountKind = 'credit_card' | 'savings' | 'investment' | 'checking' | 'other';
+export type AccountKind = 'credit_card' | 'loan' | 'savings' | 'investment' | 'checking' | 'other';
 export type Owner = 'A' | 'B' | 'joint';
 
 export interface Account extends Meta {
@@ -59,6 +59,16 @@ export interface Settings extends Meta {
   currency: string; // ISO 4217, display-only
   /** Manual debt baseline override in minor units; null = auto (peak recorded debt). */
   debtBaselineMinor: number | null;
+  /**
+   * Goal fields were added after v1 shipped, so records synced from an older
+   * app may lack them — read sites treat undefined as null.
+   */
+  /** Date (YYYY-MM-DD) by which the credit cards should be cleared; null = no goal. */
+  debtTargetDate?: string | null;
+  /** Savings & investments target in minor units; null = no goal. */
+  savingsTargetMinor?: number | null;
+  /** Optional date (YYYY-MM-DD) to reach the savings target by. */
+  savingsTargetDate?: string | null;
 }
 
 /** Local-only device identity and sync bookkeeping. NEVER synced. */
@@ -90,6 +100,9 @@ export const DEFAULT_SETTINGS: Settings = {
   partnerBName: 'Partner B',
   currency: 'GBP',
   debtBaselineMinor: null,
+  debtTargetDate: null,
+  savingsTargetMinor: null,
+  savingsTargetDate: null,
   updatedAt: new Date(0).toISOString(),
   updatedBy: '',
 };
@@ -106,13 +119,18 @@ export function emptyState(): SyncedState {
 
 export const ACCOUNT_KIND_LABELS: Record<AccountKind, string> = {
   credit_card: 'Credit card',
+  loan: 'Loan',
   savings: 'Savings',
   investment: 'Investment',
   checking: 'Current account',
   other: 'Other',
 };
 
-/** Kinds counted in the combined-debt headline. */
+/** Kinds counted in the card-payoff headline and goal. Loans stay separate. */
 export const DEBT_KINDS: AccountKind[] = ['credit_card'];
+/** Kinds shown in the dashboard Loans card. */
+export const LOAN_KINDS: AccountKind[] = ['loan'];
 /** Kinds counted in the combined savings + investments headline. */
 export const GROWTH_KINDS: AccountKind[] = ['savings', 'investment'];
+/** Kinds where the balance is money owed, not money held. */
+export const OWED_KINDS: AccountKind[] = ['credit_card', 'loan'];

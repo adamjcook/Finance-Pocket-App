@@ -1,5 +1,5 @@
-import type { Snapshot, SnapshotVoid, SyncedState } from '../model/types';
-import { DEBT_KINDS, GROWTH_KINDS } from '../model/types';
+import type { AccountKind, Snapshot, SnapshotVoid, SyncedState } from '../model/types';
+import { DEBT_KINDS, GROWTH_KINDS, LOAN_KINDS } from '../model/types';
 
 export interface SeriesPoint {
   day: string; // YYYY-MM-DD (UTC)
@@ -71,6 +71,25 @@ export function combinedDailySeries(effective: Snapshot[], today: string): Serie
   return series;
 }
 
+export interface KindTotals {
+  current: number;
+  series: SeriesPoint[];
+  effective: Snapshot[];
+}
+
+/** Combined current balance + daily series for the active accounts of some kinds. */
+export function kindTotals(state: SyncedState, kinds: AccountKind[], today: string): KindTotals {
+  const ids = new Set(
+    state.accounts.filter((a) => !a.archived && kinds.includes(a.kind)).map((a) => a.id),
+  );
+  const effective = effectiveSnapshots(state.snapshots, state.voids).filter((s) =>
+    ids.has(s.accountId),
+  );
+  const series = combinedDailySeries(effective, today);
+  const current = series.length ? series[series.length - 1].value : 0;
+  return { current, series, effective };
+}
+
 /**
  * Highest combined total at any snapshot moment (not collapsed to days), so a
  * card added and paid down on the same day still counts its true peak.
@@ -97,13 +116,7 @@ export interface DebtProgress {
 
 /** Combined credit-card debt progress across both partners. */
 export function debtProgress(state: SyncedState, today: string): DebtProgress {
-  const accounts = state.accounts.filter((a) => !a.archived && DEBT_KINDS.includes(a.kind));
-  const ids = new Set(accounts.map((a) => a.id));
-  const effective = effectiveSnapshots(state.snapshots, state.voids).filter((s) =>
-    ids.has(s.accountId),
-  );
-  const series = combinedDailySeries(effective, today);
-  const current = series.length ? series[series.length - 1].value : 0;
+  const { current, series, effective } = kindTotals(state, DEBT_KINDS, today);
   const baseline = state.settings.debtBaselineMinor ?? peakCombined(effective);
   const paidOff = Math.max(0, baseline - current);
   const pct = baseline > 0 ? Math.min(100, Math.max(0, (paidOff / baseline) * 100)) : 0;
@@ -120,13 +133,7 @@ export interface GrowthProgress {
 
 /** Combined savings + investments progress. */
 export function growthProgress(state: SyncedState, today: string): GrowthProgress {
-  const accounts = state.accounts.filter((a) => !a.archived && GROWTH_KINDS.includes(a.kind));
-  const ids = new Set(accounts.map((a) => a.id));
-  const effective = effectiveSnapshots(state.snapshots, state.voids).filter((s) =>
-    ids.has(s.accountId),
-  );
-  const series = combinedDailySeries(effective, today);
-  const current = series.length ? series[series.length - 1].value : 0;
+  const { current, series } = kindTotals(state, GROWTH_KINDS, today);
   const first = series.length ? series[0].value : 0;
   const monthAgo = addDays(today, -30);
   let past = first;
@@ -136,4 +143,42 @@ export function growthProgress(state: SyncedState, today: string): GrowthProgres
   }
   const delta30 = series.length ? current - past : 0;
   return { current, first, growth: current - first, delta30, series };
+}
+
+/** Combined outstanding loans (kept separate from the card-payoff goal). */
+export function loanTotals(state: SyncedState, today: string): KindTotals {
+  return kindTotals(state, LOAN_KINDS, today);
+}
+
+/** Average Gregorian month, in days. */
+const DAYS_PER_MONTH = 30.4375;
+
+/**
+ * Fractional months from `today` to `targetDate` (both YYYY-MM-DD).
+ * Zero or negative when the date is today or has passed.
+ */
+export function monthsUntil(today: string, targetDate: string): number {
+  const ms = new Date(targetDate + 'T00:00:00Z').getTime() - new Date(today + 'T00:00:00Z').getTime();
+  return ms / 86400000 / DAYS_PER_MONTH;
+}
+
+/**
+ * Minor units per month needed to move from `current` to `target` by
+ * `targetDate`. Direction is explicit so an exceeded goal reads as met:
+ * 'down' for paydown goals (debt to 0), 'up' for savings goals.
+ * Null when there's no date, the date has passed, or the target is met.
+ */
+export function monthlyToTarget(
+  current: number,
+  target: number,
+  direction: 'down' | 'up',
+  targetDate: string | null | undefined,
+  today: string,
+): number | null {
+  if (!targetDate) return null;
+  const met = direction === 'down' ? current <= target : current >= target;
+  if (met) return null;
+  const months = monthsUntil(today, targetDate);
+  if (months <= 0) return null;
+  return Math.ceil(Math.abs(target - current) / months);
 }

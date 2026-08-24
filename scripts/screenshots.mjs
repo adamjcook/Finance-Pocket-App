@@ -20,11 +20,15 @@ const payload = {
   sentAt: day(0),
   settings: {
     id: 'settings', partnerAName: 'Adam', partnerBName: 'Sam', currency: 'GBP',
-    debtBaselineMinor: null, ...meta(200),
+    debtBaselineMinor: null, debtTargetDate: '2027-06-01',
+    savingsTargetMinor: 25000_00, savingsTargetDate: '2027-12-01',
+    // stamped just ahead of the in-page setup so the seeded goals win the LWW merge
+    ...meta(-0.01),
   },
   accounts: [
     acc('cc-1', 'Barclaycard', 'Barclays', 'credit_card', 'A'),
     acc('cc-2', 'Amex Gold', 'American Express', 'credit_card', 'B'),
+    acc('ln-1', 'Car Loan', 'Santander', 'loan', 'joint'),
     acc('sv-1', 'Marcus Saver', 'Goldman Sachs', 'savings', 'joint'),
     acc('iv-1', 'Vanguard ISA', 'Vanguard', 'investment', 'joint'),
   ],
@@ -34,6 +38,8 @@ const payload = {
     archived: false, createdAt: day(200), ...meta(200),
   }],
   snapshots: [
+    snap('ln-1', 11800_00, 180), snap('ln-1', 10400_00, 120),
+    snap('ln-1', 9200_00, 60), snap('ln-1', 8700_00, 14),
     snap('cc-1', 4300_00, 180), snap('cc-2', 2450_00, 180),
     snap('cc-1', 3600_00, 120), snap('cc-2', 2100_00, 120),
     snap('cc-1', 2900_00, 60), snap('cc-2', 1500_00, 60),
@@ -49,6 +55,7 @@ const payload = {
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
 await page.goto(BASE);
+await page.getByRole('button', { name: 'Set up on this phone first' }).click();
 await page.getByPlaceholder('e.g. Adam').fill('Adam');
 await page.getByPlaceholder('e.g. Sam').fill('Sam');
 await page.getByRole('button', { name: 'Get started' }).click();
@@ -60,4 +67,8 @@ for (const [route, name] of [['#/', 'dashboard'], ['#/accounts', 'accounts'], ['
   await page.screenshot({ path: `${OUT}/${name}.png` });
   console.log('wrote', `${OUT}/${name}.png`);
 }
+await page.goto(BASE + '#/');
+await page.waitForTimeout(400);
+await page.screenshot({ path: `${OUT}/dashboard-full.png`, fullPage: true });
+console.log('wrote', `${OUT}/dashboard-full.png`);
 await browser.close();

@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import { useApp, mutate, getStore } from '../model/store';
 import { addAccount, updateAccount } from '../model/repo';
 import type { AccountKind, Owner } from '../model/types';
-import { ACCOUNT_KIND_LABELS } from '../model/types';
+import { ACCOUNT_KIND_LABELS, OWED_KINDS } from '../model/types';
 import { MoneyInput, currencySymbol } from './components/MoneyInput';
 import { navigate } from '../app';
 
@@ -91,7 +91,7 @@ export function AccountForm({ id }: Props) {
         </label>
         {!existing && (
           <label class="field">
-            <span>{kind === 'credit_card' ? 'Current amount owed' : 'Current balance'} (optional)</span>
+            <span>{OWED_KINDS.includes(kind) ? 'Current amount owed' : 'Current balance'} (optional)</span>
             <MoneyInput initial={null} symbol={currencySymbol(state.settings.currency)} onChange={setOpening} />
           </label>
         )}
