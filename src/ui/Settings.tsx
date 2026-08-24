@@ -61,7 +61,7 @@ export function Settings() {
     <div>
       <h1>Settings</h1>
 
-      <h2>Names &amp; currency</h2>
+      <h2>Names &amp; colours</h2>
       <div class="card">
         <p class="muted small" style="margin-bottom:10px">
           These names are shared between both phones and label who owns each account — keep them
@@ -105,19 +105,21 @@ export function Settings() {
           These colours label whose account is whose throughout the app — the dashboard names,
           owner dots, and section markers.
         </p>
-        <label class="field">
-          <span>Currency</span>
-          <select
-            value={currency}
-            onChange={(e) => saveField({ currency: (e.target as HTMLSelectElement).value })}
-          >
-            {['GBP', 'EUR', 'USD'].map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
+      </div>
+
+      <h2>Currency</h2>
+      <div class="card">
+        <select
+          aria-label="Currency"
+          value={currency}
+          onChange={(e) => saveField({ currency: (e.target as HTMLSelectElement).value })}
+        >
+          {['GBP', 'EUR', 'USD'].map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
       </div>
 
       <h2>Debt baseline</h2>
