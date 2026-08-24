@@ -1,5 +1,12 @@
 import { useApp } from '../model/store';
-import { debtProgress, growthProgress, toDay, todayISO } from '../logic/progress';
+import {
+  debtProgress,
+  growthProgress,
+  loanTotals,
+  monthlyToTarget,
+  toDay,
+  todayISO,
+} from '../logic/progress';
 import { formatMoney } from '../logic/money';
 import { Chart } from './components/Chart';
 import { ProgressRing } from './components/ProgressRing';
@@ -11,21 +18,40 @@ function daysAgo(iso: string): string {
   return `${days} days ago`;
 }
 
+function formatDay(day: string): string {
+  return new Date(day + 'T00:00:00Z').toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 export function Dashboard() {
   const app = useApp();
   if (!app) return null;
   const { state, device } = app;
-  const currency = state.settings.currency;
+  const { settings } = state;
+  const currency = settings.currency;
   const today = toDay(todayISO());
   const debt = debtProgress(state, today);
   const growth = growthProgress(state, today);
+  const loans = loanTotals(state, today);
   const syncOverdue =
     device.lastSyncAt !== null && Date.now() - new Date(device.lastSyncAt).getTime() > 14 * 86400000;
+
+  const debtTargetDate = settings.debtTargetDate ?? null;
+  const debtMonthly = monthlyToTarget(debt.current, 0, 'down', debtTargetDate, today);
+  const savingsTarget = settings.savingsTargetMinor ?? null;
+  const savingsTargetDate = settings.savingsTargetDate ?? null;
+  const savingsMonthly =
+    savingsTarget !== null
+      ? monthlyToTarget(growth.current, savingsTarget, 'up', savingsTargetDate, today)
+      : null;
 
   return (
     <div>
       <h1>
-        {state.settings.partnerAName} &amp; {state.settings.partnerBName}
+        {settings.partnerAName} &amp; {settings.partnerBName}
       </h1>
 
       <h2>Credit card debt</h2>
@@ -42,6 +68,21 @@ export function Dashboard() {
                 </div>
               </div>
             </div>
+            {debtTargetDate &&
+              (debt.current === 0 ? (
+                <p class="small delta-up" style="margin-top:10px">
+                  Cards cleared — goal done 🎉
+                </p>
+              ) : debtMonthly !== null ? (
+                <p class="small" style="margin-top:10px">
+                  Goal: cleared by <strong>{formatDay(debtTargetDate)}</strong> — needs about{' '}
+                  <strong>{formatMoney(debtMonthly, currency)}/month</strong>
+                </p>
+              ) : (
+                <p class="muted small" style="margin-top:10px">
+                  Goal date {formatDay(debtTargetDate)} has passed — set a new one in Settings.
+                </p>
+              ))}
             <div style="margin-top:12px">
               <Chart series={debt.series} currency={currency} color="var(--debt)" />
             </div>
@@ -53,6 +94,25 @@ export function Dashboard() {
           </p>
         )}
       </div>
+
+      {loans.series.length > 0 && (
+        <>
+          <h2>Loans</h2>
+          <div class="card">
+            <div class="row spread">
+              <div>
+                <div class="big-number">{formatMoney(loans.current, currency)}</div>
+                <div class="muted">still owed on loans</div>
+              </div>
+            </div>
+            {loans.series.length > 1 && (
+              <div style="margin-top:12px">
+                <Chart series={loans.series} currency={currency} color="var(--debt)" />
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       <h2>Savings &amp; investments</h2>
       <div class="card">
@@ -71,6 +131,26 @@ export function Dashboard() {
                 <div class="muted small">last 30 days</div>
               </div>
             </div>
+            {savingsTarget !== null &&
+              (growth.current >= savingsTarget ? (
+                <p class="small delta-up" style="margin-top:10px">
+                  Target of {formatMoney(savingsTarget, currency)} reached 🎉
+                </p>
+              ) : (
+                <p class="small" style="margin-top:10px">
+                  Target: <strong>{formatMoney(savingsTarget, currency)}</strong> (
+                  {((growth.current / savingsTarget) * 100).toFixed(0)}% there)
+                  {savingsMonthly !== null && savingsTargetDate ? (
+                    <>
+                      {' '}
+                      — about <strong>{formatMoney(savingsMonthly, currency)}/month</strong> to get
+                      there by {formatDay(savingsTargetDate)}
+                    </>
+                  ) : savingsTargetDate ? (
+                    <span class="muted"> — goal date {formatDay(savingsTargetDate)} has passed</span>
+                  ) : null}
+                </p>
+              ))}
             <div style="margin-top:12px">
               <Chart series={growth.series} currency={currency} color="var(--accent)" />
             </div>

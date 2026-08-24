@@ -8,6 +8,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function completeSetup(page: Page, me: string, partner: string) {
   await page.goto('.');
+  await page.getByRole('button', { name: 'Set up on this phone first' }).click();
   await page.getByPlaceholder('e.g. Adam').fill(me);
   await page.getByPlaceholder('e.g. Sam').fill(partner);
   await page.getByRole('button', { name: 'Get started' }).click();
@@ -17,12 +18,16 @@ async function completeSetup(page: Page, me: string, partner: string) {
 async function addAccount(
   page: Page,
   name: string,
-  kind: 'Credit card' | 'Savings' | 'Investment',
+  kind: 'Credit card' | 'Loan' | 'Savings' | 'Investment',
   balance: string | null,
+  owner?: string,
 ) {
   await page.goto('.#/accounts/new');
   await page.getByPlaceholder('e.g. Barclaycard, Marcus saver').fill(name);
   await page.locator('select').first().selectOption({ label: kind });
+  if (owner) {
+    await page.locator('select').nth(1).selectOption({ label: owner });
+  }
   if (balance !== null) {
     await page.getByPlaceholder('0.00').fill(balance);
   }
@@ -59,6 +64,64 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await page.locator('.account-row', { hasText: 'Marcus Saver' }).locator('input').fill('1250');
   await page.locator('.account-row', { hasText: 'Marcus Saver' }).getByRole('button', { name: '✓' }).click();
   await expect(page.getByRole('button', { name: '£1,250.00' })).toBeVisible();
+
+  // A loan gets its own dashboard card and stays out of the card-payoff goal
+  await addAccount(page, 'Car Loan', 'Loan', '9000');
+  await page.goto('.#/');
+  await expect(page.getByText('still owed on loans')).toBeVisible();
+  await expect(page.getByText('£9,000.00').first()).toBeVisible();
+  await expect(page.getByText('£1,500.00').first()).toBeVisible(); // card debt unchanged
+
+  // Goals: clear-by date for the cards, amount + date for savings
+  await page.goto('.#/settings');
+  await page.locator('input[type="date"]').first().fill('2027-06-01');
+  await page.getByPlaceholder('no target').fill('10000');
+  await page.locator('input[type="date"]').nth(1).fill('2027-06-01');
+  await page.goto('.#/');
+  await expect(page.getByText(/needs about/)).toBeVisible();
+  await expect(page.getByText(/1 Jun 2027/).first()).toBeVisible();
+  await expect(page.getByText(/% there/)).toBeVisible();
+  await expect(page.getByText(/to get there by/)).toBeVisible();
+});
+
+test('second phone joins via setup and owners stay consistent (no flip)', async ({ browser }) => {
+  const contextA = await browser.newContext();
+  const contextB = await browser.newContext();
+  const phoneA = await contextA.newPage();
+  const phoneB = await contextB.newPage();
+
+  // Phone A sets up and creates accounts owned by each partner
+  await completeSetup(phoneA, 'Adam', 'Sam');
+  await addAccount(phoneA, 'Adam Card', 'Credit card', '3000', 'Adam');
+  await addAccount(phoneA, 'Sam Card', 'Credit card', '2000', 'Sam');
+
+  // Phone B joins instead of setting up fresh. The join path's camera can't
+  // run headless, so pipe A's frames through the sync hook — the same merge
+  // the ScanPanel performs — and verify the app leaves setup on its own.
+  await phoneB.goto('.');
+  await expect(phoneB.getByRole('button', { name: "Join your partner's setup" })).toBeVisible();
+  const frames = await phoneA.evaluate(() => window.__syncTest.exportFrames());
+  await phoneB.evaluate((f) => window.__syncTest.importFrames(f), frames);
+
+  // B now shows A's names, and each account keeps its true owner
+  await expect(phoneB.getByRole('heading', { name: /Adam & Sam/ })).toBeVisible();
+  await phoneB.goto('.#/accounts');
+  await expect(
+    phoneB.locator('.account-row', { hasText: 'Adam Card' }).getByText(/^Adam ·/),
+  ).toBeVisible();
+  await expect(
+    phoneB.locator('.account-row', { hasText: 'Sam Card' }).getByText(/^Sam ·/),
+  ).toBeVisible();
+
+  // And the reverse pass leaves both phones on the same check code
+  const framesB = await phoneB.evaluate(() => window.__syncTest.exportFrames());
+  await phoneA.evaluate((f) => window.__syncTest.importFrames(f), framesB);
+  const hashA = await phoneA.evaluate(() => window.__syncTest.stateHash());
+  const hashB = await phoneB.evaluate(() => window.__syncTest.stateHash());
+  expect(hashA).toBe(hashB);
+
+  await contextA.close();
+  await contextB.close();
 });
 
 test('two phones converge through a full QR-frame sync round trip', async ({ browser }) => {

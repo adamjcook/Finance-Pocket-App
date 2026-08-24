@@ -46,6 +46,16 @@ recent edit wins.
 First sync on a phone: Chrome will ask for camera permission — allow it (the camera is only
 used to read the QR codes; nothing leaves the phone).
 
+### Fixing swapped account owners
+
+Important: only **one** phone should "Set up on this phone first"; the second should use
+**"Join your partner's setup"** on the first-run screen. If both phones were set up
+independently (as in early versions), each recorded the partner names in the opposite order,
+and the first sync makes account owners look swapped. To repair: on whichever phone shows the
+correct picture, re-save the two names in Settings and fix the owner on any wrong account
+(Accounts → tap the account → Whose is it?), then run a normal sync — the newest edits win on
+both phones.
+
 ### Real-device checklist (after any change to sync)
 
 - [ ] Show on phone A, scan on phone B in normal indoor light
