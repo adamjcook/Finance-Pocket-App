@@ -1,0 +1,178 @@
+import { useState } from 'preact/hooks';
+import { useApp, mutate, getStore, patchDevice } from '../model/store';
+import { updateSettings, voidSnapshot } from '../model/repo';
+import { mergeState, stateHash, summarizeMerge } from '../logic/merge';
+import { effectiveSnapshots } from '../logic/progress';
+import { buildPayload } from '../sync/codec';
+import type { SyncPayload } from '../model/types';
+import { formatMoney } from '../logic/money';
+import { MoneyInput, currencySymbol } from './components/MoneyInput';
+
+export function Settings() {
+  const app = useApp();
+  const [fixAccountId, setFixAccountId] = useState('');
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+
+  if (!app) return null;
+  const { state, device } = app;
+  const currency = state.settings.currency;
+  const ctx = () => ({ deviceId: getStore().device.deviceId });
+
+  const saveField = (changes: Parameters<typeof updateSettings>[2]) =>
+    void mutate((s) => updateSettings(s, ctx(), changes));
+
+  const exportFile = () => {
+    const payload = buildPayload(state, device.deviceId);
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `pocket-finances-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const importFile = async (file: File) => {
+    try {
+      const payload = JSON.parse(await file.text()) as SyncPayload;
+      if (payload.v !== 1 || !Array.isArray(payload.accounts)) {
+        throw new Error('Not a Pocket Finances backup file');
+      }
+      const before = getStore().state;
+      const merged = mergeState(before, payload);
+      await mutate(() => merged);
+      const summary = summarizeMerge(before, merged);
+      await patchDevice({ lastSyncStateHash: await stateHash(merged) });
+      setImportMsg(
+        `Imported: ${summary.newSnapshots} balance update(s), ${summary.accountsChanged} account change(s).`,
+      );
+    } catch (err) {
+      setImportMsg(`Import failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const fixSnapshots = fixAccountId
+    ? effectiveSnapshots(state.snapshots, state.voids)
+        .filter((s) => s.accountId === fixAccountId)
+        .slice(-15)
+        .reverse()
+    : [];
+
+  return (
+    <div>
+      <h1>Settings</h1>
+
+      <h2>Names &amp; currency</h2>
+      <div class="card">
+        <label class="field">
+          <span>Partner 1</span>
+          <input
+            value={state.settings.partnerAName}
+            onChange={(e) => saveField({ partnerAName: (e.target as HTMLInputElement).value })}
+          />
+        </label>
+        <label class="field">
+          <span>Partner 2</span>
+          <input
+            value={state.settings.partnerBName}
+            onChange={(e) => saveField({ partnerBName: (e.target as HTMLInputElement).value })}
+          />
+        </label>
+        <label class="field">
+          <span>Currency</span>
+          <select
+            value={currency}
+            onChange={(e) => saveField({ currency: (e.target as HTMLSelectElement).value })}
+          >
+            {['GBP', 'EUR', 'USD'].map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <h2>Debt baseline</h2>
+      <div class="card">
+        <p class="muted small" style="margin-bottom:10px">
+          "Paid off" progress is measured against your highest recorded combined debt. Set a manual
+          starting figure here if you'd rather measure from a specific point (e.g. what you owed
+          when you started clearing it).
+        </p>
+        <div class="row">
+          <MoneyInput
+            initial={state.settings.debtBaselineMinor}
+            symbol={currencySymbol(currency)}
+            placeholder="auto (peak)"
+            onChange={(minor) => saveField({ debtBaselineMinor: minor })}
+          />
+          {state.settings.debtBaselineMinor !== null && (
+            <button onClick={() => saveField({ debtBaselineMinor: null })}>Use auto</button>
+          )}
+        </div>
+      </div>
+
+      <h2>Fix a mistyped balance</h2>
+      <div class="card">
+        <label class="field">
+          <span>Account</span>
+          <select value={fixAccountId} onChange={(e) => setFixAccountId((e.target as HTMLSelectElement).value)}>
+            <option value="">Choose…</option>
+            {state.accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {fixSnapshots.map((s) => (
+          <div class="account-row" key={s.id}>
+            <div class="account-main">
+              <div>{formatMoney(s.balance, currency)}</div>
+              <div class="muted small">{s.at.slice(0, 16).replace('T', ' ')}</div>
+            </div>
+            <button
+              class="btn-danger"
+              style="padding:7px 12px"
+              onClick={() => void mutate((st) => voidSnapshot(st, ctx(), s.id))}
+            >
+              Undo entry
+            </button>
+          </div>
+        ))}
+        {fixAccountId && fixSnapshots.length === 0 && (
+          <p class="muted small">No entries recorded for this account.</p>
+        )}
+      </div>
+
+      <h2>Backup</h2>
+      <div class="card stack">
+        <p class="muted small">
+          Your data lives only on your two phones. Every now and then, save a backup file
+          somewhere safe (it's the same format the sync uses).
+        </p>
+        <button class="btn-big" onClick={exportFile}>
+          Export backup file
+        </button>
+        <label class="btn btn-big" style="display:block">
+          Import / restore backup
+          <input
+            type="file"
+            accept="application/json"
+            style="display:none"
+            onChange={(e) => {
+              const file = (e.target as HTMLInputElement).files?.[0];
+              if (file) void importFile(file);
+            }}
+          />
+        </label>
+        {importMsg && <p class="muted small">{importMsg}</p>}
+      </div>
+
+      <p class="muted small" style="margin-top:16px">
+        This phone's device ID: {device.deviceId.slice(0, 8)} · data never leaves your phones
+        except via Sync and backups.
+      </p>
+    </div>
+  );
+}

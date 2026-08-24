@@ -1,0 +1,118 @@
+export type UUID = string;
+export type ISOTime = string;
+
+/** Stamped on every last-write-wins-merged record. */
+export interface Meta {
+  updatedAt: ISOTime;
+  updatedBy: string; // deviceId that made the change
+}
+
+export type AccountKind = 'credit_card' | 'savings' | 'investment' | 'checking' | 'other';
+export type Owner = 'A' | 'B' | 'joint';
+
+export interface Account extends Meta {
+  id: UUID;
+  name: string;
+  institution: string;
+  kind: AccountKind;
+  owner: Owner;
+  archived: boolean; // soft delete AND sync tombstone — never hard-delete
+  createdAt: ISOTime;
+}
+
+export interface AliasEpoch {
+  accountId: UUID;
+  from: ISOTime;
+}
+
+export interface Alias extends Meta {
+  id: UUID;
+  name: string;
+  accountId: UUID | null; // currently pointed account
+  history: AliasEpoch[]; // append-only repoint log, travels inside the LWW record
+  archived: boolean;
+  createdAt: ISOTime;
+}
+
+/** Append-only, immutable balance reading. Union-merged by id, never edited. */
+export interface Snapshot {
+  id: UUID;
+  accountId: UUID;
+  /** Minor units (pence). Credit cards store the amount OWED as a positive number. */
+  balance: number;
+  at: ISOTime; // effective time (user can backdate)
+  deviceId: string;
+  createdAt: ISOTime;
+}
+
+/** Undo for a mistyped snapshot without breaking append-only semantics. */
+export interface SnapshotVoid {
+  snapshotId: UUID;
+  at: ISOTime;
+  deviceId: string;
+}
+
+export interface Settings extends Meta {
+  id: 'settings';
+  partnerAName: string;
+  partnerBName: string;
+  currency: string; // ISO 4217, display-only
+  /** Manual debt baseline override in minor units; null = auto (peak recorded debt). */
+  debtBaselineMinor: number | null;
+}
+
+/** Local-only device identity and sync bookkeeping. NEVER synced. */
+export interface DeviceState {
+  id: 'device';
+  deviceId: UUID;
+  lastSyncAt: ISOTime | null;
+  lastSyncStateHash: string | null;
+}
+
+/** Everything that syncs between the two phones. */
+export interface SyncedState {
+  settings: Settings;
+  accounts: Account[];
+  aliases: Alias[];
+  snapshots: Snapshot[];
+  voids: SnapshotVoid[];
+}
+
+export interface SyncPayload extends SyncedState {
+  v: 1;
+  deviceId: string;
+  sentAt: ISOTime;
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  id: 'settings',
+  partnerAName: 'Partner A',
+  partnerBName: 'Partner B',
+  currency: 'GBP',
+  debtBaselineMinor: null,
+  updatedAt: new Date(0).toISOString(),
+  updatedBy: '',
+};
+
+export function emptyState(): SyncedState {
+  return {
+    settings: { ...DEFAULT_SETTINGS },
+    accounts: [],
+    aliases: [],
+    snapshots: [],
+    voids: [],
+  };
+}
+
+export const ACCOUNT_KIND_LABELS: Record<AccountKind, string> = {
+  credit_card: 'Credit card',
+  savings: 'Savings',
+  investment: 'Investment',
+  checking: 'Current account',
+  other: 'Other',
+};
+
+/** Kinds counted in the combined-debt headline. */
+export const DEBT_KINDS: AccountKind[] = ['credit_card'];
+/** Kinds counted in the combined savings + investments headline. */
+export const GROWTH_KINDS: AccountKind[] = ['savings', 'investment'];
