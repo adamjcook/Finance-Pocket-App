@@ -33,11 +33,23 @@ export function Accounts() {
   };
 
   const visible = state.accounts.filter((a) => showArchived || !a.archived);
-  const groups: { title: string; accounts: Account[] }[] = [
-    { title: 'Debt', accounts: visible.filter((a) => OWED_KINDS.includes(a.kind)) },
-    { title: 'Savings & investments', accounts: visible.filter((a) => GROWTH_KINDS.includes(a.kind)) },
+  const groups: { title: string; dot: string; amountClass: string; accounts: Account[] }[] = [
+    {
+      title: 'Debt',
+      dot: 'var(--debt)',
+      amountClass: 'amount-owed',
+      accounts: visible.filter((a) => OWED_KINDS.includes(a.kind)),
+    },
+    {
+      title: 'Savings & investments',
+      dot: 'var(--accent)',
+      amountClass: 'amount-growth',
+      accounts: visible.filter((a) => GROWTH_KINDS.includes(a.kind)),
+    },
     {
       title: 'Everything else',
+      dot: 'var(--text-dim)',
+      amountClass: '',
       accounts: visible.filter((a) => !OWED_KINDS.includes(a.kind) && !GROWTH_KINDS.includes(a.kind)),
     },
   ];
@@ -59,7 +71,10 @@ export function Accounts() {
         (g) =>
           g.accounts.length > 0 && (
             <div key={g.title}>
-              <h2>{g.title}</h2>
+              <h2>
+                <span class="h2-dot" style={`background:${g.dot}`} />
+                {g.title}
+              </h2>
               <div class="card" style="padding:4px 12px">
                 {g.accounts.map((a) => {
                   const alias = aliasForAccount(state, a.id);
@@ -78,6 +93,9 @@ export function Accounts() {
                           {a.archived && <span class="chip">archived</span>}
                         </div>
                         <div class="muted small">
+                          <span
+                            class={`owner-dot owner-dot-${a.owner === 'joint' ? 'joint' : a.owner.toLowerCase()}`}
+                          />{' '}
                           {ownerLabel(a.owner, state.settings.partnerAName, state.settings.partnerBName)}
                           {' · '}
                           {a.institution || ACCOUNT_KIND_LABELS[a.kind]}
@@ -98,7 +116,7 @@ export function Accounts() {
                         </span>
                       ) : (
                         <button
-                          class="balance-btn"
+                          class={`balance-btn ${g.amountClass}`}
                           onClick={() => {
                             setEditing(a.id);
                             setDraft(latest?.balance ?? null);

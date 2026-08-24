@@ -51,11 +51,15 @@ export function Dashboard() {
   return (
     <div>
       <h1>
-        {settings.partnerAName} &amp; {settings.partnerBName}
+        <span class="name-a">{settings.partnerAName}</span> &amp;{' '}
+        <span class="name-b">{settings.partnerBName}</span>
       </h1>
 
-      <h2>Credit card debt</h2>
-      <div class="card">
+      <h2>
+        <span class="h2-dot" style="background:var(--debt)" />
+        Credit card debt
+      </h2>
+      <div class="card card-debt">
         {debt.baseline > 0 ? (
           <>
             <div class="hero">
@@ -97,8 +101,11 @@ export function Dashboard() {
 
       {loans.series.length > 0 && (
         <>
-          <h2>Loans</h2>
-          <div class="card">
+          <h2>
+            <span class="h2-dot" style="background:color-mix(in srgb, var(--debt) 55%, var(--bg-raised))" />
+            Loans
+          </h2>
+          <div class="card card-loan">
             <div class="row spread">
               <div>
                 <div class="big-number">{formatMoney(loans.current, currency)}</div>
@@ -114,8 +121,11 @@ export function Dashboard() {
         </>
       )}
 
-      <h2>Savings &amp; investments</h2>
-      <div class="card">
+      <h2>
+        <span class="h2-dot" style="background:var(--accent)" />
+        Savings &amp; investments
+      </h2>
+      <div class="card card-growth">
         {growth.series.length > 0 ? (
           <>
             <div class="row spread">

@@ -107,10 +107,10 @@ test('second phone joins via setup and owners stay consistent (no flip)', async 
   await expect(phoneB.getByRole('heading', { name: /Adam & Sam/ })).toBeVisible();
   await phoneB.goto('.#/accounts');
   await expect(
-    phoneB.locator('.account-row', { hasText: 'Adam Card' }).getByText(/^Adam ·/),
+    phoneB.locator('.account-row', { hasText: 'Adam Card' }).getByText(/Adam ·/),
   ).toBeVisible();
   await expect(
-    phoneB.locator('.account-row', { hasText: 'Sam Card' }).getByText(/^Sam ·/),
+    phoneB.locator('.account-row', { hasText: 'Sam Card' }).getByText(/Sam ·/),
   ).toBeVisible();
 
   // And the reverse pass leaves both phones on the same check code
