@@ -1,14 +1,17 @@
 :root {
-  --bg: #101418;
-  --bg-raised: #1a2028;
-  --bg-inset: #0b0e12;
-  --border: #2a3340;
+  --bg: #141a21;
+  --bg-raised: #1d2530;
+  --bg-inset: #0f141a;
+  --border: #2e3947;
   --text: #e8edf2;
-  --text-dim: #93a1b1;
+  --text-dim: #9aa8b8;
   --accent: #4fd1a5;
   --accent-dim: #2c7a5f;
   --debt: #f2a65a;
   --danger: #e26d6d;
+  /* partner identity colours — the two circles of the app icon */
+  --partner-a: #4fd1a5;
+  --partner-b: #f2a65a;
   --radius: 14px;
   color-scheme: dark;
 }
@@ -24,7 +27,11 @@ body {
 }
 
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(520px 380px at 10% -6%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 70%),
+    radial-gradient(560px 420px at 108% 26%, color-mix(in srgb, var(--debt) 9%, transparent), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--text);
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 16px;
@@ -117,6 +124,71 @@ h2 {
   border-radius: var(--radius);
   padding: 16px;
   margin-bottom: 12px;
+}
+
+/* money-direction washes: warm for what's owed, teal for what grows */
+.card-debt {
+  background: linear-gradient(155deg, color-mix(in srgb, var(--debt) 13%, var(--bg-raised)), var(--bg-raised) 62%);
+  border-color: color-mix(in srgb, var(--debt) 28%, var(--border));
+}
+
+.card-loan {
+  background: linear-gradient(155deg, color-mix(in srgb, var(--debt) 7%, var(--bg-raised)), var(--bg-raised) 55%);
+  border-color: color-mix(in srgb, var(--debt) 16%, var(--border));
+}
+
+.card-growth {
+  background: linear-gradient(155deg, color-mix(in srgb, var(--accent) 12%, var(--bg-raised)), var(--bg-raised) 62%);
+  border-color: color-mix(in srgb, var(--accent) 26%, var(--border));
+}
+
+/* partner identity */
+.name-a {
+  color: var(--partner-a);
+}
+
+.name-b {
+  color: var(--partner-b);
+}
+
+.owner-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 3px;
+  vertical-align: 0.5px;
+}
+
+.owner-dot-a {
+  background: var(--partner-a);
+}
+
+.owner-dot-b {
+  background: var(--partner-b);
+}
+
+.owner-dot-joint {
+  background: linear-gradient(90deg, var(--partner-a) 50%, var(--partner-b) 50%);
+}
+
+/* section markers */
+h2 .h2-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 7px;
+  vertical-align: 1px;
+}
+
+/* money amounts carry their direction's colour */
+.amount-owed {
+  color: color-mix(in srgb, var(--debt) 78%, var(--text));
+}
+
+.amount-growth {
+  color: color-mix(in srgb, var(--accent) 72%, var(--text));
 }
 
 .muted {
