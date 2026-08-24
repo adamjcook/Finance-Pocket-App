@@ -289,6 +289,23 @@ select:focus {
   border-color: var(--accent-dim);
 }
 
+input.color-swatch {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 4px;
+  flex: none;
+}
+
+input.color-swatch::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+input.color-swatch::-webkit-color-swatch {
+  border: none;
+  border-radius: 6px;
+}
+
 /* ---- dashboard ---- */
 .hero {
   display: flex;
