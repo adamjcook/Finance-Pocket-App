@@ -69,7 +69,17 @@ export interface Settings extends Meta {
   savingsTargetMinor?: number | null;
   /** Optional date (YYYY-MM-DD) to reach the savings target by. */
   savingsTargetDate?: string | null;
+  /**
+   * Partner identity colours (CSS hex), used for names, owner dots, and
+   * section markers. Added after v1 shipped — undefined reads as the
+   * default teal/amber.
+   */
+  partnerAColor?: string;
+  partnerBColor?: string;
 }
+
+export const DEFAULT_PARTNER_A_COLOR = '#4fd1a5';
+export const DEFAULT_PARTNER_B_COLOR = '#f2a65a';
 
 /** Local-only device identity and sync bookkeeping. NEVER synced. */
 export interface DeviceState {
@@ -103,6 +113,8 @@ export const DEFAULT_SETTINGS: Settings = {
   debtTargetDate: null,
   savingsTargetMinor: null,
   savingsTargetDate: null,
+  partnerAColor: DEFAULT_PARTNER_A_COLOR,
+  partnerBColor: DEFAULT_PARTNER_B_COLOR,
   updatedAt: new Date(0).toISOString(),
   updatedBy: '',
 };

@@ -191,3 +191,29 @@ test('alias survives switching banks', async ({ page }) => {
   await expect(newRow.getByText('Main Savings')).toBeVisible();
   await expect(page.getByText('Old Bank Saver')).toBeHidden();
 });
+
+test('custom partner colours apply throughout the app and persist', async ({ page }) => {
+  await completeSetup(page, 'Adam', 'Sam');
+
+  await page.goto('.#/settings');
+  const swatches = page.locator('input.color-swatch');
+  await swatches.nth(0).fill('#123456');
+  await swatches.nth(1).fill('#abcdef');
+
+  // The CSS custom properties the whole UI reads from are updated live
+  await expect
+    .poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--partner-a').trim()))
+    .toBe('#123456');
+  await expect
+    .poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--partner-b').trim()))
+    .toBe('#abcdef');
+
+  // Reflected on the dashboard greeting
+  await page.goto('.#/');
+  await expect(page.locator('.name-a')).toHaveCSS('color', 'rgb(18, 52, 86)');
+  await expect(page.locator('.name-b')).toHaveCSS('color', 'rgb(171, 205, 239)');
+
+  // Persists across a reload (settings are stored, not just an in-memory var)
+  await page.reload();
+  await expect(page.locator('.name-a')).toHaveCSS('color', 'rgb(18, 52, 86)');
+});
