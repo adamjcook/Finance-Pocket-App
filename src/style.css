@@ -511,4 +511,7 @@ input.invalid {
   display: block;
   width: 100%;
   height: auto;
+  /* Own horizontal/vertical drag entirely — otherwise the browser can treat
+     a scrub gesture as an attempted page scroll and cancel it mid-drag. */
+  touch-action: none;
 }
