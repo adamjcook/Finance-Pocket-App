@@ -8,6 +8,14 @@ export default defineConfig({
     preact(),
     VitePWA({
       registerType: 'prompt',
+      // A custom fetch handler (the Web Share Target receiver) needs hand-written
+      // service worker code, which generateSW's declarative config can't produce.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+      },
       includeAssets: ['icons/favicon.svg'],
       manifest: {
         name: 'Pocket Finances',
@@ -23,10 +31,14 @@ export default defineConfig({
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
-        cleanupOutdatedCaches: true,
+        share_target: {
+          action: 'share-target/',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: {
+            files: [{ name: 'payload', accept: ['application/json', '.json'] }],
+          },
+        },
       },
     }),
   ],

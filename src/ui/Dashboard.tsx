@@ -1,6 +1,7 @@
 import { useApp } from '../model/store';
 import {
   debtProgress,
+  formatDay,
   growthProgress,
   loanTotals,
   monthlyToTarget,
@@ -10,14 +11,6 @@ import {
 import { formatMoney } from '../logic/money';
 import { Chart } from './components/Chart';
 import { ProgressRing } from './components/ProgressRing';
-
-function formatDay(day: string): string {
-  return new Date(day + 'T00:00:00Z').toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
 
 export function Dashboard() {
   const app = useApp();
@@ -41,10 +34,11 @@ export function Dashboard() {
 
   return (
     <div>
-      <h1>
+      <h1 style="margin-bottom:2px">Pocket Finances</h1>
+      <p class="subtitle">
         <span class="name-a">{settings.partnerAName}</span> &amp;{' '}
         <span class="name-b">{settings.partnerBName}</span>
-      </h1>
+      </p>
 
       <h2>
         <span class="h2-dot" style="background:var(--debt)" />
