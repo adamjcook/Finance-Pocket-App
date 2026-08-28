@@ -25,8 +25,13 @@ export async function currentFrames(): Promise<string[]> {
   return encodePayload(buildPayload(state, device.deviceId));
 }
 
-/** JSON file of this phone's current state, for handing off via the Web Share API. */
-export async function currentShareFile(): Promise<File> {
+/**
+ * JSON file of this phone's current state, for handing off via the Web Share
+ * API. Deliberately synchronous: navigator.share() requires a fresh user
+ * gesture, and even a microtask-only `await` before calling it narrows that
+ * window, so nothing async sits between the tap and the share() call.
+ */
+export function currentShareFile(): File {
   const { state, device } = getStore();
   const payload = buildPayload(state, device.deviceId);
   return new File([JSON.stringify(payload)], 'pocket-finances-sync.json', {
