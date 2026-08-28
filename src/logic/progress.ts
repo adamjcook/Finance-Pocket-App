@@ -14,6 +14,15 @@ export function todayISO(): string {
   return new Date().toISOString();
 }
 
+/** A day (YYYY-MM-DD) as a friendly label, e.g. "25 Feb 2026". */
+export function formatDay(day: string): string {
+  return new Date(day + 'T00:00:00Z').toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 function addDays(day: string, n: number): string {
   const d = new Date(day + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + n);

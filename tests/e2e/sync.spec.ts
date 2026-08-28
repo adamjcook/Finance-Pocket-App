@@ -53,7 +53,8 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await cardInput.fill('1500');
   await page.getByRole('button', { name: /Save 1 update/ }).click();
 
-  await expect(page.getByRole('heading', { name: /Adam & Sam/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Pocket Finances' })).toBeVisible();
+  await expect(page.locator('.subtitle', { hasText: 'Adam & Sam' })).toBeVisible();
   await expect(page.getByText('£1,500.00').first()).toBeVisible();
   await expect(page.getByText('50%')).toBeVisible(); // paid off half of the £3,000 peak
   await expect(page.getByText('£1,500.00 of £3,000.00 paid off')).toBeVisible();
@@ -104,7 +105,7 @@ test('second phone joins via setup and owners stay consistent (no flip)', async 
   await phoneB.evaluate((f) => window.__syncTest.importFrames(f), frames);
 
   // B now shows A's names, and each account keeps its true owner
-  await expect(phoneB.getByRole('heading', { name: /Adam & Sam/ })).toBeVisible();
+  await expect(phoneB.locator('.subtitle', { hasText: 'Adam & Sam' })).toBeVisible();
   await phoneB.goto('.#/accounts');
   await expect(
     phoneB.locator('.account-row', { hasText: 'Adam Card' }).getByText(/Adam ·/),

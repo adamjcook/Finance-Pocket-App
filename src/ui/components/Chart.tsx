@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import type { SeriesPoint } from '../../logic/progress';
+import { formatDay, type SeriesPoint } from '../../logic/progress';
 import { formatMoney, formatMoneyCompact } from '../../logic/money';
 
 interface Props {
@@ -45,6 +45,11 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
 
   return (
     <div class="chart">
+      {/* Above the chart, not below: on a touchscreen a thumb resting on the
+          plot to pick a point would otherwise cover a readout placed under it. */}
+      <p class="chart-tooltip muted small">
+        {pickedPoint ? `${formatDay(pickedPoint.day)}: ${formatMoney(pickedPoint.value, currency)}` : ' '}
+      </p>
       <svg
         viewBox={`0 0 ${W} ${LABEL_BAND + height + 18}`}
         onPointerDown={pick}
@@ -68,20 +73,15 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
           </g>
         )}
         <text x="0" y={floor + 14} fill="var(--text-dim)" font-size="10">
-          {series[0].day}
+          {formatDay(series[0].day)}
         </text>
         <text x={W} y={floor + 14} fill="var(--text-dim)" font-size="10" text-anchor="end">
-          {series[series.length - 1].day}
+          {formatDay(series[series.length - 1].day)}
         </text>
         <text x={W} y="10" fill="var(--text-dim)" font-size="10" text-anchor="end">
           peak {formatMoneyCompact(max, currency)}
         </text>
       </svg>
-      {pickedPoint && (
-        <p class="muted small" style="text-align:center">
-          {pickedPoint.day}: {formatMoney(pickedPoint.value, currency)}
-        </p>
-      )}
     </div>
   );
 }

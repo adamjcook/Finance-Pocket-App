@@ -118,6 +118,13 @@ h2 {
   margin: 22px 0 8px;
 }
 
+.subtitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 18px;
+}
+
 .card {
   background: var(--bg-raised);
   border: 1px solid var(--border);
@@ -494,6 +501,12 @@ input.invalid {
 }
 
 /* ---- chart ---- */
+.chart-tooltip {
+  text-align: center;
+  min-height: 1.4em;
+  margin-bottom: 2px;
+}
+
 .chart svg {
   display: block;
   width: 100%;
