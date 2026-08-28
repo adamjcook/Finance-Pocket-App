@@ -62,16 +62,29 @@ export function Sync() {
 
   const shareWithPartner = () => {
     setError(null);
+    // Some browsers gate share() on the document being focused, not just on
+    // a recent gesture — a harmless nudge in case that's what's blocking it.
+    window.focus();
     // No await before share() — even a microtask-only gap can be enough for
     // the browser to decide the tap that triggered this is no longer fresh.
     navigator.share({ files: [currentShareFile()], title: 'Pocket Finances sync' }).catch((err: unknown) => {
       if (err instanceof DOMException && err.name === 'AbortError') return; // user cancelled
+      const detail = err instanceof Error ? err.message : String(err);
       if (err instanceof DOMException && err.name === 'NotAllowedError') {
-        setError('Sharing wasn’t allowed just then — tap Share with partner again.');
+        setError(`Sharing wasn’t allowed just then (${detail}) — try again, or download the file below and send it another way.`);
         return;
       }
-      setError(err instanceof Error ? err.message : String(err));
+      setError(`${detail} — download the file below and send it another way.`);
     });
+  };
+
+  const downloadShareFile = () => {
+    const file = currentShareFile();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   if (!app || !checkedPendingShare) return null;
@@ -81,6 +94,7 @@ export function Sync() {
     return (
       <div>
         <h1>{result ? 'Now show this back' : 'Show this to your partner'}</h1>
+        {error && <div class="error-box">{error}</div>}
         {result && (
           <div class="card">
             <p>
@@ -98,6 +112,11 @@ export function Sync() {
             {shareSupported && (
               <button class="btn-primary btn-big" style="margin-top:12px" onClick={shareWithPartner}>
                 Share with partner
+              </button>
+            )}
+            {error && (
+              <button class="btn-big" style="margin-top:8px" onClick={downloadShareFile}>
+                Download file to send another way
               </button>
             )}
           </div>
@@ -177,6 +196,11 @@ export function Sync() {
           <button class="btn-primary btn-big" onClick={shareWithPartner}>
             Share with partner
           </button>
+          {error && (
+            <button class="btn-big" style="margin-top:8px" onClick={downloadShareFile}>
+              Download file to send another way
+            </button>
+          )}
           <h2 style="margin-top:22px">Or use a QR code instead</h2>
         </>
       ) : (
