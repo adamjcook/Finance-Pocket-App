@@ -41,6 +41,19 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
     setPicked(Math.max(0, Math.min(series.length - 1, i)));
   };
 
+  // Capture the pointer so dragging a thumb left/right keeps updating the
+  // reading instead of losing it the moment the finger moves off the exact
+  // point it started on.
+  const startDrag = (e: PointerEvent) => {
+    (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);
+    pick(e);
+  };
+  const continueDrag = (e: PointerEvent) => {
+    if (e.buttons === 0) return; // finger/button not down — a hover move, not a drag
+    pick(e);
+  };
+  const endDrag = () => setPicked(null);
+
   const pickedPoint = picked !== null ? series[picked] : null;
 
   return (
@@ -52,8 +65,10 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
       </p>
       <svg
         viewBox={`0 0 ${W} ${LABEL_BAND + height + 18}`}
-        onPointerDown={pick}
-        onPointerLeave={() => setPicked(null)}
+        onPointerDown={startDrag}
+        onPointerMove={continueDrag}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
       >
         <path d={area} fill={color} opacity="0.15" />
         <path d={line} fill="none" stroke={color} stroke-width="2" stroke-linejoin="round" />
