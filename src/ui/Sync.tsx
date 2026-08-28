@@ -47,9 +47,11 @@ export function Sync() {
   // A Nearby-Share-style hand-off may have arrived while the app was closed
   // (caught by the service worker's share-target handler); pick it up once.
   useEffect(() => {
-    currentShareFile()
-      .then((file) => setShareSupported(canShareFiles(file)))
-      .catch(() => {});
+    try {
+      setShareSupported(canShareFiles(currentShareFile()));
+    } catch {
+      // Store not ready yet on this very first tick — leave share hidden.
+    }
     void consumePendingShare()
       .then((r) => {
         if (r) void startShow(r);
@@ -58,15 +60,18 @@ export function Sync() {
       .finally(() => setCheckedPendingShare(true));
   }, []);
 
-  const shareWithPartner = async () => {
+  const shareWithPartner = () => {
     setError(null);
-    try {
-      const file = await currentShareFile();
-      await navigator.share({ files: [file], title: 'Pocket Finances sync' });
-    } catch (err) {
+    // No await before share() — even a microtask-only gap can be enough for
+    // the browser to decide the tap that triggered this is no longer fresh.
+    navigator.share({ files: [currentShareFile()], title: 'Pocket Finances sync' }).catch((err: unknown) => {
       if (err instanceof DOMException && err.name === 'AbortError') return; // user cancelled
+      if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        setError('Sharing wasn’t allowed just then — tap Share with partner again.');
+        return;
+      }
       setError(err instanceof Error ? err.message : String(err));
-    }
+    });
   };
 
   if (!app || !checkedPendingShare) return null;
@@ -91,7 +96,7 @@ export function Sync() {
               {result.hash}
             </div>
             {shareSupported && (
-              <button class="btn-primary btn-big" style="margin-top:12px" onClick={() => void shareWithPartner()}>
+              <button class="btn-primary btn-big" style="margin-top:12px" onClick={shareWithPartner}>
                 Share with partner
               </button>
             )}
@@ -169,7 +174,7 @@ export function Sync() {
             in the sheet that opens for a fast, camera-free sync. They'll get it back to you the
             same way.
           </p>
-          <button class="btn-primary btn-big" onClick={() => void shareWithPartner()}>
+          <button class="btn-primary btn-big" onClick={shareWithPartner}>
             Share with partner
           </button>
           <h2 style="margin-top:22px">Or use a QR code instead</h2>
