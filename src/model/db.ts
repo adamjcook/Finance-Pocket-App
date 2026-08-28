@@ -3,15 +3,13 @@ import type { DeviceState, SyncedState } from './types';
 import { DEFAULT_SETTINGS } from './types';
 
 const DB_NAME = 'finance-pocket';
+// Stays at 2 even though the 'shares' store from the (now-removed) Web Share
+// feature is unused: IndexedDB can't open a database at a version lower than
+// one it's already been upgraded to, and phones in the wild are already at 2.
 const DB_VERSION = 2;
 
 type DB = IDBPDatabase;
 
-/**
- * Opened from both the page and the service worker (the share-target
- * handler stashes a pending share from the SW context), so each side gets
- * its own module-level singleton — that's fine, IndexedDB itself is shared.
- */
 let dbPromise: Promise<DB> | null = null;
 
 function getDB(): Promise<DB> {
@@ -27,7 +25,7 @@ function getDB(): Promise<DB> {
         db.createObjectStore('device', { keyPath: 'id' });
       }
       if (oldVersion < 2) {
-        db.createObjectStore('shares', { keyPath: 'id' });
+        db.createObjectStore('shares', { keyPath: 'id' }); // unused; kept for schema continuity
       }
     },
   });
@@ -88,26 +86,4 @@ export async function loadDevice(): Promise<DeviceState> {
 export async function saveDevice(device: DeviceState): Promise<void> {
   const db = await getDB();
   await db.put('device', device);
-}
-
-interface PendingShare {
-  id: 'pending';
-  json: string;
-  receivedAt: string;
-}
-
-/** Called from the service worker's share-target handler. */
-export async function savePendingShare(json: string): Promise<void> {
-  const db = await getDB();
-  const entry: PendingShare = { id: 'pending', json, receivedAt: new Date().toISOString() };
-  await db.put('shares', entry);
-}
-
-/** Read and clear the pending share, if any. Called once the app is open. */
-export async function takePendingShare(): Promise<string | null> {
-  const db = await getDB();
-  const entry = (await db.get('shares', 'pending')) as PendingShare | undefined;
-  if (!entry) return null;
-  await db.delete('shares', 'pending');
-  return entry.json;
 }
