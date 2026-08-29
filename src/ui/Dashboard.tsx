@@ -25,6 +25,8 @@ export function Dashboard() {
 
   const debtTargetDate = settings.debtTargetDate ?? null;
   const debtMonthly = monthlyToTarget(debt.current, 0, 'down', debtTargetDate, today);
+  const loanTargetDate = settings.loanTargetDate ?? null;
+  const loanMonthly = monthlyToTarget(loans.current, 0, 'down', loanTargetDate, today);
   const savingsTarget = settings.savingsTargetMinor ?? null;
   const savingsTargetDate = settings.savingsTargetDate ?? null;
   const savingsMonthly =
@@ -97,6 +99,21 @@ export function Dashboard() {
                 <div class="muted">still owed on loans</div>
               </div>
             </div>
+            {loanTargetDate &&
+              (loans.current === 0 ? (
+                <p class="small delta-up" style="margin-top:10px">
+                  Loans cleared — goal done 🎉
+                </p>
+              ) : loanMonthly !== null ? (
+                <p class="small" style="margin-top:10px">
+                  Goal: cleared by <strong>{formatDay(loanTargetDate)}</strong> — needs about{' '}
+                  <strong>{formatMoney(loanMonthly, currency)}/month</strong>
+                </p>
+              ) : (
+                <p class="muted small" style="margin-top:10px">
+                  Goal date {formatDay(loanTargetDate)} has passed — set a new one in Settings.
+                </p>
+              ))}
             {loans.series.length > 1 && (
               <div style="margin-top:12px">
                 <Chart series={loans.series} currency={currency} color="var(--debt)" />

@@ -73,14 +73,16 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await expect(page.getByText('£9,000.00').first()).toBeVisible();
   await expect(page.getByText('£1,500.00').first()).toBeVisible(); // card debt unchanged
 
-  // Goals: clear-by date for the cards, amount + date for savings
+  // Goals: clear-by dates for cards and loans, amount + date for savings
   await page.goto('.#/settings');
-  await page.locator('input[type="date"]').first().fill('2027-06-01');
+  await page.locator('input[type="date"]').nth(0).fill('2027-06-01'); // cards
+  await page.locator('input[type="date"]').nth(1).fill('2027-11-01'); // loans
   await page.getByPlaceholder('no target').fill('10000');
-  await page.locator('input[type="date"]').nth(1).fill('2027-06-01');
+  await page.locator('input[type="date"]').nth(2).fill('2027-06-01'); // savings
   await page.goto('.#/');
-  await expect(page.getByText(/needs about/)).toBeVisible();
+  await expect(page.getByText(/needs about/).first()).toBeVisible();
   await expect(page.getByText(/1 Jun 2027/).first()).toBeVisible();
+  await expect(page.getByText(/1 Nov 2027/).first()).toBeVisible(); // loan goal date
   await expect(page.getByText(/% there/)).toBeVisible();
   await expect(page.getByText(/to get there by/)).toBeVisible();
 });
