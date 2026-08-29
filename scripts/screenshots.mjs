@@ -20,7 +20,7 @@ const payload = {
   sentAt: day(0),
   settings: {
     id: 'settings', partnerAName: 'Adam', partnerBName: 'Sam', currency: 'GBP',
-    debtBaselineMinor: null, debtTargetDate: '2027-06-01',
+    debtBaselineMinor: null, debtTargetDate: '2027-06-01', loanTargetDate: '2027-10-01',
     savingsTargetMinor: 25000_00, savingsTargetDate: '2027-12-01',
     // stamped just ahead of the in-page setup so the seeded goals win the LWW merge
     ...meta(-0.01),

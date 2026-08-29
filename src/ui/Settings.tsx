@@ -160,6 +160,21 @@ export function Settings() {
           </div>
         </label>
         <label class="field">
+          <span>Clear the loans by</span>
+          <div class="row">
+            <input
+              type="date"
+              value={state.settings.loanTargetDate ?? ''}
+              onChange={(e) =>
+                saveField({ loanTargetDate: (e.target as HTMLInputElement).value || null })
+              }
+            />
+            {state.settings.loanTargetDate && (
+              <button onClick={() => saveField({ loanTargetDate: null })}>Clear</button>
+            )}
+          </div>
+        </label>
+        <label class="field">
           <span>Savings &amp; investments target</span>
           <div class="row">
             <MoneyInput

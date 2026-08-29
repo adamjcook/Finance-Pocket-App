@@ -65,6 +65,8 @@ export interface Settings extends Meta {
    */
   /** Date (YYYY-MM-DD) by which the credit cards should be cleared; null = no goal. */
   debtTargetDate?: string | null;
+  /** Date (YYYY-MM-DD) by which the loans should be cleared; null = no goal. */
+  loanTargetDate?: string | null;
   /** Savings & investments target in minor units; null = no goal. */
   savingsTargetMinor?: number | null;
   /** Optional date (YYYY-MM-DD) to reach the savings target by. */
@@ -111,6 +113,7 @@ export const DEFAULT_SETTINGS: Settings = {
   currency: 'GBP',
   debtBaselineMinor: null,
   debtTargetDate: null,
+  loanTargetDate: null,
   savingsTargetMinor: null,
   savingsTargetDate: null,
   partnerAColor: DEFAULT_PARTNER_A_COLOR,
