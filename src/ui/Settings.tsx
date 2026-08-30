@@ -26,7 +26,7 @@ export function Settings() {
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `pocket-finances-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `finpair-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -35,7 +35,7 @@ export function Settings() {
     try {
       const payload = JSON.parse(await file.text()) as SyncPayload;
       if (payload.v !== 1 || !Array.isArray(payload.accounts)) {
-        throw new Error('Not a Pocket Finances backup file');
+        throw new Error('Not a FinPair backup file');
       }
       const before = getStore().state;
       const merged = mergeState(before, payload);
