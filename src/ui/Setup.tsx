@@ -34,7 +34,10 @@ export function Setup() {
   return (
     <div class="shell">
       <main class="screen">
-        <h1>Pocket Finances</h1>
+        <div class="title-row">
+          <img src={`${import.meta.env.BASE_URL}icons/favicon.svg`} class="app-logo" alt="" />
+          <h1>Pocket Finances</h1>
+        </div>
 
         {mode === 'choose' && (
           <>
