@@ -33,7 +33,7 @@ body {
     var(--bg);
   background-attachment: fixed;
   color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
@@ -109,6 +109,24 @@ h1 {
   margin-bottom: 14px;
 }
 
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.title-row h1 {
+  margin-bottom: 0;
+}
+
+.app-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  flex: none;
+}
+
 h2 {
   font-size: 13px;
   font-weight: 600;
@@ -149,13 +167,22 @@ h2 {
   border-color: color-mix(in srgb, var(--accent) 26%, var(--border));
 }
 
-/* partner identity */
-.name-a {
-  color: var(--partner-a);
+/* partner identity — a colour circle beside each name, not coloured text */
+.name-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: 1px;
 }
 
-.name-b {
-  color: var(--partner-b);
+.name-dot-a {
+  background: var(--partner-a);
+}
+
+.name-dot-b {
+  background: var(--partner-b);
 }
 
 .owner-dot {

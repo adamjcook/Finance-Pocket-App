@@ -211,12 +211,12 @@ test('custom partner colours apply throughout the app and persist', async ({ pag
     .poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--partner-b').trim()))
     .toBe('#abcdef');
 
-  // Reflected on the dashboard greeting
+  // Reflected on the dashboard greeting as colour circles beside each name
   await page.goto('.#/');
-  await expect(page.locator('.name-a')).toHaveCSS('color', 'rgb(18, 52, 86)');
-  await expect(page.locator('.name-b')).toHaveCSS('color', 'rgb(171, 205, 239)');
+  await expect(page.locator('.name-dot-a')).toHaveCSS('background-color', 'rgb(18, 52, 86)');
+  await expect(page.locator('.name-dot-b')).toHaveCSS('background-color', 'rgb(171, 205, 239)');
 
   // Persists across a reload (settings are stored, not just an in-memory var)
   await page.reload();
-  await expect(page.locator('.name-a')).toHaveCSS('color', 'rgb(18, 52, 86)');
+  await expect(page.locator('.name-dot-a')).toHaveCSS('background-color', 'rgb(18, 52, 86)');
 });

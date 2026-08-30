@@ -1,5 +1,6 @@
 import { render } from 'preact';
 import { App } from './app';
+import '@fontsource-variable/inter/wght.css';
 import './style.css';
 import './sync/testhook';
 

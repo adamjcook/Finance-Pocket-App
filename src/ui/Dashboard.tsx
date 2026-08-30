@@ -36,10 +36,15 @@ export function Dashboard() {
 
   return (
     <div>
-      <h1 style="margin-bottom:2px">Pocket Finances</h1>
+      <div class="title-row" style="margin-bottom:2px">
+        <img src={`${import.meta.env.BASE_URL}icons/favicon.svg`} class="app-logo" alt="" />
+        <h1>Pocket Finances</h1>
+      </div>
       <p class="subtitle">
-        <span class="name-a">{settings.partnerAName}</span> &amp;{' '}
-        <span class="name-b">{settings.partnerBName}</span>
+        <span class="name-dot name-dot-a" />
+        {settings.partnerAName} &amp;{' '}
+        <span class="name-dot name-dot-b" />
+        {settings.partnerBName}
       </p>
 
       <h2>
