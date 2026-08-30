@@ -53,7 +53,7 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await cardInput.fill('1500');
   await page.getByRole('button', { name: /Save 1 update/ }).click();
 
-  await expect(page.getByRole('heading', { name: 'Pocket Finances' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'FinPair' })).toBeVisible();
   await expect(page.locator('.subtitle', { hasText: 'Adam & Sam' })).toBeVisible();
   await expect(page.getByText('£1,500.00').first()).toBeVisible();
   await expect(page.getByText('50%')).toBeVisible(); // paid off half of the £3,000 peak

@@ -38,7 +38,7 @@ export function Dashboard() {
     <div>
       <div class="title-row" style="margin-bottom:2px">
         <img src={`${import.meta.env.BASE_URL}icons/favicon.svg`} class="app-logo" alt="" />
-        <h1>Pocket Finances</h1>
+        <h1>FinPair</h1>
       </div>
       <p class="subtitle">
         <span class="name-dot name-dot-a" />

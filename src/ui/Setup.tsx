@@ -36,7 +36,7 @@ export function Setup() {
       <main class="screen">
         <div class="title-row">
           <img src={`${import.meta.env.BASE_URL}icons/favicon.svg`} class="app-logo" alt="" />
-          <h1>Pocket Finances</h1>
+          <h1>FinPair</h1>
         </div>
 
         {mode === 'choose' && (

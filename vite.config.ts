@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['icons/favicon.svg'],
       manifest: {
-        name: 'Pocket Finances',
-        short_name: 'Pocket Finances',
+        name: 'FinPair',
+        short_name: 'FinPair',
         description: "Couple's shared finance tracker — all data stays on your phones",
         start_url: '.',
         scope: '.',

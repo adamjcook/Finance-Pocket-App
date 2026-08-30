@@ -1,4 +1,4 @@
-# Pocket Finances
+# FinPair
 
 A shared finance tracker for two people, built as an installable web app (PWA). All data
 lives on your two phones — there is no server, no cloud account, and the app works fully
