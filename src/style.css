@@ -200,6 +200,52 @@ h2 {
   background: var(--partner-b);
 }
 
+/* ---- net worth strip ---- */
+.net-worth {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+/* ---- reorderable dashboard sections ---- */
+.dash-section {
+  /* Keeps the child h2's margin from collapsing through this wrapper, so
+     getBoundingClientRect() on the wrapper reflects its true on-screen
+     footprint — the drag-reorder math depends on that being accurate. */
+  display: flow-root;
+}
+
+.dash-section.dragging {
+  position: relative;
+  z-index: 5;
+}
+
+.dash-section.dragging .card {
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.4);
+}
+
+.drag-handle {
+  background: none;
+  border: none;
+  padding: 2px 8px;
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: -2px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+  color: var(--text);
+}
+
 .owner-dot {
   display: inline-block;
   width: 8px;

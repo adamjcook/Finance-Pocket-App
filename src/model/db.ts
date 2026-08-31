@@ -1,6 +1,6 @@
 import { openDB, type IDBPDatabase } from 'idb';
-import type { DeviceState, SyncedState } from './types';
-import { DEFAULT_SETTINGS } from './types';
+import type { DashboardSectionKey, DeviceState, SyncedState } from './types';
+import { DEFAULT_DASHBOARD_ORDER, DEFAULT_SETTINGS } from './types';
 
 const DB_NAME = 'finance-pocket';
 // Stays at 2 even though the 'shares' store from the (now-removed) Web Share
@@ -69,17 +69,33 @@ export async function saveState(state: SyncedState): Promise<void> {
   await tx.done;
 }
 
+/** A stored order might be missing keys added since (or, in principle, corrupted). */
+function sanitizeDashboardOrder(order: unknown): DashboardSectionKey[] {
+  const seen = Array.isArray(order)
+    ? order.filter((k): k is DashboardSectionKey => DEFAULT_DASHBOARD_ORDER.includes(k as DashboardSectionKey))
+    : [];
+  const missing = DEFAULT_DASHBOARD_ORDER.filter((k) => !seen.includes(k));
+  return [...seen, ...missing];
+}
+
 export async function loadDevice(): Promise<DeviceState> {
   const db = await getDB();
   const existing = (await db.get('device', 'device')) as DeviceState | undefined;
-  // theme was added after v1 shipped — a device record from before that has no field.
-  if (existing) return existing.theme ? existing : { ...existing, theme: 'dark' };
+  // theme and dashboardOrder were added after v1 shipped — an older device record has neither.
+  if (existing) {
+    return {
+      ...existing,
+      theme: existing.theme ?? 'dark',
+      dashboardOrder: sanitizeDashboardOrder(existing.dashboardOrder),
+    };
+  }
   const created: DeviceState = {
     id: 'device',
     deviceId: crypto.randomUUID(),
     lastSyncAt: null,
     lastSyncStateHash: null,
     theme: 'dark',
+    dashboardOrder: DEFAULT_DASHBOARD_ORDER,
   };
   await db.put('device', created);
   return created;

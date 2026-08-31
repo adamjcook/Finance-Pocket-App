@@ -85,6 +85,9 @@ export const DEFAULT_PARTNER_B_COLOR = '#f2a65a';
 
 export type Theme = 'dark' | 'light';
 
+export type DashboardSectionKey = 'growth' | 'debt' | 'loans';
+export const DEFAULT_DASHBOARD_ORDER: DashboardSectionKey[] = ['growth', 'debt', 'loans'];
+
 /** Local-only device identity, sync bookkeeping, and display prefs. NEVER synced. */
 export interface DeviceState {
   id: 'device';
@@ -93,6 +96,8 @@ export interface DeviceState {
   lastSyncStateHash: string | null;
   /** Appearance preference for this phone only — not shared with the partner's. */
   theme: Theme;
+  /** Dashboard card order for this phone only — drag-to-reorder, not shared with the partner's. */
+  dashboardOrder: DashboardSectionKey[];
 }
 
 /** Everything that syncs between the two phones. */
