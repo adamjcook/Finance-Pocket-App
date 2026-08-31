@@ -2,7 +2,10 @@ import { openDB, type IDBPDatabase } from 'idb';
 import type { DashboardSectionKey, DeviceState, SyncedState } from './types';
 import { DEFAULT_DASHBOARD_ORDER, DEFAULT_SETTINGS } from './types';
 
-const DB_NAME = 'finance-pocket';
+// The dev deployment (see vite.config.ts / .env.dev-pages) uses a distinct
+// name so it can never read or write the real app's data, even though it's
+// served from the same origin.
+const DB_NAME = import.meta.env.VITE_DB_NAME || 'finance-pocket';
 // Stays at 2 even though the 'shares' store from the (now-removed) Web Share
 // feature is unused: IndexedDB can't open a database at a version lower than
 // one it's already been upgraded to, and phones in the wild are already at 2.

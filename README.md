@@ -75,6 +75,29 @@ The app deploys to GitHub Pages automatically on every push to `main` via
 `.github/workflows/deploy.yml`. One manual step is needed once:
 **repo Settings → Pages → Source → "GitHub Actions"**.
 
+## Dev environment
+
+Every push to `develop` deploys a second copy at
+**https://adamjcook.github.io/Finance-Pocket-App/dev/**, installable on your phone
+just like the real app. It's safe to poke at freely:
+
+- **Separate storage.** It uses its own IndexedDB database (`finance-pocket-dev`
+  vs. the real app's `finance-pocket`) — even though it shares the same GitHub
+  Pages origin, it can never read or write your real accounts/balances.
+- **A yellow "DEV BUILD" banner** is pinned to the top of every screen so it's
+  never mistaken for the real thing, and the installed icon is named "FinPair
+  Dev".
+- **Mock data on tap.** The first-run screen has a **Load mock data** button
+  (only present in this build) that seeds a few realistic accounts and months
+  of history via the same import path the two-device sync uses — no manual
+  setup needed.
+
+To work on it: branch from `develop` (or merge `main` into it), push, and the
+`/dev/` deployment updates in a minute or two — `main` and its production
+deployment are untouched. Locally, `npm run build:dev` (or `npm run dev`,
+which is isolated automatically by running on `localhost`) builds the same
+mock-data variant; see `.env.dev-pages` for what it changes.
+
 ## Development
 
 ```
