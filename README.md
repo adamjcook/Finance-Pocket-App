@@ -77,13 +77,12 @@ The app deploys to GitHub Pages automatically on every push to `main` via
 
 ## Dev environment
 
-Every push to `develop` deploys a second copy at
-**https://adamjcook.github.io/Finance-Pocket-App/dev/**, installable on your phone
-just like the real app. It's safe to poke at freely:
+`develop` builds a mock-data variant of the app — install it as a separate PWA, safe to poke
+at freely:
 
 - **Separate storage.** It uses its own IndexedDB database (`finance-pocket-dev`
-  vs. the real app's `finance-pocket`) — even though it shares the same GitHub
-  Pages origin, it can never read or write your real accounts/balances.
+  vs. the real app's `finance-pocket`) so it can never read or write your real
+  accounts/balances.
 - **A yellow "DEV BUILD" banner** is pinned to the top of every screen so it's
   never mistaken for the real thing, and the installed icon is named "FinPair
   Dev".
@@ -92,11 +91,19 @@ just like the real app. It's safe to poke at freely:
   of history via the same import path the two-device sync uses — no manual
   setup needed.
 
-To work on it: branch from `develop` (or merge `main` into it), push, and the
-`/dev/` deployment updates in a minute or two — `main` and its production
-deployment are untouched. Locally, `npm run build:dev` (or `npm run dev`,
-which is isolated automatically by running on `localhost`) builds the same
-mock-data variant; see `.env.dev-pages` for what it changes.
+It's deployed automatically from a separate repo,
+[Finance-Pocket-App-dev](https://github.com/adamjcook/Finance-Pocket-App-dev), which builds
+this repo's `develop` branch and publishes it to its own sibling Pages site at
+**https://adamjcook.github.io/Finance-Pocket-App-dev/** — deliberately not a `/dev/` sub-path
+of this repo's own Pages site, because a PWA's `scope` covers its whole sub-tree and nesting
+it under this app's own install path made Chrome's "Add to Home screen" treat it as already
+covered by the real app's install rather than offering a separate one.
+
+To work on it: branch from `develop` (or merge `main` into it) and push — the other repo's
+workflow picks up the change within about 20 minutes, or immediately via its own
+`workflow_dispatch`. This repo's own `main` and its production deployment are untouched.
+Locally, `npm run build:dev` (or `npm run dev`, which is isolated automatically by running on
+`localhost`) builds the same mock-data variant; see `.env.dev-pages` for what it changes.
 
 ## Development
 
