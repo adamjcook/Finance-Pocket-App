@@ -262,8 +262,7 @@ export function Dashboard() {
       </p>
 
       <div class="net-worth">
-        <span class="muted small">Net worth</span>
-        <span class={netWorth >= 0 ? 'delta-up' : 'delta-down'} style="font-weight:700">
+        <span class={netWorth >= 0 ? 'delta-up' : 'delta-down'}>
           {netWorth >= 0 ? '' : '-'}
           {formatMoney(Math.abs(netWorth), currency)}
         </span>

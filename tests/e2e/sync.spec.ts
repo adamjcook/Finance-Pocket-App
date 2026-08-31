@@ -249,9 +249,8 @@ test('dashboard shows net worth, defaults to savings first, and cards are drag-r
   await addAccount(page, 'Marcus Saver', 'Savings', '500');
 
   await page.goto('.#/');
-  await expect(page.getByText('Net worth')).toBeVisible();
-  // £500 saved − £1,500 owed = −£1,000
-  await expect(page.getByText('-£1,000.00')).toBeVisible();
+  // £500 saved − £1,500 owed = −£1,000, shown as a bare centred figure
+  await expect(page.locator('.net-worth')).toHaveText('-£1,000.00');
 
   const headings = page.locator('.dash-section h2');
   await expect(headings).toHaveCount(2);
