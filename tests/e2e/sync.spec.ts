@@ -106,14 +106,15 @@ test('second phone joins via setup and owners stay consistent (no flip)', async 
   const frames = await phoneA.evaluate(() => window.__syncTest.exportFrames());
   await phoneB.evaluate((f) => window.__syncTest.importFrames(f), frames);
 
-  // B now shows A's names, and each account keeps its true owner
+  // B now shows A's names, and each account keeps its true owner (shown as
+  // the accessible label on that row's colour bar, per the account-row redesign)
   await expect(phoneB.locator('.subtitle', { hasText: 'Adam & Sam' })).toBeVisible();
   await phoneB.goto('.#/accounts');
   await expect(
-    phoneB.locator('.account-row', { hasText: 'Adam Card' }).getByText(/Adam ·/),
+    phoneB.locator('.account-row', { hasText: 'Adam Card' }).getByRole('img', { name: 'Adam' }),
   ).toBeVisible();
   await expect(
-    phoneB.locator('.account-row', { hasText: 'Sam Card' }).getByText(/Sam ·/),
+    phoneB.locator('.account-row', { hasText: 'Sam Card' }).getByRole('img', { name: 'Sam' }),
   ).toBeVisible();
 
   // And the reverse pass leaves both phones on the same check code
@@ -195,8 +196,9 @@ test('alias survives switching banks', async ({ page }) => {
   await expect(page.getByText('Old Bank Saver')).toBeHidden();
 });
 
-test('custom partner colours apply throughout the app and persist', async ({ page }) => {
+test('custom partner colours apply on the accounts page and persist', async ({ page }) => {
   await completeSetup(page, 'Adam', 'Sam');
+  await addAccount(page, 'Barclaycard', 'Credit card', '1500', 'Adam');
 
   await page.goto('.#/settings');
   const swatches = page.locator('input.color-swatch');
@@ -211,14 +213,19 @@ test('custom partner colours apply throughout the app and persist', async ({ pag
     .poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--partner-b').trim()))
     .toBe('#abcdef');
 
-  // Reflected on the dashboard greeting as colour circles beside each name
-  await page.goto('.#/');
-  await expect(page.locator('.name-dot-a')).toHaveCSS('background-color', 'rgb(18, 52, 86)');
-  await expect(page.locator('.name-dot-b')).toHaveCSS('background-color', 'rgb(171, 205, 239)');
+  // Reflected on the accounts page: the colour key at the top and each row's bar
+  await page.goto('.#/accounts');
+  await expect(page.locator('.owner-key .owner-dot-a')).toHaveCSS('background-color', 'rgb(18, 52, 86)');
+  await expect(page.locator('.owner-key .owner-dot-b')).toHaveCSS('background-color', 'rgb(171, 205, 239)');
+  await expect(
+    page.locator('.account-row', { hasText: 'Barclaycard' }).locator('.owner-bar'),
+  ).toHaveCSS('background-color', 'rgb(18, 52, 86)');
 
   // Persists across a reload (settings are stored, not just an in-memory var)
   await page.reload();
-  await expect(page.locator('.name-dot-a')).toHaveCSS('background-color', 'rgb(18, 52, 86)');
+  await expect(
+    page.locator('.account-row', { hasText: 'Barclaycard' }).locator('.owner-bar'),
+  ).toHaveCSS('background-color', 'rgb(18, 52, 86)');
 });
 
 test('light mode is opt-in, applies live, and persists across a reload', async ({ page }) => {

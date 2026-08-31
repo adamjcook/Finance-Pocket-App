@@ -182,24 +182,6 @@ h2 {
   border-color: color-mix(in srgb, var(--accent) 26%, var(--border));
 }
 
-/* partner identity — a colour circle beside each name, not coloured text */
-.name-dot {
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  margin-right: 5px;
-  vertical-align: 1px;
-}
-
-.name-dot-a {
-  background: var(--partner-a);
-}
-
-.name-dot-b {
-  background: var(--partner-b);
-}
-
 /* ---- net worth strip ---- */
 .net-worth {
   text-align: center;
@@ -280,6 +262,37 @@ h2 {
 
 .owner-dot-joint {
   background: linear-gradient(90deg, var(--partner-a) 50%, var(--partner-b) 50%);
+}
+
+/* colour key above the account list — the only place the owner-dot legend
+   itself appears; each row underneath uses the plainer .owner-bar instead */
+.owner-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+/* per-row owner indicator: a slim colour bar, no dot, no repeated name —
+   the .owner-key above is the one place that spells out what each colour means */
+.owner-bar {
+  align-self: stretch;
+  width: 4px;
+  min-height: 30px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.owner-bar-a {
+  background: var(--partner-a);
+}
+
+.owner-bar-b {
+  background: var(--partner-b);
+}
+
+.owner-bar-joint {
+  background: linear-gradient(180deg, var(--partner-a) 50%, var(--partner-b) 50%);
 }
 
 /* section markers */

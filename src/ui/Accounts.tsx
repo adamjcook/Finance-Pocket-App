@@ -19,6 +19,7 @@ export function Accounts() {
 
   if (!app) return null;
   const { state } = app;
+  const { partnerAName, partnerBName } = state.settings;
   const currency = state.settings.currency;
   const symbol = currencySymbol(currency);
   const balances = latestBalances(state);
@@ -67,6 +68,23 @@ export function Accounts() {
         <p class="muted">No accounts yet — tap + to add your first one.</p>
       )}
 
+      {visible.length > 0 && (
+        <div class="owner-key muted small">
+          <span class="row" style="gap:6px">
+            <span class="owner-dot owner-dot-a" />
+            {partnerAName}
+          </span>
+          <span class="row" style="gap:6px">
+            <span class="owner-dot owner-dot-b" />
+            {partnerBName}
+          </span>
+          <span class="row" style="gap:6px">
+            <span class="owner-dot owner-dot-joint" />
+            Joint
+          </span>
+        </div>
+      )}
+
       {groups.map(
         (g) =>
           g.accounts.length > 0 && (
@@ -81,6 +99,11 @@ export function Accounts() {
                   const latest = balances.get(a.id);
                   return (
                     <div class="account-row" key={a.id} style={a.archived ? 'opacity:.55' : ''}>
+                      <span
+                        class={`owner-bar owner-bar-${a.owner === 'joint' ? 'joint' : a.owner.toLowerCase()}`}
+                        role="img"
+                        aria-label={ownerLabel(a.owner, partnerAName, partnerBName)}
+                      />
                       <div
                         class="account-main"
                         onClick={() => navigate(`/accounts/${a.id}`)}
@@ -92,14 +115,7 @@ export function Accounts() {
                           {alias && <span class="chip chip-alias">{alias.name}</span>}
                           {a.archived && <span class="chip">archived</span>}
                         </div>
-                        <div class="muted small">
-                          <span
-                            class={`owner-dot owner-dot-${a.owner === 'joint' ? 'joint' : a.owner.toLowerCase()}`}
-                          />{' '}
-                          {ownerLabel(a.owner, state.settings.partnerAName, state.settings.partnerBName)}
-                          {' · '}
-                          {a.institution || ACCOUNT_KIND_LABELS[a.kind]}
-                        </div>
+                        <div class="muted small">{a.institution || ACCOUNT_KIND_LABELS[a.kind]}</div>
                       </div>
                       {editing === a.id ? (
                         <span class="row">
