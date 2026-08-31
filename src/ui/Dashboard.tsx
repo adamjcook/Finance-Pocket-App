@@ -282,10 +282,7 @@ export function Dashboard() {
         <h1>FinPair</h1>
       </div>
       <p class="subtitle">
-        <span class="name-dot name-dot-a" />
-        {settings.partnerAName} &amp;{' '}
-        <span class="name-dot name-dot-b" />
-        {settings.partnerBName}
+        {settings.partnerAName} &amp; {settings.partnerBName}
       </p>
 
       <div class="net-worth">

@@ -4,7 +4,7 @@ import { updateSettings, voidSnapshot } from '../model/repo';
 import { mergeState, stateHash, summarizeMerge } from '../logic/merge';
 import { effectiveSnapshots } from '../logic/progress';
 import { buildPayload } from '../sync/codec';
-import { DEFAULT_PARTNER_A_COLOR, DEFAULT_PARTNER_B_COLOR, type SyncPayload } from '../model/types';
+import type { SyncPayload } from '../model/types';
 import { formatMoney } from '../logic/money';
 import { MoneyInput, currencySymbol } from './components/MoneyInput';
 
@@ -86,7 +86,7 @@ export function Settings() {
         </div>
       </div>
 
-      <h2>Names &amp; colours</h2>
+      <h2>Names</h2>
       <div class="card">
         <p class="muted small" style="margin-bottom:10px">
           These names are shared between both phones and label who owns each account — keep them
@@ -94,42 +94,18 @@ export function Settings() {
         </p>
         <label class="field">
           <span>Partner 1</span>
-          <div class="row">
-            <input
-              style="flex:1"
-              value={state.settings.partnerAName}
-              onChange={(e) => saveField({ partnerAName: (e.target as HTMLInputElement).value })}
-            />
-            <input
-              type="color"
-              class="color-swatch"
-              aria-label="Partner 1 colour"
-              value={state.settings.partnerAColor ?? DEFAULT_PARTNER_A_COLOR}
-              onInput={(e) => saveField({ partnerAColor: (e.target as HTMLInputElement).value })}
-            />
-          </div>
+          <input
+            value={state.settings.partnerAName}
+            onChange={(e) => saveField({ partnerAName: (e.target as HTMLInputElement).value })}
+          />
         </label>
         <label class="field">
           <span>Partner 2</span>
-          <div class="row">
-            <input
-              style="flex:1"
-              value={state.settings.partnerBName}
-              onChange={(e) => saveField({ partnerBName: (e.target as HTMLInputElement).value })}
-            />
-            <input
-              type="color"
-              class="color-swatch"
-              aria-label="Partner 2 colour"
-              value={state.settings.partnerBColor ?? DEFAULT_PARTNER_B_COLOR}
-              onInput={(e) => saveField({ partnerBColor: (e.target as HTMLInputElement).value })}
-            />
-          </div>
+          <input
+            value={state.settings.partnerBName}
+            onChange={(e) => saveField({ partnerBName: (e.target as HTMLInputElement).value })}
+          />
         </label>
-        <p class="muted small">
-          These colours label whose account is whose throughout the app — the dashboard names,
-          owner dots, and section markers.
-        </p>
       </div>
 
       <h2>Currency</h2>
