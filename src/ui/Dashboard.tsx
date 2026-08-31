@@ -10,6 +10,7 @@ import {
   todayISO,
 } from '../logic/progress';
 import { formatMoney } from '../logic/money';
+import { debtEncouragement, growthEncouragement, loanEncouragement, quoteOfTheDay } from '../logic/wisdom';
 import type { DashboardSectionKey } from '../model/types';
 import { Chart } from './components/Chart';
 import { ProgressRing } from './components/ProgressRing';
@@ -86,6 +87,10 @@ export function Dashboard() {
     savingsTarget !== null
       ? monthlyToTarget(growth.current, savingsTarget, 'up', savingsTargetDate, today)
       : null;
+
+  const debtLine = debt.baseline > 0 ? debtEncouragement(today, debt.pct, debt.current === 0) : null;
+  const growthLine = growthEncouragement(today, growth.delta30, growth.series.length > 0);
+  const loanLine = loanEncouragement(today, loans.current === 0);
 
   const reordering = dragKey !== null;
   const baseVisible = device.dashboardOrder.filter((k) => k !== 'loans' || loans.series.length > 0);
@@ -182,6 +187,11 @@ export function Dashboard() {
                     Goal date {formatDay(debtTargetDate)} has passed — set a new one in Settings.
                   </p>
                 ))}
+              {debtLine && (
+                <p class="muted small wisdom-line" style="margin-top:10px">
+                  {debtLine}
+                </p>
+              )}
               <div style="margin-top:12px">
                 <Chart series={debt.series} currency={currency} color="var(--debt)" />
               </div>
@@ -219,6 +229,11 @@ export function Dashboard() {
                 Goal date {formatDay(loanTargetDate)} has passed — set a new one in Settings.
               </p>
             ))}
+          {loanLine && (
+            <p class="muted small wisdom-line" style="margin-top:10px">
+              {loanLine}
+            </p>
+          )}
           {loans.series.length > 1 && (
             <div style="margin-top:12px">
               <Chart series={loans.series} currency={currency} color="var(--debt)" />
@@ -264,6 +279,11 @@ export function Dashboard() {
                   ) : null}
                 </p>
               ))}
+            {growthLine && (
+              <p class="muted small wisdom-line" style="margin-top:10px">
+                {growthLine}
+              </p>
+            )}
             <div style="margin-top:12px">
               <Chart series={growth.series} currency={currency} color="var(--accent)" />
             </div>
@@ -284,6 +304,7 @@ export function Dashboard() {
       <p class="subtitle">
         {settings.partnerAName} &amp; {settings.partnerBName}
       </p>
+      <p class="wisdom">{quoteOfTheDay(today)}</p>
 
       <div class="net-worth">
         <span class={netWorth >= 0 ? 'delta-up' : 'delta-down'}>
