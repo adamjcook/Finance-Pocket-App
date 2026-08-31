@@ -265,9 +265,7 @@ test('dashboard shows net worth, defaults to savings first, and cards are drag-r
   if (!handleBox || !growthBox) throw new Error('expected bounding boxes');
 
   // Separate awaited moves (rather than one move with `steps`) so Preact's
-  // async re-render flushes between them — the reorder math reads live DOM
-  // rects. The swap triggers on a *centre* crossing, so drag well past the
-  // target card's top, not just to its edge.
+  // async re-render flushes between them.
   const cx = handleBox.x + handleBox.width / 2;
   await page.mouse.move(cx, handleBox.y + handleBox.height / 2);
   await page.mouse.down();
@@ -282,4 +280,48 @@ test('dashboard shows net worth, defaults to savings first, and cards are drag-r
   // Persists across a reload — it's a device preference, not just in-memory
   await page.reload();
   await expect(page.locator('.dash-section h2').nth(0)).toContainText('Credit card debt');
+});
+
+test('dragging one card past two others in a single motion lands correctly', async ({ page }) => {
+  // The old swap-as-you-cross reorder logic only ever handled one hop per
+  // pointer move; a single large motion that skipped straight past a middle
+  // card (easy to do with a fast real-touch drag, much harder to reproduce
+  // with a slow synthetic one) could desync the drag from the pointer. This
+  // drags the top card straight past two others in one big jump.
+  await completeSetup(page, 'Adam', 'Sam');
+  await addAccount(page, 'Barclaycard', 'Credit card', '1500');
+  await addAccount(page, 'Marcus Saver', 'Savings', '500');
+  await addAccount(page, 'Car Loan', 'Loan', '9000');
+
+  await page.goto('.#/');
+  const headings = page.locator('.dash-section h2');
+  await expect(headings).toHaveCount(3);
+  await expect(headings.nth(0)).toContainText('Savings & investments');
+  await expect(headings.nth(1)).toContainText('Credit card debt');
+  await expect(headings.nth(2)).toContainText('Loans');
+
+  const growthHandle = page.locator('.dash-section', { hasText: 'Savings & investments' }).locator('.drag-handle');
+  const loansSection = page.locator('.dash-section', { hasText: 'Loans' });
+  const handleBox = await growthHandle.boundingBox();
+  if (!handleBox) throw new Error('expected bounding box');
+
+  const cx = handleBox.x + handleBox.width / 2;
+  await page.mouse.move(cx, handleBox.y + handleBox.height / 2);
+  await page.mouse.down();
+
+  // All three cards collapse to bare heading rows for the duration — no
+  // "card" body should be visible anywhere on the board while dragging.
+  await page.mouse.move(cx, handleBox.y + 10);
+  await expect(page.locator('.card')).toHaveCount(0);
+
+  const loansBox = await loansSection.boundingBox();
+  if (!loansBox) throw new Error('expected bounding box');
+  // One big jump straight past the debt card and into/past the loans card.
+  await page.mouse.move(cx, loansBox.y + loansBox.height + 40);
+  await page.mouse.up();
+
+  await expect(page.locator('.card')).toHaveCount(3);
+  await expect(headings.nth(0)).toContainText('Credit card debt');
+  await expect(headings.nth(1)).toContainText('Loans');
+  await expect(headings.nth(2)).toContainText('Savings & investments');
 });
