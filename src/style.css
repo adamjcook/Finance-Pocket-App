@@ -226,7 +226,14 @@ h2 {
   z-index: 5;
 }
 
-.dash-section.dragging .card {
+/* While dragging, the card body is hidden and just this heading row is
+   carried around — give it a light chip look instead of the bare heading. */
+.dash-section.dragging h2 {
+  margin: 0;
+  padding: 10px 14px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 12px;
   box-shadow: 0 10px 28px rgb(0 0 0 / 0.4);
 }
 

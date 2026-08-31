@@ -1,4 +1,4 @@
-import { useRef, useState } from 'preact/hooks';
+import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { useApp, patchDevice } from '../model/store';
 import {
   debtProgress,
@@ -40,6 +40,17 @@ export function Dashboard() {
   // Working copy of the order while a drag is in progress; committed to the
   // device record (per-phone, never synced) on release.
   const [liveOrder, setLiveOrder] = useState<DashboardSectionKey[] | null>(null);
+
+  // The dragged card collapses to just its heading row so it's light to
+  // carry around — correct the tracked height to that collapsed row's real
+  // size once it's rendered, rather than the full card height captured at
+  // pointerdown (before the collapse).
+  useLayoutEffect(() => {
+    const d = drag.current;
+    if (!d || d.key !== dragKey) return;
+    const el = sectionRefs.current.get(dragKey);
+    if (el) d.height = el.getBoundingClientRect().height;
+  }, [dragKey]);
 
   if (!app) return null;
   const { state, device } = app;
@@ -298,7 +309,7 @@ export function Dashboard() {
                 ⋮⋮
               </button>
             </h2>
-            {sectionBody(key)}
+            {!dragging && sectionBody(key)}
           </div>
         );
       })}
