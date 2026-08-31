@@ -23,12 +23,30 @@ const SECTION_META: Record<DashboardSectionKey, { heading: string; dot: string }
 interface Drag {
   key: DashboardSectionKey;
   startClientY: number;
-  // The dragged section's own resting position, tracked analytically rather
-  // than re-read from the DOM each move: its element carries our own
-  // translateY, which always lags a render behind the value we just set.
-  initialTop: number;
-  height: number;
-  order: DashboardSectionKey[];
+  startIndex: number; // index of `key` within `visibleBase`
+  visibleBase: DashboardSectionKey[]; // frozen for the whole drag — see note below
+  // Collapsed rows are (near enough) uniform height, so the target slot is
+  // just offset / rowHeight — recomputed fresh from the total drag distance
+  // on every move, never accumulated, so there's nothing to drift or desync.
+  rowHeight: number;
+  lastOffset: number;
+}
+
+function moveItem<T>(arr: T[], from: number, to: number): T[] {
+  const next = [...arr];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
+/** Re-insert keys hidden during the drag (e.g. 'loans' with no accounts) at their original slot. */
+function mergeVisibleOrder(
+  fullOrder: DashboardSectionKey[],
+  visibleBase: DashboardSectionKey[],
+  reorderedVisible: DashboardSectionKey[],
+): DashboardSectionKey[] {
+  let i = 0;
+  return fullOrder.map((k) => (visibleBase.includes(k) ? reorderedVisible[i++] : k));
 }
 
 export function Dashboard() {
@@ -37,19 +55,15 @@ export function Dashboard() {
   const sectionRefs = useRef(new Map<DashboardSectionKey, HTMLDivElement>());
   const [dragKey, setDragKey] = useState<DashboardSectionKey | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
-  // Working copy of the order while a drag is in progress; committed to the
-  // device record (per-phone, never synced) on release.
-  const [liveOrder, setLiveOrder] = useState<DashboardSectionKey[] | null>(null);
 
-  // The dragged card collapses to just its heading row so it's light to
-  // carry around — correct the tracked height to that collapsed row's real
-  // size once it's rendered, rather than the full card height captured at
-  // pointerdown (before the collapse).
+  // All cards collapse to their heading row for the duration of any drag —
+  // measure that row's real height once it's rendered, rather than assuming
+  // a hard-coded pixel value that could drift from the actual CSS.
   useLayoutEffect(() => {
     const d = drag.current;
     if (!d || d.key !== dragKey) return;
     const el = sectionRefs.current.get(dragKey);
-    if (el) d.height = el.getBoundingClientRect().height;
+    if (el) d.rowHeight = el.getBoundingClientRect().height;
   }, [dragKey]);
 
   if (!app) return null;
@@ -73,66 +87,68 @@ export function Dashboard() {
       ? monthlyToTarget(growth.current, savingsTarget, 'up', savingsTargetDate, today)
       : null;
 
-  const currentOrder = liveOrder ?? device.dashboardOrder;
-  const visible = currentOrder.filter((k) => k !== 'loans' || loans.series.length > 0);
+  const reordering = dragKey !== null;
+  const baseVisible = device.dashboardOrder.filter((k) => k !== 'loans' || loans.series.length > 0);
+  // The rendered order stays fixed at the pre-drag order for the whole drag:
+  // Chromium silently releases pointer capture when the captured element is
+  // moved in the DOM (which is exactly what reordering a keyed list node
+  // does), so actually reordering mid-drag would drop tracking the moment a
+  // card crossed a neighbour. The new position is only committed — and the
+  // DOM only reordered — once, on release, after capture has already ended.
+  const visible = baseVisible;
+
+  const targetIndexFor = (d: Drag, offset: number): number =>
+    d.rowHeight
+      ? Math.min(d.visibleBase.length - 1, Math.max(0, d.startIndex + Math.round(offset / d.rowHeight)))
+      : d.startIndex;
 
   const startDrag = (key: DashboardSectionKey, e: PointerEvent) => {
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    const el = sectionRefs.current.get(key);
-    const rect = el?.getBoundingClientRect();
-    const order = [...device.dashboardOrder];
     drag.current = {
       key,
       startClientY: e.clientY,
-      initialTop: rect?.top ?? 0,
-      height: rect?.height ?? 0,
-      order,
+      startIndex: baseVisible.indexOf(key),
+      visibleBase: baseVisible,
+      rowHeight: 0, // set by the layout effect just after every card collapses
+      lastOffset: 0,
     };
     setDragKey(key);
     setDragOffset(0);
-    setLiveOrder(order);
   };
 
-  // Swap the dragged section past a neighbour once it's dragged more than
-  // halfway across it, shifting the tracked resting position by the
-  // neighbour's height so the pointer offset stays continuous across the swap.
   const continueDrag = (e: PointerEvent) => {
     const d = drag.current;
     if (!d) return;
     const offset = e.clientY - d.startClientY;
+    d.lastOffset = offset;
     setDragOffset(offset);
-
-    const draggedCenter = d.initialTop + d.height / 2 + offset;
-    const from = d.order.indexOf(d.key);
-
-    for (const otherKey of d.order) {
-      if (otherKey === d.key) continue;
-      const otherEl = sectionRefs.current.get(otherKey);
-      if (!otherEl) continue;
-      const otherRect = otherEl.getBoundingClientRect();
-      const otherCenter = otherRect.top + otherRect.height / 2;
-      const to = d.order.indexOf(otherKey);
-      const movingDown = to > from;
-      const crossed = movingDown ? draggedCenter > otherCenter : draggedCenter < otherCenter;
-      if (!crossed) continue;
-      const next = [...d.order];
-      next[from] = otherKey;
-      next[to] = d.key;
-      d.order = next;
-      d.initialTop += movingDown ? otherRect.height : -otherRect.height;
-      setLiveOrder(next);
-      break;
-    }
   };
 
   const endDrag = () => {
     const d = drag.current;
     if (!d) return;
+    const targetIndex = targetIndexFor(d, d.lastOffset);
+    const reorderedVisible = moveItem(d.visibleBase, d.startIndex, targetIndex);
     drag.current = null;
     setDragKey(null);
     setDragOffset(0);
-    setLiveOrder(null);
-    void patchDevice({ dashboardOrder: d.order });
+    void patchDevice({ dashboardOrder: mergeVisibleOrder(device.dashboardOrder, d.visibleBase, reorderedVisible) });
+  };
+
+  // Non-dragged sections shift by one row to preview the gap the dragged
+  // card would land in — a CSS transform only, never a real DOM move.
+  const shiftFor = (key: DashboardSectionKey): number => {
+    const d = drag.current;
+    if (!d || key === d.key || !d.rowHeight) return 0;
+    const targetIndex = targetIndexFor(d, dragOffset);
+    const otherIndex = d.visibleBase.indexOf(key);
+    if (d.startIndex < targetIndex && otherIndex > d.startIndex && otherIndex <= targetIndex) {
+      return -d.rowHeight;
+    }
+    if (d.startIndex > targetIndex && otherIndex >= targetIndex && otherIndex < d.startIndex) {
+      return d.rowHeight;
+    }
+    return 0;
   };
 
   const sectionBody = (key: DashboardSectionKey) => {
@@ -282,6 +298,7 @@ export function Dashboard() {
       {visible.map((key) => {
         const meta = SECTION_META[key];
         const dragging = dragKey === key;
+        const shift = dragging ? 0 : shiftFor(key);
         return (
           <div
             key={key}
@@ -289,8 +306,14 @@ export function Dashboard() {
               if (el) sectionRefs.current.set(key, el);
               else sectionRefs.current.delete(key);
             }}
-            class={`dash-section ${dragging ? 'dragging' : ''}`}
-            style={dragging ? `transform:translateY(${dragOffset}px)` : undefined}
+            class={`dash-section ${dragging ? 'dragging' : ''} ${shift ? 'shifting' : ''}`}
+            style={
+              dragging
+                ? `transform:translateY(${dragOffset}px)`
+                : shift
+                  ? `transform:translateY(${shift}px)`
+                  : undefined
+            }
           >
             <h2 class="row spread">
               <span class="row" style="gap:6px">
@@ -309,7 +332,7 @@ export function Dashboard() {
                 ⋮⋮
               </button>
             </h2>
-            {!dragging && sectionBody(key)}
+            {!reordering && sectionBody(key)}
           </div>
         );
       })}
