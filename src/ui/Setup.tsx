@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { mutate, getStore } from '../model/store';
 import { updateSettings } from '../model/repo';
+import { DEFAULT_PARTNER_A_COLOR, DEFAULT_PARTNER_B_COLOR } from '../model/types';
 import { navigate } from '../app';
 import { ScanPanel } from './components/ScanPanel';
 
@@ -18,14 +19,23 @@ export function Setup() {
   const [nameA, setNameA] = useState('');
   const [nameB, setNameB] = useState('');
   const [currency, setCurrency] = useState('GBP');
+  // The two colours are fixed to the app icon's circles — the only choice
+  // is which one is "yours"; your partner gets the other automatically.
+  const [myColor, setMyColor] = useState<'teal' | 'amber'>('teal');
 
   const save = async () => {
     const { device } = getStore();
+    const [partnerAColor, partnerBColor] =
+      myColor === 'teal'
+        ? [DEFAULT_PARTNER_A_COLOR, DEFAULT_PARTNER_B_COLOR]
+        : [DEFAULT_PARTNER_B_COLOR, DEFAULT_PARTNER_A_COLOR];
     await mutate((s) =>
       updateSettings(s, { deviceId: device.deviceId }, {
         partnerAName: nameA.trim() || 'Partner A',
         partnerBName: nameB.trim() || 'Partner B',
         currency,
+        partnerAColor,
+        partnerBColor,
       }),
     );
     navigate('/accounts/new');
@@ -79,6 +89,30 @@ export function Setup() {
                   </option>
                 ))}
               </select>
+            </label>
+            <label class="field">
+              <span>Your colour</span>
+              <div class="row" style="gap:12px">
+                <button
+                  type="button"
+                  class="colour-choice"
+                  style={`background:${DEFAULT_PARTNER_A_COLOR}`}
+                  aria-label="Teal"
+                  aria-pressed={myColor === 'teal'}
+                  onClick={() => setMyColor('teal')}
+                />
+                <button
+                  type="button"
+                  class="colour-choice"
+                  style={`background:${DEFAULT_PARTNER_B_COLOR}`}
+                  aria-label="Amber"
+                  aria-pressed={myColor === 'amber'}
+                  onClick={() => setMyColor('amber')}
+                />
+              </div>
+              <p class="muted small" style="margin-top:6px">
+                Your partner gets the other colour — these two match the app icon.
+              </p>
             </label>
             <div class="stack">
               <button class="btn-primary btn-big" onClick={() => void save()}>
