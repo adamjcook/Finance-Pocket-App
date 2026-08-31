@@ -242,3 +242,44 @@ test('light mode is opt-in, applies live, and persists across a reload', async (
   await page.getByRole('button', { name: 'Dark', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
+
+test('dashboard shows net worth, defaults to savings first, and cards are drag-reorderable', async ({ page }) => {
+  await completeSetup(page, 'Adam', 'Sam');
+  await addAccount(page, 'Barclaycard', 'Credit card', '1500');
+  await addAccount(page, 'Marcus Saver', 'Savings', '500');
+
+  await page.goto('.#/');
+  // £500 saved − £1,500 owed = −£1,000, shown as a bare centred figure
+  await expect(page.locator('.net-worth')).toHaveText('-£1,000.00');
+
+  const headings = page.locator('.dash-section h2');
+  await expect(headings).toHaveCount(2);
+  await expect(headings.nth(0)).toContainText('Savings & investments');
+  await expect(headings.nth(1)).toContainText('Credit card debt');
+
+  // Drag the debt card's handle up above the savings card
+  const debtHandle = page.locator('.dash-section', { hasText: 'Credit card debt' }).locator('.drag-handle');
+  const growthSection = page.locator('.dash-section', { hasText: 'Savings & investments' });
+  const handleBox = await debtHandle.boundingBox();
+  const growthBox = await growthSection.boundingBox();
+  if (!handleBox || !growthBox) throw new Error('expected bounding boxes');
+
+  // Separate awaited moves (rather than one move with `steps`) so Preact's
+  // async re-render flushes between them — the reorder math reads live DOM
+  // rects. The swap triggers on a *centre* crossing, so drag well past the
+  // target card's top, not just to its edge.
+  const cx = handleBox.x + handleBox.width / 2;
+  await page.mouse.move(cx, handleBox.y + handleBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(cx, handleBox.y - 20);
+  await page.mouse.move(cx, growthBox.y + growthBox.height / 2);
+  await page.mouse.move(cx, 10);
+  await page.mouse.up();
+
+  await expect(headings.nth(0)).toContainText('Credit card debt');
+  await expect(headings.nth(1)).toContainText('Savings & investments');
+
+  // Persists across a reload — it's a device preference, not just in-memory
+  await page.reload();
+  await expect(page.locator('.dash-section h2').nth(0)).toContainText('Credit card debt');
+});
