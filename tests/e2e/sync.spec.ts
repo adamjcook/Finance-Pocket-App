@@ -226,6 +226,22 @@ test('custom partner colours apply on the accounts page and persist', async ({ p
   await expect(
     page.locator('.account-row', { hasText: 'Barclaycard' }).locator('.owner-bar'),
   ).toHaveCSS('background-color', 'rgb(18, 52, 86)');
+
+  // In light mode the raw picked colour gets darkened for contrast against a
+  // white card — same idea as --accent/--debt, just derived rather than a
+  // fixed replacement since these are user-chosen, not a brand constant.
+  await page.goto('.#/settings');
+  await page.getByRole('button', { name: 'Light', exact: true }).click();
+  await page.goto('.#/accounts');
+  const bar = page.locator('.account-row', { hasText: 'Barclaycard' }).locator('.owner-bar');
+  await expect(bar).not.toHaveCSS('background-color', 'rgb(18, 52, 86)');
+  const [r, g, b] = await bar.evaluate((el) =>
+    getComputedStyle(el)
+      .backgroundColor.match(/[\d.]+/g)!
+      .slice(0, 3)
+      .map(Number),
+  );
+  expect(r + g + b).toBeLessThan(18 + 52 + 86); // darker than the raw #123456, not just different
 });
 
 test('light mode is opt-in, applies live, and persists across a reload', async ({ page }) => {

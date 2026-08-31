@@ -14,6 +14,12 @@
   --partner-b: #f2a65a;
   /* the icon's overlap lens — where the two circles blend to one colour */
   --partner-joint: #f7ef8a;
+  /* What actually gets painted for each partner — same as the raw colour
+     above on dark, darkened on light (see below) so a pastel pick doesn't
+     wash out against a white background the way --accent/--debt would if
+     they weren't already darkened for light mode. */
+  --partner-a-display: var(--partner-a);
+  --partner-b-display: var(--partner-b);
   --radius: 14px;
   color-scheme: dark;
 }
@@ -31,6 +37,11 @@
   --debt: #b45309;
   --danger: #b91c1c;
   --partner-joint: #ca8a04;
+  /* --partner-a/-b are user-picked (Settings colour swatches), so unlike
+     --accent/--debt there's no single fixed light-mode replacement to hand
+     -pick — darken whatever the user chose instead. */
+  --partner-a-display: color-mix(in srgb, var(--partner-a) 65%, black);
+  --partner-b-display: color-mix(in srgb, var(--partner-b) 65%, black);
   color-scheme: light;
 }
 
@@ -256,11 +267,11 @@ h2 {
 }
 
 .owner-dot-a {
-  background: var(--partner-a);
+  background: var(--partner-a-display);
 }
 
 .owner-dot-b {
-  background: var(--partner-b);
+  background: var(--partner-b-display);
 }
 
 .owner-dot-joint {
@@ -287,11 +298,11 @@ h2 {
 }
 
 .owner-bar-a {
-  background: var(--partner-a);
+  background: var(--partner-a-display);
 }
 
 .owner-bar-b {
-  background: var(--partner-b);
+  background: var(--partner-b-display);
 }
 
 .owner-bar-joint {
