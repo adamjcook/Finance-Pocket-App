@@ -220,3 +220,25 @@ test('custom partner colours apply throughout the app and persist', async ({ pag
   await page.reload();
   await expect(page.locator('.name-dot-a')).toHaveCSS('background-color', 'rgb(18, 52, 86)');
 });
+
+test('light mode is opt-in, applies live, and persists across a reload', async ({ page }) => {
+  await completeSetup(page, 'Adam', 'Sam');
+
+  // Dark by default
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(20, 26, 33)');
+
+  await page.goto('.#/settings');
+  await page.getByRole('button', { name: 'Light', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(244, 246, 248)');
+
+  // Persists across a reload — it's a device preference, not just an in-memory var
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+
+  // Switching back to dark works too
+  await page.goto('.#/settings');
+  await page.getByRole('button', { name: 'Dark', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+});
