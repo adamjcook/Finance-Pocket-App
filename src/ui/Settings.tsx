@@ -61,6 +61,31 @@ export function Settings() {
     <div>
       <h1>Settings</h1>
 
+      <h2>Appearance</h2>
+      <div class="card">
+        <p class="muted small" style="margin-bottom:10px">
+          This is a per-phone preference — it doesn't sync to your partner's phone.
+        </p>
+        <div class="row">
+          <button
+            class={device.theme === 'dark' ? 'btn-primary' : ''}
+            style="flex:1"
+            aria-pressed={device.theme === 'dark'}
+            onClick={() => void patchDevice({ theme: 'dark' })}
+          >
+            Dark
+          </button>
+          <button
+            class={device.theme === 'light' ? 'btn-primary' : ''}
+            style="flex:1"
+            aria-pressed={device.theme === 'light'}
+            onClick={() => void patchDevice({ theme: 'light' })}
+          >
+            Light
+          </button>
+        </div>
+      </div>
+
       <h2>Names &amp; colours</h2>
       <div class="card">
         <p class="muted small" style="margin-bottom:10px">

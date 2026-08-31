@@ -83,12 +83,16 @@ export interface Settings extends Meta {
 export const DEFAULT_PARTNER_A_COLOR = '#4fd1a5';
 export const DEFAULT_PARTNER_B_COLOR = '#f2a65a';
 
-/** Local-only device identity and sync bookkeeping. NEVER synced. */
+export type Theme = 'dark' | 'light';
+
+/** Local-only device identity, sync bookkeeping, and display prefs. NEVER synced. */
 export interface DeviceState {
   id: 'device';
   deviceId: UUID;
   lastSyncAt: ISOTime | null;
   lastSyncStateHash: string | null;
+  /** Appearance preference for this phone only — not shared with the partner's. */
+  theme: Theme;
 }
 
 /** Everything that syncs between the two phones. */

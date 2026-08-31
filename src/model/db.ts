@@ -72,12 +72,14 @@ export async function saveState(state: SyncedState): Promise<void> {
 export async function loadDevice(): Promise<DeviceState> {
   const db = await getDB();
   const existing = (await db.get('device', 'device')) as DeviceState | undefined;
-  if (existing) return existing;
+  // theme was added after v1 shipped — a device record from before that has no field.
+  if (existing) return existing.theme ? existing : { ...existing, theme: 'dark' };
   const created: DeviceState = {
     id: 'device',
     deviceId: crypto.randomUUID(),
     lastSyncAt: null,
     lastSyncStateHash: null,
+    theme: 'dark',
   };
   await db.put('device', created);
   return created;

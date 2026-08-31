@@ -55,6 +55,11 @@ export function App() {
     root.setProperty('--partner-b', safeColor(app.state.settings.partnerBColor, DEFAULT_PARTNER_B_COLOR));
   }, [app?.state.settings.partnerAColor, app?.state.settings.partnerBColor]);
 
+  useEffect(() => {
+    if (!app) return;
+    document.documentElement.setAttribute('data-theme', app.device.theme);
+  }, [app?.device.theme]);
+
   if (!app) return <div class="loading">Loading…</div>;
 
   const setupDone = app.state.settings.updatedBy !== '';
