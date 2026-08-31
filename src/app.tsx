@@ -63,10 +63,10 @@ export function App() {
   if (!app) return <div class="loading">Loading…</div>;
 
   const setupDone = app.state.settings.updatedBy !== '';
-  if (!setupDone) return <Setup />;
 
   let screen;
-  if (route === '/') screen = <Dashboard />;
+  if (!setupDone) screen = <Setup />;
+  else if (route === '/') screen = <Dashboard />;
   else if (route === '/accounts') screen = <Accounts />;
   else if (route === '/accounts/new') screen = <AccountForm id={null} />;
   else if (route.startsWith('/accounts/')) screen = <AccountForm id={route.slice('/accounts/'.length)} />;
@@ -82,21 +82,26 @@ export function App() {
 
   return (
     <div class="shell">
+      {import.meta.env.VITE_DEV_BUILD === '1' && (
+        <div class="dev-banner">DEV BUILD — mock data, not your real account</div>
+      )}
       <main class="screen">{screen}</main>
-      <nav class="tabbar">
-        {TABS.map((t) => (
-          <a
-            key={t.route}
-            href={`#${t.route}`}
-            class={`tab ${activeTab?.route === t.route ? 'active' : ''}`}
-          >
-            <span class="tab-icon" aria-hidden="true">
-              {t.icon}
-            </span>
-            {t.label}
-          </a>
-        ))}
-      </nav>
+      {setupDone && (
+        <nav class="tabbar">
+          {TABS.map((t) => (
+            <a
+              key={t.route}
+              href={`#${t.route}`}
+              class={`tab ${activeTab?.route === t.route ? 'active' : ''}`}
+            >
+              <span class="tab-icon" aria-hidden="true">
+                {t.icon}
+              </span>
+              {t.label}
+            </a>
+          ))}
+        </nav>
+      )}
       <UpdateToast />
     </div>
   );
