@@ -1,13 +1,8 @@
 name: Deploy to GitHub Pages
 
-# Deploys two copies to the same Pages site on every push to either branch:
-# main -> https://adamjcook.github.io/Finance-Pocket-App/       (production)
-# develop -> https://adamjcook.github.io/Finance-Pocket-App/dev/ (mock data, own IndexedDB — see README)
-# Both are rebuilt on every run regardless of which branch triggered it, so
-# they never drift out of sync with each other.
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -23,54 +18,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main (production)
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: main
-
-      - name: Checkout develop (dev environment)
-        uses: actions/checkout@v4
-        with:
-          ref: develop
-          path: develop
-
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: |
-            main/package-lock.json
-            develop/package-lock.json
-
-      - name: Build production (main)
-        working-directory: main
-        run: |
-          npm ci
-          npm test
-          npm run build
-
-      # A broken develop branch must never block the real site from
-      # deploying — it only takes down the /dev/ copy until develop is fixed.
-      - name: Build dev environment (develop)
-        working-directory: develop
-        continue-on-error: true
-        run: |
-          npm ci
-          npm test
-          npm run build:dev
-
-      - name: Combine into one Pages artifact
-        run: |
-          mkdir -p combined
-          cp -r main/dist/. combined/
-          if [ -d develop/dist ]; then
-            mkdir -p combined/dev
-            cp -r develop/dist/. combined/dev/
-          else
-            echo "::warning::develop build failed or produced no output — /dev/ will be unavailable until it's fixed"
-          fi
-
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
       - uses: actions/configure-pages@v5
         with:
           # Creates the Pages site on first run, so no manual
@@ -78,7 +33,7 @@ jobs:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: combined
+          path: dist
 
   deploy:
     needs: build
