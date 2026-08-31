@@ -182,6 +182,19 @@ h2 {
   margin-bottom: 18px;
 }
 
+/* words of wisdom / motivation — a daily quote (Dashboard, Setup) and short
+   progress-aware lines under each goal card (see src/logic/wisdom.ts) */
+.wisdom {
+  font-style: italic;
+  color: var(--text-dim);
+  font-size: 13.5px;
+  margin-bottom: 18px;
+}
+
+.wisdom-line {
+  font-style: italic;
+}
+
 .card {
   background: var(--bg-raised);
   border: 1px solid var(--border);
