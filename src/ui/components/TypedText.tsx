@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 
 const TYPE_INTERVAL_MS = 18;
 
@@ -6,26 +6,33 @@ function prefersReducedMotion(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+// Module-level, not per-component-instance: the Dashboard unmounts and
+// remounts every time you switch tabs and come back (App.tsx only renders
+// it while on the '/' route), which would reset a useRef flag and retype
+// on every tab switch. This flag instead survives for as long as the page
+// itself is loaded, so it only fires again on an actual app open or
+// refresh — the point where this module gets re-evaluated from scratch.
+let hasAnimated = false;
+
 /**
- * Reveals `text` character by character once, on mount — a quick "typing"
- * effect for the dashboard summary. If `text` changes afterwards (e.g. a
- * balance update while already on this screen), that later value applies
- * instantly with no re-type — the effect is for opening the app, not every
- * keystroke of live data. The full text is always available to assistive
- * tech via aria-label; the animated span is hidden from it so nothing gets
- * read out mid-type.
+ * Reveals `text` character by character once per app open/refresh — a quick
+ * "typing" effect for the dashboard summary. If `text` changes afterwards
+ * (e.g. a balance update while already on this screen, or a tab switch back
+ * to a since-changed summary), that later value applies instantly with no
+ * re-type. The full text is always available to assistive tech via
+ * aria-label; the animated span is hidden from it so nothing gets read out
+ * mid-type.
  */
 export function TypedText({ text, class: className }: { text: string; class?: string }) {
-  const [shown, setShown] = useState('');
-  const typed = useRef(false);
+  const [shown, setShown] = useState(hasAnimated ? text : '');
 
   useEffect(() => {
-    if (typed.current || prefersReducedMotion()) {
+    if (hasAnimated || prefersReducedMotion()) {
       setShown(text);
-      typed.current = true;
+      hasAnimated = true;
       return;
     }
-    typed.current = true;
+    hasAnimated = true;
     let i = 0;
     const id = setInterval(() => {
       i++;
