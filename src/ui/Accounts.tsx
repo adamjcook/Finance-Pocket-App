@@ -34,23 +34,23 @@ export function Accounts() {
   };
 
   const visible = state.accounts.filter((a) => showArchived || !a.archived);
-  const groups: { title: string; dot: string; amountClass: string; accounts: Account[] }[] = [
+  // Which group an account is in already says "debt" or "credit" in plain words
+  // via the heading below — balances themselves stay in the ordinary text
+  // colour rather than repeating that with debt/growth colour too.
+  const groups: { title: string; dot: string; accounts: Account[] }[] = [
     {
       title: 'Debt',
       dot: 'var(--debt)',
-      amountClass: 'amount-owed',
       accounts: visible.filter((a) => OWED_KINDS.includes(a.kind)),
     },
     {
       title: 'Savings & investments',
       dot: 'var(--accent)',
-      amountClass: 'amount-growth',
       accounts: visible.filter((a) => GROWTH_KINDS.includes(a.kind)),
     },
     {
       title: 'Everything else',
       dot: 'var(--text-dim)',
-      amountClass: '',
       accounts: visible.filter((a) => !OWED_KINDS.includes(a.kind) && !GROWTH_KINDS.includes(a.kind)),
     },
   ];
@@ -132,7 +132,7 @@ export function Accounts() {
                         </span>
                       ) : (
                         <button
-                          class={`balance-btn ${g.amountClass}`}
+                          class="balance-btn"
                           onClick={() => {
                             setEditing(a.id);
                             setDraft(latest?.balance ?? null);

@@ -362,15 +362,6 @@ h2 .h2-dot {
   vertical-align: 1px;
 }
 
-/* money amounts carry their direction's colour */
-.amount-owed {
-  color: color-mix(in srgb, var(--debt) 78%, var(--text));
-}
-
-.amount-growth {
-  color: color-mix(in srgb, var(--accent) 72%, var(--text));
-}
-
 .muted {
   color: var(--text-dim);
   font-size: 13.5px;
