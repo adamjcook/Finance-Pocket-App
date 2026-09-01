@@ -10,9 +10,11 @@ import {
   todayISO,
 } from '../logic/progress';
 import { formatMoney } from '../logic/money';
+import { dashboardSummary } from '../logic/wisdom';
 import type { DashboardSectionKey } from '../model/types';
 import { Chart } from './components/Chart';
 import { ProgressRing } from './components/ProgressRing';
+import { TypedText } from './components/TypedText';
 
 const SECTION_META: Record<DashboardSectionKey, { heading: string; dot: string }> = {
   growth: { heading: 'Savings & investments', dot: 'var(--accent)' },
@@ -86,6 +88,14 @@ export function Dashboard() {
     savingsTarget !== null
       ? monthlyToTarget(growth.current, savingsTarget, 'up', savingsTargetDate, today)
       : null;
+
+  const summary = dashboardSummary({
+    today,
+    currency,
+    debt: { baseline: debt.baseline, current: debt.current, pct: debt.pct },
+    growth: { delta30: growth.delta30, hasHistory: growth.series.length > 0 },
+    loans: { current: loans.current, hasLoans: loans.series.length > 0 },
+  });
 
   const reordering = dragKey !== null;
   const baseVisible = device.dashboardOrder.filter((k) => k !== 'loans' || loans.series.length > 0);
@@ -284,6 +294,7 @@ export function Dashboard() {
       <p class="subtitle">
         {settings.partnerAName} &amp; {settings.partnerBName}
       </p>
+      <TypedText class="wisdom" text={summary} />
 
       <div class="net-worth">
         <span class={netWorth >= 0 ? 'delta-up' : 'delta-down'}>

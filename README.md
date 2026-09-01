@@ -77,12 +77,21 @@ The app deploys to GitHub Pages automatically on every push to `main` via
 
 ## Dev environment
 
-`develop` builds a mock-data variant of the app — install it as a separate PWA, safe to poke
-at freely:
+A separate repo, **[Finance-Pocket-App-dev](https://github.com/adamjcook/Finance-Pocket-App-dev)**,
+deploys a mock-data copy at **https://adamjcook.github.io/Finance-Pocket-App-dev/**,
+installable on your phone just like the real app, alongside it. It's safe to
+poke at freely:
 
 - **Separate storage.** It uses its own IndexedDB database (`finance-pocket-dev`
-  vs. the real app's `finance-pocket`) so it can never read or write your real
+  vs. the real app's `finance-pocket`) — even though it shares the same GitHub
+  Pages origin (`adamjcook.github.io`), it can never read or write your real
   accounts/balances.
+- **Installs as a genuinely separate app.** It's a *sibling* GitHub Pages site
+  (`.../Finance-Pocket-App-dev/`), not a `/dev/` sub-path of the real app's own
+  URL — a PWA's `scope` covers its whole sub-tree, so nesting it under the real
+  app's path made Chrome treat any visit to it as already covered by the real
+  app's install ("already installed, open instead") instead of offering a
+  separate one. Sibling top-level paths don't have that problem.
 - **A yellow "DEV BUILD" banner** is pinned to the top of every screen so it's
   never mistaken for the real thing, and the installed icon is named "FinPair
   Dev".
@@ -91,19 +100,15 @@ at freely:
   of history via the same import path the two-device sync uses — no manual
   setup needed.
 
-It's deployed automatically from a separate repo,
-[Finance-Pocket-App-dev](https://github.com/adamjcook/Finance-Pocket-App-dev), which builds
-this repo's `develop` branch and publishes it to its own sibling Pages site at
-**https://adamjcook.github.io/Finance-Pocket-App-dev/** — deliberately not a `/dev/` sub-path
-of this repo's own Pages site, because a PWA's `scope` covers its whole sub-tree and nesting
-it under this app's own install path made Chrome's "Add to Home screen" treat it as already
-covered by the real app's install rather than offering a separate one.
-
-To work on it: branch from `develop` (or merge `main` into it) and push — the other repo's
-workflow picks up the change within about 20 minutes, or immediately via its own
-`workflow_dispatch`. This repo's own `main` and its production deployment are untouched.
-Locally, `npm run build:dev` (or `npm run dev`, which is isolated automatically by running on
-`localhost`) builds the same mock-data variant; see `.env.dev-pages` for what it changes.
+To work on it: branch from `develop` in *this* repo (or merge `main` into it),
+push. The other repo's workflow has no source of its own — it checks out this
+repo's `develop` branch, builds it, and deploys; it runs on a ~20-minute
+schedule plus `workflow_dispatch` for an on-demand refresh, since a plain
+`git push` can't trigger a workflow in a different repository. `main` and the
+real production deployment are completely untouched either way. Locally,
+`npm run build:dev` (or `npm run dev`, which is isolated automatically by
+running on `localhost`) builds the same mock-data variant; see
+`.env.dev-pages` for what it changes.
 
 ## Development
 

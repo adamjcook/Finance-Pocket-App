@@ -182,6 +182,39 @@ h2 {
   margin-bottom: 18px;
 }
 
+/* words of wisdom / motivation — a starter line on Setup, and a one-paragraph
+   dashboard summary + closer typed out on open (see src/logic/wisdom.ts,
+   src/ui/components/TypedText.tsx) */
+.wisdom {
+  font-style: italic;
+  color: var(--text-dim);
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+
+.typed-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 1px;
+  background: currentColor;
+  vertical-align: -0.15em;
+  animation: typed-blink 0.9s steps(1) infinite;
+}
+
+@keyframes typed-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typed-cursor {
+    animation: none;
+  }
+}
+
 .card {
   background: var(--bg-raised);
   border: 1px solid var(--border);

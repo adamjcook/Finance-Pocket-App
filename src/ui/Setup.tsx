@@ -5,6 +5,8 @@ import { DEFAULT_PARTNER_A_COLOR, DEFAULT_PARTNER_B_COLOR } from '../model/types
 import { navigate } from '../app';
 import { ScanPanel } from './components/ScanPanel';
 import { loadMockData } from '../dev/mockData';
+import { toDay, todayISO } from '../logic/progress';
+import { starterQuote } from '../logic/wisdom';
 
 const CURRENCIES = ['GBP', 'EUR', 'USD'];
 
@@ -55,6 +57,7 @@ export function Setup() {
             A shared finance tracker for the two of you. Everything stays on your phones — no
             accounts, no cloud.
           </p>
+          <p class="wisdom" style="margin-bottom:18px">{starterQuote(toDay(todayISO()))}</p>
           <div class="stack">
             <button class="btn-primary btn-big" onClick={() => setMode('form')}>
               Set up on this phone first
