@@ -1,10 +1,12 @@
 /**
- * Short, contextual lines of encouragement shown around the app — a daily
- * quote on the Dashboard, a starter line on first run, and progress-aware
- * lines under each goal card. Everything here is a pure function of some
- * seed (usually today's date) so both partners' phones show the same line
- * without needing to sync anything new.
+ * Short, contextual lines of encouragement shown around the app — a
+ * one-paragraph summary at the top of the Dashboard, a starter line on
+ * first run, and the progress-aware closers that feed both. Everything
+ * here is a pure function of some seed (usually today's date) so both
+ * partners' phones show the same line without needing to sync anything new.
  */
+
+import { formatMoney } from './money';
 
 function pickForSeed(seed: string, list: string[]): string {
   let hash = 0;
@@ -107,4 +109,66 @@ export function growthEncouragement(today: string, delta30: number, hasHistory: 
 export function loanEncouragement(today: string, cleared: boolean): string | null {
   if (cleared) return null;
   return pickForSeed(today, LOAN_ONGOING);
+}
+
+function joinWithAnd(parts: string[]): string {
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+}
+
+function capitalize(s: string): string {
+  return s.length ? s[0].toUpperCase() + s.slice(1) : s;
+}
+
+export interface DashboardSummaryInput {
+  today: string;
+  currency: string;
+  debt: { baseline: number; current: number; pct: number };
+  growth: { delta30: number; hasHistory: boolean };
+  loans: { current: number; hasLoans: boolean };
+}
+
+/**
+ * A single paragraph for the top of the Dashboard: one clause per card that
+ * actually has data (skipping any still showing its empty state), followed
+ * by a progress-aware motivational closer — the same closers used to be
+ * shown separately under each card; now there's just the one, picked from
+ * whichever card is most relevant (debt progress, then loans, then growth),
+ * falling back to the daily quote once everything's cleared or untracked.
+ */
+export function dashboardSummary(input: DashboardSummaryInput): string {
+  const { today, currency, debt, growth, loans } = input;
+  const clauses: string[] = [];
+
+  if (debt.baseline > 0) {
+    clauses.push(
+      debt.current === 0
+        ? 'your card debt is cleared'
+        : `you’ve paid off ${Math.round(debt.pct)}% of your card debt (${formatMoney(debt.current, currency)} left)`,
+    );
+  }
+
+  if (growth.hasHistory) {
+    const verb = growth.delta30 > 0 ? 'grew' : growth.delta30 < 0 ? 'dipped' : 'held steady';
+    const amount = growth.delta30 === 0 ? '' : ` by ${formatMoney(Math.abs(growth.delta30), currency)}`;
+    clauses.push(`savings & investments ${verb}${amount} over the last 30 days`);
+  }
+
+  if (loans.hasLoans) {
+    clauses.push(
+      loans.current === 0 ? 'your loans are cleared' : `${formatMoney(loans.current, currency)} remains on loans`,
+    );
+  }
+
+  const detail =
+    clauses.length > 0 ? `${capitalize(joinWithAnd(clauses))}.` : 'Add your accounts to start tracking.';
+
+  const closer =
+    debtEncouragement(today, debt.pct, debt.current === 0) ??
+    (loans.hasLoans ? loanEncouragement(today, loans.current === 0) : null) ??
+    growthEncouragement(today, growth.delta30, growth.hasHistory) ??
+    quoteOfTheDay(today);
+
+  return `${detail} ${closer}`;
 }
