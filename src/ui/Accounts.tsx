@@ -37,20 +37,17 @@ export function Accounts() {
   // Which group an account is in already says "debt" or "credit" in plain words
   // via the heading below — balances themselves stay in the ordinary text
   // colour rather than repeating that with debt/growth colour too.
-  const groups: { title: string; dot: string; accounts: Account[] }[] = [
+  const groups: { title: string; accounts: Account[] }[] = [
     {
       title: 'Debt',
-      dot: 'var(--debt)',
       accounts: visible.filter((a) => OWED_KINDS.includes(a.kind)),
     },
     {
       title: 'Savings & investments',
-      dot: 'var(--accent)',
       accounts: visible.filter((a) => GROWTH_KINDS.includes(a.kind)),
     },
     {
       title: 'Everything else',
-      dot: 'var(--text-dim)',
       accounts: visible.filter((a) => !OWED_KINDS.includes(a.kind) && !GROWTH_KINDS.includes(a.kind)),
     },
   ];
@@ -89,10 +86,7 @@ export function Accounts() {
         (g) =>
           g.accounts.length > 0 && (
             <div key={g.title}>
-              <h2>
-                <span class="h2-dot" style={`background:${g.dot}`} />
-                {g.title}
-              </h2>
+              <h2>{g.title}</h2>
               <div class="card" style="padding:4px 12px">
                 {g.accounts.map((a) => {
                   const alias = aliasForAccount(state, a.id);
