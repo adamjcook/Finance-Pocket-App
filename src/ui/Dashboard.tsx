@@ -16,10 +16,10 @@ import { Chart } from './components/Chart';
 import { ProgressRing } from './components/ProgressRing';
 import { TypedText } from './components/TypedText';
 
-const SECTION_META: Record<DashboardSectionKey, { heading: string; dot: string }> = {
-  growth: { heading: 'Savings & investments', dot: 'var(--accent)' },
-  debt: { heading: 'Credit card debt', dot: 'var(--debt)' },
-  loans: { heading: 'Loans', dot: 'color-mix(in srgb, var(--debt) 55%, var(--bg-raised))' },
+const SECTION_META: Record<DashboardSectionKey, { heading: string }> = {
+  growth: { heading: 'Savings & investments' },
+  debt: { heading: 'Credit card debt' },
+  loans: { heading: 'Loans' },
 };
 
 interface Drag {
@@ -324,10 +324,7 @@ export function Dashboard() {
             }
           >
             <h2 class="row spread">
-              <span class="row" style="gap:6px">
-                <span class="h2-dot" style={`background:${meta.dot}`} />
-                {meta.heading}
-              </span>
+              {meta.heading}
               <button
                 type="button"
                 class="drag-handle"

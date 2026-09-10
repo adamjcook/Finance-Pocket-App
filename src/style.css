@@ -352,25 +352,6 @@ h2 {
   background: var(--partner-joint);
 }
 
-/* section markers */
-h2 .h2-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  margin-right: 7px;
-  vertical-align: 1px;
-}
-
-/* money amounts carry their direction's colour */
-.amount-owed {
-  color: color-mix(in srgb, var(--debt) 78%, var(--text));
-}
-
-.amount-growth {
-  color: color-mix(in srgb, var(--accent) 72%, var(--text));
-}
-
 .muted {
   color: var(--text-dim);
   font-size: 13.5px;
