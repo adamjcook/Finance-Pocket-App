@@ -12,6 +12,7 @@ import { Settings } from './ui/Settings';
 import { Setup } from './ui/Setup';
 import { UpdateToast } from './ui/components/UpdateToast';
 import { Icon, type IconName } from './ui/components/Icon';
+import { pullReadings } from './integrations/t212';
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
@@ -47,6 +48,19 @@ export function App() {
     document.documentElement.setAttribute('data-theme', app.device.theme);
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[app.device.theme]);
   }, [app?.device.theme]);
+
+  // Trading 212 link: pick up any new daily readings when the app opens or
+  // comes back to the foreground (throttled inside pullReadings).
+  const t212 = app?.state.settings.t212;
+  useEffect(() => {
+    if (!t212) return;
+    void pullReadings();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void pullReadings();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [t212?.accountId, t212?.endpoint, t212?.token]);
 
   if (!app) {
     const error = storeError();

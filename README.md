@@ -106,12 +106,50 @@ Locally,
 running on `localhost`) builds the same mock-data variant; see
 `.env.dev-pages` for what it changes.
 
+## Trading 212 link (optional)
+
+Trading 212's API only gives the account's value *right now* — there's no
+history endpoint — so a small Cloudflare Worker (`worker/`) records the total
+of one Trading 212 account (Invest or Stocks ISA) at **9pm UK time every day**.
+FinPair picks up any new days whenever it opens and adds them as normal balance
+entries on the linked account, so the savings chart shows each day's move.
+Home also shows that account's change on the day and its overall gain.
+
+Privacy trade-off: one number a day (plus the cost basis and gain) is stored in
+your own Cloudflare account. Nothing else about your finances leaves the phones.
+
+**One-time setup**
+
+1. **Trading 212 key.** In the Trading 212 app: Settings → API (Beta) →
+   generate a key. Give it the **account data** permission only — no orders or
+   trading — and leave IP restriction off (Cloudflare doesn't use fixed IPs).
+   Keep the API key and secret to hand.
+2. **Deploy the Worker.** Cloudflare dashboard → Workers & Pages → Create →
+   Import a repository → this repo. Name it `finpair-t212`, set the **root
+   directory** to `worker`, the branch to `develop` (switch to `main` later if
+   you like), leave the build command empty and keep the deploy command
+   `npx wrangler deploy`. The first deploy creates the KV store and the 9pm
+   schedule from `worker/wrangler.jsonc`.
+3. **Add three secrets.** Worker → Settings → Variables and Secrets → add, each
+   as type *Secret*:
+   - `T212_API_KEY` and `T212_API_SECRET` — from step 1
+   - `FINPAIR_TOKEN` — any long random string (e.g. a generated password);
+     the app sends it to prove it's yours
+4. **Link it in FinPair.** Settings → Trading 212: choose the account, paste the
+   Worker address (`https://finpair-t212.<your-subdomain>.workers.dev`) and the
+   `FINPAIR_TOKEN`, then tap **Read now** to check it end to end. The
+   link syncs to your partner's phone with the next sync.
+
+The Worker only answers browser requests from the two FinPair sites listed in
+`ALLOWED_ORIGINS` (and localhost). To use Trading 212's paper-trading account
+instead, add a variable `T212_BASE_URL` = `https://demo.trading212.com`.
+
 ## Development
 
 ```
 npm install
 npm run dev        # local dev server
-npm test           # unit tests (merge/codec/progress logic)
+npm test           # unit tests (merge/codec/progress logic, Trading 212 Worker + import)
 npm run build      # typecheck + production build (required before e2e)
 npm run test:e2e   # Playwright: smoke, two-device sync, alias continuity
 npm run preview    # serve the production build locally

@@ -137,6 +137,11 @@ export function Accounts() {
                         <div class="account-name">
                           <span class="name-text">{a.name}</span>
                           {alias && <span class="chip chip-alias">{alias.name}</span>}
+                          {state.settings.t212?.accountId === a.id && (
+                            <span class="chip" title="Updated daily from Trading 212">
+                              Auto
+                            </span>
+                          )}
                           {a.archived && <span class="chip">Archived</span>}
                         </div>
                         <div class="row-sub">{a.institution || ACCOUNT_KIND_LABELS[a.kind]}</div>

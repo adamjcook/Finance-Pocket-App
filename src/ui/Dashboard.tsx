@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { useApp, patchDevice } from '../model/store';
 import {
+  effectiveSnapshots,
   debtProgress,
   formatDay,
   growthProgress,
@@ -93,6 +94,25 @@ export function Dashboard() {
     savingsTarget !== null
       ? monthlyToTarget(growth.current, savingsTarget, 'up', savingsTargetDate, today)
       : null;
+
+  // Trading 212 link: the linked account's move on its latest day, and its
+  // overall gain from the Worker's latest reading.
+  const t212Link = settings.t212;
+  const t212Account = t212Link ? state.accounts.find((a) => a.id === t212Link.accountId && !a.archived) : undefined;
+  let t212Day: { day: string; change: number } | null = null;
+  if (t212Account) {
+    const byDay = new Map<string, number>();
+    for (const s of effectiveSnapshots(state.snapshots, state.voids)) {
+      if (s.accountId === t212Account.id) byDay.set(toDay(s.at), s.balance);
+    }
+    const days = [...byDay.keys()].sort();
+    if (days.length >= 2) {
+      const [prev, last] = days.slice(-2);
+      t212Day = { day: last, change: byDay.get(last)! - byDay.get(prev)! };
+    }
+  }
+  const t212Latest = t212Account ? device.t212?.latest : null;
+  const signed = (minor: number) => `${minor >= 0 ? '+' : '−'}${formatMoney(Math.abs(minor), currency)}`;
 
   const summary = dashboardSummary({
     today,
@@ -236,6 +256,26 @@ export function Dashboard() {
                 <div class="delta-note">last 30 days</div>
               </div>
             </div>
+            {t212Account && (t212Day || t212Latest) && (
+              <div class="mini-stats">
+                <span class="mini-label">{t212Account.name}</span>
+                {t212Day && (
+                  <span>
+                    <strong class={t212Day.change >= 0 ? 'positive' : 'owed'}>{signed(t212Day.change)}</strong>{' '}
+                    {t212Day.day === today ? 'today' : `on ${formatDay(t212Day.day)}`}
+                  </span>
+                )}
+                {t212Latest && t212Latest.costMinor > 0 && (
+                  <span>
+                    <strong class={t212Latest.unrealisedMinor >= 0 ? 'positive' : 'owed'}>
+                      {signed(t212Latest.unrealisedMinor)} (
+                      {((t212Latest.unrealisedMinor / t212Latest.costMinor) * 100).toFixed(1)}%)
+                    </strong>{' '}
+                    overall
+                  </span>
+                )}
+              </div>
+            )}
             {savingsTarget !== null &&
               (growth.current >= savingsTarget ? (
                 <p class="goal done">Target of {formatMoney(savingsTarget, currency)} reached 🎉</p>

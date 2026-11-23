@@ -1,0 +1,22 @@
+{
+  // Trading 212 daily-reading Worker — separate from the dev-site Worker in
+  // ../wrangler.jsonc. Deployed by Cloudflare Workers Builds with the root
+  // directory set to `worker` (see README → "Trading 212 link").
+  "$schema": "https://unpkg.com/wrangler/config-schema.json",
+  "name": "finpair-t212",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  // 9pm UK time, every day. Crons are UTC, so this covers both GMT (21:xx UTC)
+  // and BST (20:xx UTC); the Worker ignores runs outside 9pm UK, and the
+  // later runs in the hour retry if the first one failed.
+  "triggers": { "crons": ["*/15 20,21 * * *"] },
+  // One record per day plus a status record. No id: Wrangler creates the
+  // namespace on first deploy.
+  "kv_namespaces": [{ "binding": "DAYS" }],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://adamjcook.github.io,https://finpair.mail-ajcook.workers.dev"
+  },
+  "observability": { "enabled": true }
+}

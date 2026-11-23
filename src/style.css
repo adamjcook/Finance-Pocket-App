@@ -1603,3 +1603,27 @@ label.field > span:first-child,
   color: var(--text-3);
   text-align: center;
 }
+
+/* Trading 212 line on the savings card: the linked account's day + overall move */
+.mini-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--separator);
+  font-size: 13px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-stats strong {
+  font-weight: 600;
+}
+
+.mini-label {
+  flex-basis: 100%;
+  font-weight: 550;
+  color: var(--text);
+}

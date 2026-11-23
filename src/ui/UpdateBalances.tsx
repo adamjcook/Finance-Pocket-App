@@ -97,6 +97,7 @@ export function UpdateBalances() {
                   <div class="grow">
                     <div class="row-title">{a.name}</div>
                     <div class="row-sub num">
+                      {state.settings.t212?.accountId === a.id && 'Auto daily · '}
                       {current !== null
                         ? `${OWED_KINDS.includes(a.kind) ? 'Owed' : 'Was'} ${formatMoney(current, currency)}`
                         : ACCOUNT_KIND_LABELS[a.kind]}

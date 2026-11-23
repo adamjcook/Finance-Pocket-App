@@ -368,3 +368,56 @@ test('dragging one card past two others in a single motion lands correctly', asy
   await expect(headings.nth(1)).toContainText('Loans');
   await expect(headings.nth(2)).toContainText('Savings & investments');
 });
+
+test('Trading 212 link imports daily readings and shows the day and overall change', async ({ page }) => {
+  // A fake finpair-t212 Worker: yesterday's 9pm reading plus one taken today
+  // (stamped when requested, so it's newer than the opening balance below).
+  const yesterday = new Date(Date.now() - 86400000);
+  yesterday.setUTCHours(21, 0, 0, 0);
+  const reading = (at: Date, totalMinor: number) => ({
+    day: at.toISOString().slice(0, 10),
+    at: at.toISOString(),
+    currency: 'GBP',
+    totalMinor,
+    costMinor: 900000,
+    unrealisedMinor: totalMinor - 900000,
+    final: true,
+  });
+  const auths: string[] = [];
+  await page.route('https://t212.example/**', async (route) => {
+    auths.push((await route.request().headerValue('authorization')) ?? '');
+    const today = new Date();
+    await route.fulfill({
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({
+        readings: [reading(yesterday, 1000000), reading(today, 1012050)],
+        status: { ok: true, at: today.toISOString() },
+      }),
+    });
+  });
+
+  await completeSetup(page, 'Adam', 'Sam');
+  await addAccount(page, 'Stocks ISA', 'Investment', '9500');
+
+  await page.goto('.#/settings');
+  await page.getByLabel('Trading 212 linked account').selectOption({ label: 'Stocks ISA' });
+  await page.getByPlaceholder('https://…workers.dev').fill('https://t212.example');
+  await page.getByPlaceholder('https://…workers.dev').press('Tab');
+  await page.getByPlaceholder('FINPAIR_TOKEN').fill('secret-token');
+  await page.getByPlaceholder('FINPAIR_TOKEN').press('Tab');
+  await page.getByRole('button', { name: 'Check now' }).click();
+  await expect(page.getByText(/Last reading .*£10,120\.50/)).toBeVisible();
+  expect(auths.at(-1)).toBe('Bearer secret-token');
+
+  // The ISA's balance follows the latest reading, and it's marked as automatic.
+  await page.goto('.#/accounts');
+  const row = page.locator('.account-row', { hasText: 'Stocks ISA' });
+  await expect(row.getByRole('button', { name: '£10,120.50' })).toBeVisible();
+  await expect(row.getByText('Auto')).toBeVisible();
+
+  // Home: the move on the day (+£120.50) and the overall gain (+£1,120.50, 12.4%).
+  await page.goto('.#/');
+  await expect(page.locator('.mini-stats')).toContainText('+£120.50 today');
+  await expect(page.locator('.mini-stats')).toContainText('+£1,120.50 (12.4%) overall');
+});

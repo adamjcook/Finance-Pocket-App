@@ -1,9 +1,10 @@
 import { useState } from 'preact/hooks';
 import { useApp, mutate, getStore, patchDevice } from '../model/store';
 import { updateSettings, voidSnapshot } from '../model/repo';
-import { effectiveSnapshots } from '../logic/progress';
+import { effectiveSnapshots, formatDay } from '../logic/progress';
 import { asSyncPayload, buildPayload } from '../sync/codec';
-import { CURRENCIES } from '../model/types';
+import { CURRENCIES, GROWTH_KINDS, type T212Link } from '../model/types';
+import { linkReady, pullReadings, readingNow } from '../integrations/t212';
 import { mergePayload } from '../sync/apply';
 import { currencySymbol, formatMoney } from '../logic/money';
 import { MoneyInput } from './components/MoneyInput';
@@ -13,6 +14,7 @@ export function Settings() {
   const app = useApp();
   const [fixAccountId, setFixAccountId] = useState('');
   const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [t212Busy, setT212Busy] = useState<'check' | 'reading' | null>(null);
 
   if (!app) return null;
   const { state, device } = app;
@@ -50,6 +52,24 @@ export function Settings() {
       setImportMsg(`Import failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
+
+  const link: T212Link = state.settings.t212 ?? { accountId: '', endpoint: '', token: '' };
+  const saveLink = (changes: Partial<T212Link>) => {
+    const next = { ...link, ...changes };
+    saveField({ t212: next.accountId || next.endpoint || next.token ? next : null });
+  };
+  const runT212 = async (kind: 'check' | 'reading') => {
+    setT212Busy(kind);
+    try {
+      await (kind === 'check' ? pullReadings({ force: true }) : readingNow());
+    } catch {
+      // the error is recorded on device.t212 and shown below
+    } finally {
+      setT212Busy(null);
+    }
+  };
+  const t212Status = device.t212;
+  const t212Accounts = state.accounts.filter((a) => GROWTH_KINDS.includes(a.kind) && !a.archived);
 
   const fixSnapshots = fixAccountId
     ? effectiveSnapshots(state.snapshots, state.voids)
@@ -168,6 +188,68 @@ export function Settings() {
         <p class="group-footer">
           The dashboard works out roughly how much per month gets you there. Goals sync to your
           partner's phone like everything else.
+        </p>
+      </section>
+
+      <section class="group">
+        <h2 class="group-label">Trading 212</h2>
+        <div class="list">
+          <label class="list-row setting-row">
+            <span class="setting-label">Linked account</span>
+            <select
+              aria-label="Trading 212 linked account"
+              value={link.accountId}
+              onChange={(e) => saveLink({ accountId: (e.target as HTMLSelectElement).value })}
+            >
+              <option value="">Not linked</option>
+              {t212Accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label class="list-row setting-row">
+            <span class="setting-label">Worker address</span>
+            <input
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              spellcheck={false}
+              placeholder="https://…workers.dev"
+              value={link.endpoint}
+              onChange={(e) => saveLink({ endpoint: (e.target as HTMLInputElement).value.trim() })}
+            />
+          </label>
+          <label class="list-row setting-row">
+            <span class="setting-label">Access token</span>
+            <input
+              type="password"
+              autoComplete="off"
+              placeholder="FINPAIR_TOKEN"
+              value={link.token}
+              onChange={(e) => saveLink({ token: (e.target as HTMLInputElement).value.trim() })}
+            />
+          </label>
+          {linkReady(state.settings.t212) && (
+            <div class="list-row" style="gap:8px">
+              <button class="btn-sm grow" disabled={t212Busy !== null} onClick={() => void runT212('check')}>
+                {t212Busy === 'check' ? 'Checking…' : 'Check now'}
+              </button>
+              <button class="btn-sm grow" disabled={t212Busy !== null} onClick={() => void runT212('reading')}>
+                {t212Busy === 'reading' ? 'Reading…' : 'Read now'}
+              </button>
+            </div>
+          )}
+        </div>
+        <p class={`group-footer ${t212Status?.error ? 'owed' : ''}`} role="status">
+          {!linkReady(state.settings.t212)
+            ? 'Records your Trading 212 account total at 9pm every day, so the chart shows each day’s change. Needs the finpair-t212 Worker — see the README.'
+            : t212Status?.error
+              ? t212Status.error
+              : t212Status?.latest
+                ? `Last reading ${formatDay(t212Status.latest.day)}, ${new Date(t212Status.latest.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}: ${formatMoney(t212Status.latest.totalMinor, currency)}${t212Status.latest.final ? '' : ' (provisional — the 9pm reading replaces it)'}.`
+                : 'Linked. The first reading arrives at 9pm, or tap “Read now”.'}
         </p>
       </section>
 
