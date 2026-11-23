@@ -1,8 +1,11 @@
+// Renders favicon.svg in an icon directory to the PNG sizes the manifest uses.
+// Usage: node scripts/gen-icons.mjs [dir]   (default public/icons; dev: public/icons-dev)
 import { chromium } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-const svg = readFileSync('/home/user/Finance-Pocket-App/public/icons/favicon.svg', 'utf8');
-const out = '/home/user/Finance-Pocket-App/public/icons';
+const out = resolve(process.argv[2] ?? 'public/icons');
+const svg = readFileSync(`${out}/favicon.svg`, 'utf8');
 
 // In the remote dev environment the pinned Playwright build isn't downloaded;
 // CHROMIUM_PATH lets the pre-installed browser be used instead.
@@ -21,7 +24,7 @@ async function shot(size, file, { maskable = false } = {}) {
   </body>`;
   await page.setContent(html);
   await page.screenshot({ path: `${out}/${file}`, omitBackground: !maskable });
-  console.log('wrote', file);
+  console.log('wrote', `${out}/${file}`);
 }
 
 await shot(192, 'icon-192.png');

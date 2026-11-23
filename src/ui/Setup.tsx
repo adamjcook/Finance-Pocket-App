@@ -47,7 +47,7 @@ export function Setup() {
   return (
     <>
       <div class="title-row">
-        <img src={`${import.meta.env.BASE_URL}icons/favicon.svg`} class="app-logo" alt="" />
+        <img src={`${import.meta.env.BASE_URL}${import.meta.env.VITE_ICON_DIR}/favicon.svg`} class="app-logo" alt="" />
         <h1>FinPair</h1>
       </div>
 

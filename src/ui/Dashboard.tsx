@@ -288,7 +288,7 @@ export function Dashboard() {
   return (
     <div>
       <div class="title-row" style="margin-bottom:2px">
-        <img src={`${import.meta.env.BASE_URL}icons/favicon.svg`} class="app-logo" alt="" />
+        <img src={`${import.meta.env.BASE_URL}${import.meta.env.VITE_ICON_DIR}/favicon.svg`} class="app-logo" alt="" />
         <h1>FinPair</h1>
       </div>
       <p class="subtitle">
