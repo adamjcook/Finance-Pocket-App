@@ -25,7 +25,8 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
   const min = Math.min(...values);
   const pad = Math.max((max - min) * 0.1, 1);
   const top = max + pad;
-  const bottom = Math.min(min, 0) === min && min >= 0 ? Math.max(0, min - pad) : min - pad;
+  // A series that never goes negative never gets an axis below zero.
+  const bottom = min >= 0 ? Math.max(0, min - pad) : min - pad;
   const x = (i: number) => (i / (series.length - 1)) * W;
   const y = (v: number) => LABEL_BAND + ((top - v) / (top - bottom)) * height;
 

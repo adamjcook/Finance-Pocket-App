@@ -71,7 +71,14 @@ export function updateAccount(
 ): SyncedState {
   return {
     ...state,
-    accounts: state.accounts.map((a) => (a.id === id ? { ...a, ...changes, ...stamp(ctx) } : a)),
+    accounts: state.accounts.map((a) => {
+      if (a.id !== id) return a;
+      const meta = stamp(ctx);
+      const next: Account = { ...a, ...changes, ...meta };
+      if (changes.archived === true && !a.archived) next.archivedAt = meta.updatedAt;
+      if (changes.archived === false) next.archivedAt = null;
+      return next;
+    }),
   };
 }
 

@@ -40,14 +40,6 @@ export function effectiveSnapshots(snapshots: Snapshot[], voids: SnapshotVoid[])
     );
 }
 
-/** Latest effective balance of one account, or null if it has no snapshots. */
-export function latestBalance(effective: Snapshot[], accountId: string): number | null {
-  for (let i = effective.length - 1; i >= 0; i--) {
-    if (effective[i].accountId === accountId) return effective[i].balance;
-  }
-  return null;
-}
-
 /**
  * Daily carry-forward series for a set of snapshots treated as one combined pot.
  * Each account contributes its last-known balance each day (0 before its first
@@ -86,14 +78,30 @@ export interface KindTotals {
   effective: Snapshot[];
 }
 
-/** Combined current balance + daily series for the active accounts of some kinds. */
+/**
+ * Combined current balance + daily series for the accounts of some kinds.
+ * An archived account counts up to the moment it was archived and as zero
+ * from then on (a synthetic closing reading), so archiving a paid-off card
+ * or a bank account you've moved away from doesn't rewrite past totals.
+ */
 export function kindTotals(state: SyncedState, kinds: AccountKind[], today: string): KindTotals {
-  const ids = new Set(
-    state.accounts.filter((a) => !a.archived && kinds.includes(a.kind)).map((a) => a.id),
-  );
-  const effective = effectiveSnapshots(state.snapshots, state.voids).filter((s) =>
-    ids.has(s.accountId),
-  );
+  // accountId -> archive time, or null while active
+  const cutoff = new Map<string, string | null>();
+  for (const a of state.accounts) {
+    if (kinds.includes(a.kind)) cutoff.set(a.id, a.archived ? (a.archivedAt ?? a.updatedAt) : null);
+  }
+  const counted = effectiveSnapshots(state.snapshots, state.voids).filter((s) => {
+    if (!cutoff.has(s.accountId)) return false;
+    const until = cutoff.get(s.accountId);
+    return until == null || s.at < until;
+  });
+  const closings: Snapshot[] = [];
+  for (const [accountId, until] of cutoff) {
+    if (until != null && counted.some((s) => s.accountId === accountId)) {
+      closings.push({ id: `closed:${accountId}`, accountId, balance: 0, at: until, deviceId: '', createdAt: until });
+    }
+  }
+  const effective = effectiveSnapshots([...counted, ...closings], []);
   const series = combinedDailySeries(effective, today);
   const current = series.length ? series[series.length - 1].value : 0;
   return { current, series, effective };
@@ -134,8 +142,6 @@ export function debtProgress(state: SyncedState, today: string): DebtProgress {
 
 export interface GrowthProgress {
   current: number;
-  first: number;
-  growth: number; // current - first
   delta30: number; // change over the last 30 days
   series: SeriesPoint[];
 }
@@ -151,7 +157,7 @@ export function growthProgress(state: SyncedState, today: string): GrowthProgres
     else break;
   }
   const delta30 = series.length ? current - past : 0;
-  return { current, first, growth: current - first, delta30, series };
+  return { current, delta30, series };
 }
 
 /** Combined outstanding loans (kept separate from the card-payoff goal). */

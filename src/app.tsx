@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'preact/hooks';
-import { useApp } from './model/store';
+import { useEffect } from 'preact/hooks';
+import { storeError, useApp } from './model/store';
+import { useRoute } from './router';
 import { DEFAULT_PARTNER_A_COLOR, DEFAULT_PARTNER_B_COLOR } from './model/types';
 import { Dashboard } from './ui/Dashboard';
 import { Accounts } from './ui/Accounts';
@@ -10,24 +11,6 @@ import { Sync } from './ui/Sync';
 import { Settings } from './ui/Settings';
 import { Setup } from './ui/Setup';
 import { UpdateToast } from './ui/components/UpdateToast';
-
-function currentRoute(): string {
-  return location.hash.replace(/^#/, '') || '/';
-}
-
-export function useRoute(): string {
-  const [route, setRoute] = useState(currentRoute());
-  useEffect(() => {
-    const onChange = () => setRoute(currentRoute());
-    window.addEventListener('hashchange', onChange);
-    return () => window.removeEventListener('hashchange', onChange);
-  }, []);
-  return route;
-}
-
-export function navigate(route: string): void {
-  location.hash = route;
-}
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
@@ -60,7 +43,16 @@ export function App() {
     document.documentElement.setAttribute('data-theme', app.device.theme);
   }, [app?.device.theme]);
 
-  if (!app) return <div class="loading">Loading…</div>;
+  if (!app) {
+    const error = storeError();
+    return (
+      <div class="loading">
+        {error
+          ? `Couldn't open this phone's storage (${error.message}). Close the app fully and reopen it; if this keeps happening, check Chrome isn't blocking site data.`
+          : 'Loading…'}
+      </div>
+    );
+  }
 
   const setupDone = app.state.settings.updatedBy !== '';
 

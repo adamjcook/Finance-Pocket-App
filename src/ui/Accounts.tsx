@@ -3,9 +3,9 @@ import { useApp, mutate, getStore } from '../model/store';
 import { addSnapshots, aliasForAccount, latestBalances } from '../model/repo';
 import type { Account } from '../model/types';
 import { ACCOUNT_KIND_LABELS, GROWTH_KINDS, OWED_KINDS } from '../model/types';
-import { formatMoney } from '../logic/money';
-import { MoneyInput, currencySymbol } from './components/MoneyInput';
-import { navigate } from '../app';
+import { currencySymbol, formatMoney } from '../logic/money';
+import { MoneyInput } from './components/MoneyInput';
+import { navigate } from '../router';
 
 function ownerLabel(owner: Account['owner'], a: string, b: string): string {
   return owner === 'A' ? a : owner === 'B' ? b : 'Joint';

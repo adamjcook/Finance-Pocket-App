@@ -15,13 +15,16 @@ export function formatMoney(minor: number, currency: string): string {
   return formatter(currency).format(minor / 100);
 }
 
+/** The currency's symbol, e.g. "£" for GBP (falls back to the code itself). */
+export function currencySymbol(currency: string): string {
+  return formatter(currency).formatToParts(0).find((p) => p.type === 'currency')?.value ?? currency;
+}
+
 /** Compact form for chart labels: £1.2k, £340, £1.5m */
 export function formatMoneyCompact(minor: number, currency: string): string {
   const major = minor / 100;
   const abs = Math.abs(major);
-  const symbol = formatter(currency)
-    .formatToParts(0)
-    .find((p) => p.type === 'currency')?.value ?? '';
+  const symbol = currencySymbol(currency);
   const sign = major < 0 ? '-' : '';
   if (abs >= 1_000_000) return `${sign}${symbol}${trimZeros((abs / 1_000_000).toFixed(1))}m`;
   if (abs >= 10_000) return `${sign}${symbol}${trimZeros((abs / 1000).toFixed(0))}k`;

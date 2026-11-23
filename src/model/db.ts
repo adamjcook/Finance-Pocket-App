@@ -2,9 +2,9 @@ import { openDB, type IDBPDatabase } from 'idb';
 import type { DashboardSectionKey, DeviceState, SyncedState } from './types';
 import { DEFAULT_DASHBOARD_ORDER, DEFAULT_SETTINGS } from './types';
 
-// The dev deployment (see vite.config.ts / .env.dev-pages) uses a distinct
-// name so it can never read or write the real app's data, even though it's
-// served from the same origin.
+// The dev build (see .env.dev-pages) uses a distinct name. It's on its own
+// origin now so storage is separate anyway; the name also keeps a local
+// `npm run build:dev` preview from touching data saved by a local prod build.
 const DB_NAME = import.meta.env.VITE_DB_NAME || 'finance-pocket';
 // Stays at 2 even though the 'shares' store from the (now-removed) Web Share
 // feature is unused: IndexedDB can't open a database at a version lower than

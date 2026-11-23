@@ -2,9 +2,9 @@ import { useRef, useState } from 'preact/hooks';
 import { useApp, mutate, getStore } from '../model/store';
 import { addSnapshots, latestBalances } from '../model/repo';
 import { ACCOUNT_KIND_LABELS, OWED_KINDS } from '../model/types';
-import { formatMoney } from '../logic/money';
-import { MoneyInput, currencySymbol } from './components/MoneyInput';
-import { navigate } from '../app';
+import { currencySymbol, formatMoney } from '../logic/money';
+import { MoneyInput } from './components/MoneyInput';
+import { navigate } from '../router';
 
 /**
  * The core frequent action: run down all active accounts in one sitting,

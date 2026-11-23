@@ -1,11 +1,12 @@
 import type { SyncPayload } from '../model/types';
 import { DEFAULT_PARTNER_A_COLOR, DEFAULT_PARTNER_B_COLOR } from '../model/types';
+import { applyPayload } from '../sync/apply';
 
 /**
  * Realistic seed data for the dev deployment (see vite.config.ts /
  * .env.dev-pages) — only reachable when VITE_DEV_BUILD is set, so this
- * never ships as reachable UI in the real app. Loaded via the same
- * window.__syncTest.importPayload hook the e2e tests use.
+ * never ships as reachable UI in the real app. Merged in exactly like a
+ * partner sync.
  */
 
 const day = (offset: number) => new Date(Date.now() - offset * 86400000).toISOString();
@@ -70,5 +71,5 @@ export function buildMockPayload(): SyncPayload {
 }
 
 export async function loadMockData(): Promise<void> {
-  await window.__syncTest.importPayload(buildMockPayload());
+  await applyPayload(buildMockPayload());
 }

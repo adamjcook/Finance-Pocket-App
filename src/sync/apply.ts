@@ -8,14 +8,20 @@ export interface ApplyResult {
   hash: string;
 }
 
-/** Merge a partner payload into this phone's state and record the sync. */
-export async function applyPayload(payload: SyncPayload): Promise<ApplyResult> {
+/** Merge a payload (partner sync or backup file) into this phone's state. */
+export async function mergePayload(payload: SyncPayload): Promise<MergeSummary> {
   const before = getStore().state;
   const merged = mergeState(before, payload);
   await mutate(() => merged);
-  const hash = await stateHash(merged);
+  return summarizeMerge(before, merged);
+}
+
+/** Merge a partner payload and record the sync (time + check code). */
+export async function applyPayload(payload: SyncPayload): Promise<ApplyResult> {
+  const summary = await mergePayload(payload);
+  const hash = await stateHash(getStore().state);
   await patchDevice({ lastSyncAt: new Date().toISOString(), lastSyncStateHash: hash });
-  return { summary: summarizeMerge(before, merged), hash };
+  return { summary, hash };
 }
 
 /** Frames encoding this phone's current state, for the partner to scan. */

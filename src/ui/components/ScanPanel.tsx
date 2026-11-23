@@ -41,7 +41,9 @@ export function ScanPanel({ onComplete, onCancel }: Props) {
       }
     })
       .then((s) => {
-        scannerRef.current = s;
+        // Cancelled (or already complete) while the camera was still starting.
+        if (done) s.stop();
+        else scannerRef.current = s;
       })
       .catch(() => {
         setError(

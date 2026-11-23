@@ -101,15 +101,30 @@ export function parseFrame(text: string): ParsedFrame | null {
   }
 }
 
-export async function decodePayloadBytes(compressed: Uint8Array): Promise<SyncPayload> {
-  const json = new TextDecoder().decode(await inflate(compressed));
-  const payload = JSON.parse(json) as SyncPayload;
-  if (payload.v !== 1) {
+/**
+ * Checks that parsed JSON (from a QR transfer or a backup file) has the shape
+ * mergeState relies on, so a wrong or truncated file fails with a clear
+ * message instead of a TypeError halfway through the merge.
+ */
+export function asSyncPayload(value: unknown): SyncPayload {
+  const p = value as Partial<SyncPayload> | null;
+  if (!p || typeof p !== 'object') throw new Error("This isn't FinPair data.");
+  if (p.v !== 1) {
     throw new Error(
-      `This code came from an app version this phone doesn't understand (v${String(payload.v)}). Update both phones to the same version and try again.`,
+      `This came from an app version this phone doesn't understand (v${String(p.v)}). Update both phones to the same version and try again.`,
     );
   }
-  return payload;
+  const s = p.settings;
+  const ok =
+    !!s && s.id === 'settings' && typeof s.updatedAt === 'string' &&
+    [p.accounts, p.aliases, p.snapshots, p.voids].every(Array.isArray);
+  if (!ok) throw new Error("This isn't complete FinPair data — it may be damaged or from another app.");
+  return p as SyncPayload;
+}
+
+async function decodePayloadBytes(compressed: Uint8Array): Promise<SyncPayload> {
+  const json = new TextDecoder().decode(await inflate(compressed));
+  return asSyncPayload(JSON.parse(json));
 }
 
 /** Decode a complete set of frames (any order). Used by tests and file import. */
