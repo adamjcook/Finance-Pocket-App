@@ -3,10 +3,9 @@ import { loadEnv } from 'vite';
 import preact from '@preact/preset-vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// Plain `npm run build` (mode 'production') builds the real app. The GitHub
-// Pages workflow additionally builds mode 'dev-pages' (see .env.dev-pages) to
-// deploy a second, mock-data copy under /dev/ for developing against without
-// touching real data — see README's "Dev environment" section.
+// Plain `npm run build` (mode 'production') builds the real app. Mode
+// 'dev-pages' (see .env.dev-pages) builds the mock-data copy that Cloudflare
+// Pages deploys from `develop` — see README's "Dev environment" section.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
   const base = env.VITE_BASE_PATH || '/Finance-Pocket-App/';
