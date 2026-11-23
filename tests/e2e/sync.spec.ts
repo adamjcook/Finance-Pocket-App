@@ -56,7 +56,7 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await expect(page.getByRole('heading', { name: 'FinPair' })).toBeVisible();
   await expect(page.locator('.subtitle', { hasText: 'Adam & Sam' })).toBeVisible();
   await expect(page.getByText('£1,500.00').first()).toBeVisible();
-  await expect(page.getByText('50%')).toBeVisible(); // paid off half of the £3,000 peak
+  await expect(page.getByRole('img', { name: '50% paid off' })).toBeVisible(); // half of the £3,000 peak
   await expect(page.getByText('£1,500.00 of £3,000.00 paid off')).toBeVisible();
 
   // Inline balance edit from the accounts list

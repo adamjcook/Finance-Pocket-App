@@ -1,14 +1,12 @@
 import { useState } from 'preact/hooks';
 import { mutate, getStore } from '../model/store';
 import { updateSettings } from '../model/repo';
-import { DEFAULT_PARTNER_A_COLOR, DEFAULT_PARTNER_B_COLOR } from '../model/types';
-import { navigate } from '../app';
+import { CURRENCIES, DEFAULT_PARTNER_A_COLOR, DEFAULT_PARTNER_B_COLOR } from '../model/types';
+import { navigate } from '../router';
 import { ScanPanel } from './components/ScanPanel';
 import { loadMockData } from '../dev/mockData';
 import { toDay, todayISO } from '../logic/progress';
 import { starterQuote } from '../logic/wisdom';
-
-const CURRENCIES = ['GBP', 'EUR', 'USD'];
 
 type Mode = 'choose' | 'form' | 'join';
 
@@ -47,7 +45,7 @@ export function Setup() {
   return (
     <>
       <div class="title-row">
-        <img src={`${import.meta.env.BASE_URL}icons/favicon.svg`} class="app-logo" alt="" />
+        <img src={`${import.meta.env.BASE_URL}${import.meta.env.VITE_ICON_DIR}/favicon.svg`} class="app-logo" alt="" />
         <h1>FinPair</h1>
       </div>
 

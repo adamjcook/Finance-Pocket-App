@@ -4,12 +4,11 @@ import {
   debtProgress,
   effectiveSnapshots,
   growthProgress,
-  latestBalance,
   loanTotals,
   monthlyToTarget,
   monthsUntil,
 } from '../src/logic/progress';
-import { aliasSeries, latestBalances, repointAlias } from '../src/model/repo';
+import { aliasSeries, latestBalances, repointAlias, updateAccount } from '../src/model/repo';
 import { account, alias, settings, snapshot, state } from './helpers';
 import { parseMoney, minorToInput, formatMoney } from '../src/logic/money';
 
@@ -35,13 +34,12 @@ describe('money', () => {
   });
 });
 
-describe('effectiveSnapshots / latestBalance', () => {
+describe('effectiveSnapshots', () => {
   it('drops voided snapshots and sorts by effective time', () => {
     const s1 = snapshot({ id: 'snap-1', accountId: 'acc-1', balance: 100_00, at: '2026-01-01T10:00:00.000Z' });
     const s2 = snapshot({ id: 'snap-2', accountId: 'acc-1', balance: 999_99, at: '2026-01-02T10:00:00.000Z' });
     const effective = effectiveSnapshots([s2, s1], [{ snapshotId: 'snap-2', at: s2.at, deviceId: 'd' }]);
     expect(effective.map((s) => s.id)).toEqual(['snap-1']);
-    expect(latestBalance(effective, 'acc-1')).toBe(100_00);
   });
 });
 
@@ -133,8 +131,6 @@ describe('growthProgress', () => {
     });
     const p = growthProgress(s, '2026-03-01');
     expect(p.current).toBe(2100_00); // checking excluded
-    expect(p.first).toBe(1500_00);
-    expect(p.growth).toBe(600_00);
     expect(p.delta30).toBe(600_00);
   });
 });
@@ -234,5 +230,70 @@ describe('alias continuity', () => {
       ],
     });
     expect(latestBalances(s).get('acc-1')?.balance).toBe(20_00);
+  });
+});
+
+describe('archived accounts count up to the moment they were archived', () => {
+  it('keeps a paid-off, archived card in the debt baseline', () => {
+    const s = state({
+      accounts: [
+        account({ id: 'card-a', kind: 'credit_card' }),
+        account({ id: 'card-b', kind: 'credit_card', archived: true, archivedAt: '2026-02-02T09:00:00.000Z' }),
+      ],
+      snapshots: [
+        snapshot({ accountId: 'card-a', balance: 3000_00, at: '2026-01-01T00:00:00.000Z' }),
+        snapshot({ accountId: 'card-b', balance: 2000_00, at: '2026-01-01T00:00:00.000Z' }),
+        snapshot({ accountId: 'card-a', balance: 1500_00, at: '2026-02-01T00:00:00.000Z' }),
+        snapshot({ accountId: 'card-b', balance: 0, at: '2026-02-01T00:00:00.000Z' }),
+      ],
+    });
+    const p = debtProgress(s, '2026-02-03');
+    expect(p.baseline).toBe(5000_00); // card B's history still counts towards the peak
+    expect(p.current).toBe(1500_00);
+    expect(p.pct).toBe(70);
+  });
+
+  it('carries combined savings straight across a bank switch', () => {
+    const s = state({
+      accounts: [
+        account({ id: 'old', kind: 'savings', archived: true, archivedAt: '2026-01-15T10:00:00.000Z' }),
+        account({ id: 'new', kind: 'savings' }),
+      ],
+      snapshots: [
+        snapshot({ accountId: 'old', balance: 1000_00, at: '2026-01-01T00:00:00.000Z' }),
+        snapshot({ accountId: 'old', balance: 1200_00, at: '2026-01-10T00:00:00.000Z' }),
+        snapshot({ accountId: 'new', balance: 1250_00, at: '2026-01-15T12:00:00.000Z' }),
+      ],
+    });
+    const series = growthProgress(s, '2026-01-16').series;
+    const byDay = Object.fromEntries(series.map((p) => [p.day, p.value]));
+    expect(series[0].day).toBe('2026-01-01'); // old bank's history isn't dropped
+    expect(byDay['2026-01-14']).toBe(1200_00);
+    expect(byDay['2026-01-15']).toBe(1250_00); // old account closes at 0, new one takes over
+    expect(byDay['2026-01-16']).toBe(1250_00);
+  });
+
+  it('ignores readings after the archive point, falling back to updatedAt for older records', () => {
+    const s = state({
+      accounts: [account({ id: 'card', kind: 'credit_card', archived: true, updatedAt: '2026-01-10T00:00:00.000Z' })],
+      snapshots: [
+        snapshot({ accountId: 'card', balance: 800_00, at: '2026-01-01T00:00:00.000Z' }),
+        snapshot({ accountId: 'card', balance: 999_00, at: '2026-01-20T00:00:00.000Z' }),
+      ],
+    });
+    const p = debtProgress(s, '2026-01-25');
+    expect(p.current).toBe(0);
+    expect(p.baseline).toBe(800_00);
+  });
+
+  it('stamps archivedAt on archive and clears it on restore', () => {
+    const s = state({ accounts: [account({ id: 'acc' })] });
+    const archived = updateAccount(s, { deviceId: 'd', now: '2026-03-01T00:00:00.000Z' }, 'acc', { archived: true });
+    expect(archived.accounts[0].archivedAt).toBe('2026-03-01T00:00:00.000Z');
+    // Re-saving an already-archived account doesn't move the archive point
+    const renamed = updateAccount(archived, { deviceId: 'd', now: '2026-04-01T00:00:00.000Z' }, 'acc', { archived: true, name: 'X' });
+    expect(renamed.accounts[0].archivedAt).toBe('2026-03-01T00:00:00.000Z');
+    const restored = updateAccount(archived, { deviceId: 'd', now: '2026-05-01T00:00:00.000Z' }, 'acc', { archived: false });
+    expect(restored.accounts[0].archivedAt).toBeNull();
   });
 });

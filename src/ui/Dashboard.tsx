@@ -76,6 +76,10 @@ export function Dashboard() {
   const debt = debtProgress(state, today);
   const growth = growthProgress(state, today);
   const loans = loanTotals(state, today);
+  // Archived loans still count in the history, but once every loan is archived
+  // (paid off / closed) the Loans card and summary line drop away.
+  const showLoans =
+    loans.series.length > 0 && state.accounts.some((a) => a.kind === 'loan' && !a.archived);
   const netWorth = growth.current - debt.current - loans.current;
 
   const debtTargetDate = settings.debtTargetDate ?? null;
@@ -94,11 +98,11 @@ export function Dashboard() {
     currency,
     debt: { baseline: debt.baseline, current: debt.current, pct: debt.pct },
     growth: { delta30: growth.delta30, hasHistory: growth.series.length > 0 },
-    loans: { current: loans.current, hasLoans: loans.series.length > 0 },
+    loans: { current: loans.current, hasLoans: showLoans },
   });
 
   const reordering = dragKey !== null;
-  const baseVisible = device.dashboardOrder.filter((k) => k !== 'loans' || loans.series.length > 0);
+  const baseVisible = device.dashboardOrder.filter((k) => k !== 'loans' || showLoans);
   // The rendered order stays fixed at the pre-drag order for the whole drag:
   // Chromium silently releases pointer capture when the captured element is
   // moved in the DOM (which is exactly what reordering a keyed list node
@@ -288,7 +292,7 @@ export function Dashboard() {
   return (
     <div>
       <div class="title-row" style="margin-bottom:2px">
-        <img src={`${import.meta.env.BASE_URL}icons/favicon.svg`} class="app-logo" alt="" />
+        <img src={`${import.meta.env.BASE_URL}${import.meta.env.VITE_ICON_DIR}/favicon.svg`} class="app-logo" alt="" />
         <h1>FinPair</h1>
       </div>
       <p class="subtitle">

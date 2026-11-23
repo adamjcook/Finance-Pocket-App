@@ -17,6 +17,12 @@ export interface Account extends Meta {
   kind: AccountKind;
   owner: Owner;
   archived: boolean; // soft delete AND sync tombstone — never hard-delete
+  /**
+   * When it was archived; null/absent while active. Totals count an archived
+   * account's history up to this moment and nothing after. Records archived
+   * before this field existed lack it — read sites fall back to updatedAt.
+   */
+  archivedAt?: ISOTime | null;
   createdAt: ISOTime;
 }
 
@@ -72,13 +78,16 @@ export interface Settings extends Meta {
   /** Optional date (YYYY-MM-DD) to reach the savings target by. */
   savingsTargetDate?: string | null;
   /**
-   * Partner identity colours (CSS hex), used for names, owner dots, and
-   * section markers. Added after v1 shipped — undefined reads as the
+   * Partner identity colours (CSS hex) for the Accounts page's owner key and
+   * bars, chosen at setup. Added after v1 shipped — undefined reads as the
    * default teal/amber.
    */
   partnerAColor?: string;
   partnerBColor?: string;
 }
+
+/** Currencies offered at setup and in Settings (display-only; amounts aren't converted). */
+export const CURRENCIES = ['GBP', 'EUR', 'USD'];
 
 export const DEFAULT_PARTNER_A_COLOR = '#4fd1a5';
 export const DEFAULT_PARTNER_B_COLOR = '#f2a65a';

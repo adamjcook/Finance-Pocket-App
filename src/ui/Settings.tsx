@@ -1,12 +1,12 @@
 import { useState } from 'preact/hooks';
 import { useApp, mutate, getStore, patchDevice } from '../model/store';
 import { updateSettings, voidSnapshot } from '../model/repo';
-import { mergeState, stateHash, summarizeMerge } from '../logic/merge';
 import { effectiveSnapshots } from '../logic/progress';
-import { buildPayload } from '../sync/codec';
-import type { SyncPayload } from '../model/types';
-import { formatMoney } from '../logic/money';
-import { MoneyInput, currencySymbol } from './components/MoneyInput';
+import { asSyncPayload, buildPayload } from '../sync/codec';
+import { CURRENCIES } from '../model/types';
+import { mergePayload } from '../sync/apply';
+import { currencySymbol, formatMoney } from '../logic/money';
+import { MoneyInput } from './components/MoneyInput';
 
 export function Settings() {
   const app = useApp();
@@ -28,20 +28,20 @@ export function Settings() {
     a.href = URL.createObjectURL(blob);
     a.download = `finpair-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
-    URL.revokeObjectURL(a.href);
+    // Revoking straight after click() can cancel the download in some browsers.
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
 
   const importFile = async (file: File) => {
     try {
-      const payload = JSON.parse(await file.text()) as SyncPayload;
-      if (payload.v !== 1 || !Array.isArray(payload.accounts)) {
-        throw new Error('Not a FinPair backup file');
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(await file.text());
+      } catch {
+        throw new Error("This file isn't a FinPair backup.");
       }
-      const before = getStore().state;
-      const merged = mergeState(before, payload);
-      await mutate(() => merged);
-      const summary = summarizeMerge(before, merged);
-      await patchDevice({ lastSyncStateHash: await stateHash(merged) });
+      // Not a sync with the partner, so it leaves the Sync screen's check code alone.
+      const summary = await mergePayload(asSyncPayload(parsed));
       setImportMsg(
         `Imported: ${summary.newSnapshots} balance update(s), ${summary.accountsChanged} account change(s).`,
       );
@@ -115,7 +115,7 @@ export function Settings() {
           value={currency}
           onChange={(e) => saveField({ currency: (e.target as HTMLSelectElement).value })}
         >
-          {['GBP', 'EUR', 'USD'].map((c) => (
+          {CURRENCIES.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>

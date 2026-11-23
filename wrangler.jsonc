@@ -1,0 +1,12 @@
+// Dev deployment only: Cloudflare Workers Builds runs `npm run build:dev` on
+// pushes to `develop`, then `wrangler deploy` serves dist/ as static assets.
+// Production is GitHub Pages and doesn't use this file.
+{
+  "name": "finpair",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./dist"
+  }
+}

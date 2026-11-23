@@ -53,10 +53,17 @@ export async function startScanner(
     video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
     audio: false,
   });
-  video.srcObject = stream;
-  await video.play();
-
-  const detector = await makeDetector();
+  let detector: Detector;
+  try {
+    video.srcObject = stream;
+    await video.play();
+    detector = await makeDetector();
+  } catch (err) {
+    // Don't leave the camera running if startup fails partway through.
+    for (const track of stream.getTracks()) track.stop();
+    video.srcObject = null;
+    throw err;
+  }
   let stopped = false;
   let busy = false;
 

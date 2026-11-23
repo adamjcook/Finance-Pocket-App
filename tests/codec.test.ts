@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  asSyncPayload,
   buildPayload,
   decodeFrames,
   encodePayload,
@@ -94,5 +95,20 @@ describe('codec', () => {
     expect(parseFrame('FP1:abcd:5:2:00000000:AAAA')).toBeNull(); // seq >= total
     expect(parseFrame('FP1:abcd:x:1:00000000:AAAA')).toBeNull();
     expect(parseFrame('random text')).toBeNull();
+  });
+});
+
+describe('asSyncPayload', () => {
+  it('accepts a real payload', () => {
+    const p = buildPayload(state(), 'device-a');
+    expect(asSyncPayload(JSON.parse(JSON.stringify(p)))).toEqual(p);
+  });
+
+  it('rejects non-objects, other versions, and incomplete data with readable messages', () => {
+    expect(() => asSyncPayload(null)).toThrow(/isn't FinPair data/);
+    expect(() => asSyncPayload({ ...buildPayload(state(), 'd'), v: 2 })).toThrow(/version/);
+    const { snapshots: _dropped, ...noSnapshots } = buildPayload(state(), 'd');
+    expect(() => asSyncPayload(noSnapshots)).toThrow(/isn't complete FinPair data/);
+    expect(() => asSyncPayload({ ...buildPayload(state(), 'd'), settings: {} })).toThrow(/isn't complete/);
   });
 });

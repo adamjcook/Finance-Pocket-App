@@ -1,11 +1,5 @@
 name: Deploy to GitHub Pages
 
-# Deploys the production build to https://adamjcook.github.io/Finance-Pocket-App/
-# on every push to main. The `develop` dev-build variant is no longer deployed
-# from here — see adamjcook/Finance-Pocket-App-dev, which builds this repo's
-# `develop` branch and publishes it to its own sibling Pages site instead (a
-# PWA's `scope` made a nested /dev/ sub-path here get swallowed by the real
-# app's "already installed" check).
 on:
   push:
     branches: [main]

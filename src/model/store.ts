@@ -15,6 +15,7 @@ export interface AppStore {
 
 let store: AppStore | null = null;
 let initPromise: Promise<void> | null = null;
+let initError: Error | null = null;
 const listeners = new Set<() => void>();
 
 function notify() {
@@ -22,9 +23,18 @@ function notify() {
 }
 
 async function init(): Promise<void> {
-  const [state, device] = await Promise.all([loadState(), loadDevice()]);
-  store = { state, device };
+  try {
+    const [state, device] = await Promise.all([loadState(), loadDevice()]);
+    store = { state, device };
+  } catch (err) {
+    initError = err instanceof Error ? err : new Error(String(err));
+  }
   notify();
+}
+
+/** Why the store failed to load, if it did (e.g. IndexedDB blocked). */
+export function storeError(): Error | null {
+  return initError;
 }
 
 /** Subscribe a component to the store. Returns null until IndexedDB loads. */

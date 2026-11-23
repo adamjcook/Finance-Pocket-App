@@ -3,8 +3,9 @@ import { useApp, mutate, getStore } from '../model/store';
 import { addAccount, updateAccount } from '../model/repo';
 import type { AccountKind, Owner } from '../model/types';
 import { ACCOUNT_KIND_LABELS, OWED_KINDS } from '../model/types';
-import { MoneyInput, currencySymbol } from './components/MoneyInput';
-import { navigate } from '../app';
+import { MoneyInput } from './components/MoneyInput';
+import { currencySymbol } from '../logic/money';
+import { navigate } from '../router';
 
 interface Props {
   id: string | null; // null = create
