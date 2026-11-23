@@ -78,8 +78,8 @@ The app deploys to GitHub Pages automatically on every push to `main` via
 ## Dev environment
 
 A Cloudflare Worker builds `develop` on every push and serves a mock-data copy
-from its own `workers.dev` domain, installable on your phone alongside the
-real app. It's safe to poke at freely:
+at **https://finpair.mail-ajcook.workers.dev**, installable on your phone
+alongside the real app. It's safe to poke at freely:
 
 - **Completely separate from the real app.** It lives on a different domain
   (origin), so it can't read or write the real app's accounts/balances, and
@@ -96,7 +96,7 @@ real app. It's safe to poke at freely:
 To work on it: push to `develop` and the dev site updates within a minute or
 two. `main` and the real production deployment (GitHub Pages) are untouched.
 
-Cloudflare Worker `finpair-dev` (Workers Builds): branch `develop`, build
+Cloudflare Worker `finpair` (Workers Builds): branch `develop`, build
 command `npm run build:dev`, deploy command `npx wrangler deploy`. The output
 directory and Worker name live in `wrangler.jsonc`; the Node version comes from
 `.node-version`.
