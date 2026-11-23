@@ -144,7 +144,7 @@ export function pullReadings({ force = false } = {}): Promise<void> {
   return force ? inFlight : inFlight.catch(() => undefined);
 }
 
-/** Ask the Worker to take a reading right now (Settings → "Take a reading now"). */
+/** Ask the Worker to take a reading right now (Settings → "Read now"). */
 export async function readingNow(): Promise<T212Reading> {
   const link = getStore().state.settings.t212;
   if (!linkReady(link)) throw new Error('Finish setting up the Trading 212 link first.');
