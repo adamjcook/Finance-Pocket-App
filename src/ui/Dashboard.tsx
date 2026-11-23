@@ -15,6 +15,7 @@ import type { DashboardSectionKey } from '../model/types';
 import { Chart } from './components/Chart';
 import { ProgressRing } from './components/ProgressRing';
 import { TypedText } from './components/TypedText';
+import { Icon } from './components/Icon';
 
 const SECTION_META: Record<DashboardSectionKey, { heading: string }> = {
   growth: { heading: 'Savings & investments' },
@@ -165,43 +166,39 @@ export function Dashboard() {
     return 0;
   };
 
+  const goalLine = (targetDate: string, current: number, monthly: number | null, doneLabel: string) =>
+    current === 0 ? (
+      <p class="goal done">{doneLabel} — goal done 🎉</p>
+    ) : monthly !== null ? (
+      <p class="goal">
+        Goal: cleared by <strong>{formatDay(targetDate)}</strong> — needs about{' '}
+        <strong class="num">{formatMoney(monthly, currency)}/month</strong>
+      </p>
+    ) : (
+      <p class="goal">Goal date {formatDay(targetDate)} has passed — set a new one in Settings.</p>
+    );
+
   const sectionBody = (key: DashboardSectionKey) => {
     if (key === 'debt') {
       return (
-        <div class="card card-debt">
+        <div class="dash-body">
           {debt.baseline > 0 ? (
             <>
-              <div class="hero">
+              <div class="debt-hero">
                 <ProgressRing pct={debt.pct} />
-                <div class="hero-figures">
+                <div class="grow">
                   <div class="big-number">{formatMoney(debt.current, currency)}</div>
-                  <div class="muted">left to clear</div>
-                  <div class="small delta-up" style="margin-top:6px">
+                  <div class="figure-caption">left to clear</div>
+                  <div class="figure-caption positive num" style="margin-top:8px;font-weight:550">
                     {formatMoney(debt.paidOff, currency)} of {formatMoney(debt.baseline, currency)} paid off
                   </div>
                 </div>
               </div>
-              {debtTargetDate &&
-                (debt.current === 0 ? (
-                  <p class="small delta-up" style="margin-top:10px">
-                    Cards cleared — goal done 🎉
-                  </p>
-                ) : debtMonthly !== null ? (
-                  <p class="small" style="margin-top:10px">
-                    Goal: cleared by <strong>{formatDay(debtTargetDate)}</strong> — needs about{' '}
-                    <strong>{formatMoney(debtMonthly, currency)}/month</strong>
-                  </p>
-                ) : (
-                  <p class="muted small" style="margin-top:10px">
-                    Goal date {formatDay(debtTargetDate)} has passed — set a new one in Settings.
-                  </p>
-                ))}
-              <div style="margin-top:12px">
-                <Chart series={debt.series} currency={currency} color="var(--debt)" />
-              </div>
+              {debtTargetDate && goalLine(debtTargetDate, debt.current, debtMonthly, 'Cards cleared')}
+              <Chart series={debt.series} currency={currency} color="var(--debt)" />
             </>
           ) : (
-            <p class="muted">
+            <p class="empty-note">
               No credit-card accounts yet. Add your cards and their balances to start tracking the
               payoff together.
             </p>
@@ -211,79 +208,61 @@ export function Dashboard() {
     }
     if (key === 'loans') {
       return (
-        <div class="card card-loan">
-          <div class="row spread">
-            <div>
-              <div class="big-number">{formatMoney(loans.current, currency)}</div>
-              <div class="muted">still owed on loans</div>
-            </div>
-          </div>
-          {loanTargetDate &&
-            (loans.current === 0 ? (
-              <p class="small delta-up" style="margin-top:10px">
-                Loans cleared — goal done 🎉
-              </p>
-            ) : loanMonthly !== null ? (
-              <p class="small" style="margin-top:10px">
-                Goal: cleared by <strong>{formatDay(loanTargetDate)}</strong> — needs about{' '}
-                <strong>{formatMoney(loanMonthly, currency)}/month</strong>
-              </p>
-            ) : (
-              <p class="muted small" style="margin-top:10px">
-                Goal date {formatDay(loanTargetDate)} has passed — set a new one in Settings.
-              </p>
-            ))}
+        <div class="dash-body">
+          <div class="big-number">{formatMoney(loans.current, currency)}</div>
+          <div class="figure-caption">still owed on loans</div>
+          {loanTargetDate && goalLine(loanTargetDate, loans.current, loanMonthly, 'Loans cleared')}
           {loans.series.length > 1 && (
-            <div style="margin-top:12px">
-              <Chart series={loans.series} currency={currency} color="var(--debt)" />
-            </div>
+            <Chart series={loans.series} currency={currency} color="var(--debt)" />
           )}
         </div>
       );
     }
+    const up = growth.delta30 >= 0;
     return (
-      <div class="card card-growth">
+      <div class="dash-body">
         {growth.series.length > 0 ? (
           <>
-            <div class="row spread">
-              <div>
+            <div class="figure-row">
+              <div class="grow">
                 <div class="big-number">{formatMoney(growth.current, currency)}</div>
-                <div class="muted">combined savings &amp; investments</div>
+                <div class="figure-caption">combined savings &amp; investments</div>
               </div>
-              <div style="text-align:right">
-                <div class={growth.delta30 >= 0 ? 'delta-up' : 'delta-down'}>
-                  {growth.delta30 >= 0 ? '+' : ''}
-                  {formatMoney(growth.delta30, currency)}
-                </div>
-                <div class="muted small">last 30 days</div>
+              <div>
+                <span class={`delta ${up ? 'delta-up' : 'delta-down'}`}>
+                  <Icon name={up ? 'up' : 'down'} />
+                  {formatMoney(Math.abs(growth.delta30), currency)}
+                </span>
+                <div class="delta-note">last 30 days</div>
               </div>
             </div>
             {savingsTarget !== null &&
               (growth.current >= savingsTarget ? (
-                <p class="small delta-up" style="margin-top:10px">
-                  Target of {formatMoney(savingsTarget, currency)} reached 🎉
-                </p>
+                <p class="goal done">Target of {formatMoney(savingsTarget, currency)} reached 🎉</p>
               ) : (
-                <p class="small" style="margin-top:10px">
-                  Target: <strong>{formatMoney(savingsTarget, currency)}</strong> (
-                  {((growth.current / savingsTarget) * 100).toFixed(0)}% there)
-                  {savingsMonthly !== null && savingsTargetDate ? (
-                    <>
-                      {' '}
-                      — about <strong>{formatMoney(savingsMonthly, currency)}/month</strong> to get
-                      there by {formatDay(savingsTargetDate)}
-                    </>
-                  ) : savingsTargetDate ? (
-                    <span class="muted"> — goal date {formatDay(savingsTargetDate)} has passed</span>
-                  ) : null}
-                </p>
+                <div class="goal">
+                  <p>
+                    Target: <strong class="num">{formatMoney(savingsTarget, currency)}</strong> (
+                    {((growth.current / savingsTarget) * 100).toFixed(0)}% there)
+                    {savingsMonthly !== null && savingsTargetDate ? (
+                      <>
+                        {' '}
+                        — about <strong class="num">{formatMoney(savingsMonthly, currency)}/month</strong> to
+                        get there by {formatDay(savingsTargetDate)}
+                      </>
+                    ) : savingsTargetDate ? (
+                      <> — goal date {formatDay(savingsTargetDate)} has passed</>
+                    ) : null}
+                  </p>
+                  <div class="goal-bar">
+                    <span style={`width:${Math.max(0, Math.min(100, (growth.current / savingsTarget) * 100))}%`} />
+                  </div>
+                </div>
               ))}
-            <div style="margin-top:12px">
-              <Chart series={growth.series} currency={currency} color="var(--accent)" />
-            </div>
+            <Chart series={growth.series} currency={currency} color="var(--accent)" />
           </>
         ) : (
-          <p class="muted">No savings or investment accounts yet.</p>
+          <p class="empty-note">No savings or investment accounts yet.</p>
         )}
       </div>
     );
@@ -291,21 +270,26 @@ export function Dashboard() {
 
   return (
     <div>
-      <div class="title-row" style="margin-bottom:2px">
+      <header class="dash-top">
         <img src={`${import.meta.env.BASE_URL}${import.meta.env.VITE_ICON_DIR}/favicon.svg`} class="app-logo" alt="" />
         <h1>FinPair</h1>
-      </div>
-      <p class="subtitle">
-        {settings.partnerAName} &amp; {settings.partnerBName}
-      </p>
-      <TypedText class="wisdom" text={summary} />
+        <p class="subtitle">
+          <span class="pair-dots" aria-hidden="true">
+            <span style="background:var(--partner-a-display)" />
+            <span style="background:var(--partner-b-display)" />
+          </span>
+          {settings.partnerAName} &amp; {settings.partnerBName}
+        </p>
+      </header>
 
-      <div class="net-worth">
-        <span class={netWorth >= 0 ? 'delta-up' : 'delta-down'}>
+      <section class="hero">
+        <div class="hero-label">Net worth</div>
+        <div class={`net-worth ${netWorth < 0 ? 'negative' : ''}`}>
           {netWorth >= 0 ? '' : '-'}
           {formatMoney(Math.abs(netWorth), currency)}
-        </span>
-      </div>
+        </div>
+        <TypedText class="wisdom" text={summary} />
+      </section>
 
       {visible.map((key) => {
         const meta = SECTION_META[key];
@@ -327,7 +311,7 @@ export function Dashboard() {
                   : undefined
             }
           >
-            <h2 class="row spread">
+            <h2>
               {meta.heading}
               <button
                 type="button"
@@ -338,7 +322,7 @@ export function Dashboard() {
                 onPointerUp={endDrag}
                 onPointerCancel={endDrag}
               >
-                ⋮⋮
+                <Icon name="grip" size={18} />
               </button>
             </h2>
             {!reordering && sectionBody(key)}

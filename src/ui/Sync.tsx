@@ -3,6 +3,7 @@ import { useApp } from '../model/store';
 import { currentFrames, type ApplyResult } from '../sync/apply';
 import { QRLoop } from '../sync/send';
 import { ScanPanel } from './components/ScanPanel';
+import { Icon } from './components/Icon';
 
 type Mode = 'idle' | 'show' | 'scan' | 'merged';
 
@@ -40,31 +41,40 @@ export function Sync() {
   if (mode === 'show') {
     return (
       <div>
-        <h1>{result ? 'Now show this back' : 'Show this to your partner'}</h1>
+        <header class="page-header" style="display:block">
+          <h1>{result ? 'Now show this back' : 'Show your partner'}</h1>
+          <p class="lede">
+            {result
+              ? 'Your partner scans this to pick up the combined result.'
+              : 'Your partner taps “Scan partner’s screen” and points their camera here.'}
+          </p>
+        </header>
         {result && (
-          <div class="card">
-            <p>
-              Merged in: <strong>{result.summary.newSnapshots}</strong> balance update(s),{' '}
-              <strong>{result.summary.accountsChanged}</strong> account change(s),{' '}
-              <strong>{result.summary.aliasesChanged}</strong> alias change(s).
-            </p>
-            <p class="muted small" style="margin-top:6px">
-              Your partner should now scan this code with their Sync screen. When they're done,
-              compare check codes — both phones should show:
-            </p>
-            <div class="hash-code" style="margin-top:8px">
-              {result.hash}
+          <div class="card" style="margin-bottom:14px">
+            <div class="stat-line">
+              Balance updates merged <strong>{result.summary.newSnapshots}</strong>
             </div>
+            <div class="stat-line">
+              Account changes <strong>{result.summary.accountsChanged}</strong>
+            </div>
+            <div class="stat-line">
+              Alias changes <strong>{result.summary.aliasesChanged}</strong>
+            </div>
+            <p class="small muted" style="margin:12px 0 10px">
+              When they're done, both phones should show this check code:
+            </p>
+            <div class="hash-code">{result.hash}</div>
           </div>
         )}
         <div class="qr-holder">
           <canvas ref={canvasRef} />
         </div>
-        <p class="muted small" style="text-align:center;margin-top:8px">
-          frame {frameInfo[0] + 1} / {frameInfo[1]} — keeps looping until your partner has them all
+        <p class="small faint num" style="text-align:center;margin-top:10px">
+          Code {frameInfo[0] + 1} of {frameInfo[1]} · loops until your partner has them all
         </p>
-        <div class="row" style="margin-top:12px">
+        <div class="row" style="margin-top:16px">
           <button
+            class="btn-big"
             style="flex:1"
             onClick={() => {
               const slower = speed >= 700 ? 400 : speed + 150;
@@ -72,9 +82,10 @@ export function Sync() {
               loopRef.current?.setSpeed(slower);
             }}
           >
-            Speed: {(1000 / speed).toFixed(1)} codes/s
+            {(1000 / speed).toFixed(1)} codes/s
           </button>
           <button
+            class="btn-big btn-primary"
             style="flex:1"
             onClick={() => {
               stopLoop();
@@ -91,7 +102,10 @@ export function Sync() {
   if (mode === 'scan') {
     return (
       <div>
-        <h1>Scan your partner's screen</h1>
+        <header class="page-header" style="display:block">
+          <h1>Scan</h1>
+          <p class="lede">Point the camera at the code on your partner's phone.</p>
+        </header>
         <ScanPanel onComplete={(r) => void startShow(r)} onCancel={() => setMode('idle')} />
       </div>
     );
@@ -99,18 +113,19 @@ export function Sync() {
 
   if (mode === 'merged') {
     return (
-      <div>
-        <h1>Sync complete</h1>
-        <div class="card">
-          <p class="muted small">Both phones should show this check code:</p>
-          <div class="hash-code" style="margin:12px 0">
-            {result?.hash}
-          </div>
-          <p class="muted small">
-            If they match, you're fully in sync. If not, run the sync once more in either
-            direction — it's always safe to repeat.
-          </p>
+      <div style="text-align:center;padding-top:28px">
+        <div class="success-mark">
+          <Icon name="check" size={30} />
         </div>
+        <h1>Sync complete</h1>
+        <p class="lede" style="margin:8px auto 22px;max-width:32ch">
+          Both phones should show this check code. If they match, you're fully in sync.
+        </p>
+        <div class="hash-code">{result?.hash}</div>
+        <p class="small faint" style="margin:14px auto 26px;max-width:36ch">
+          Codes don't match? Run the sync once more in either direction — it's always safe to
+          repeat.
+        </p>
         <button class="btn-big btn-primary" onClick={() => setMode('idle')}>
           Done
         </button>
@@ -120,31 +135,71 @@ export function Sync() {
 
   return (
     <div>
-      <h1>Sync phones</h1>
-      <p class="muted" style="margin-bottom:14px">
-        Sit together, then: one phone <strong>shows</strong>, the other <strong>scans</strong>.
-        After scanning, the second phone shows the combined result back — scan that and you're
-        both up to date. No internet involved; the data goes screen-to-camera.
-      </p>
+      <header class="page-header" style="display:block">
+        <h1>Sync</h1>
+        <p class="lede">Sit together — one phone shows, the other scans. No internet involved.</p>
+      </header>
       <div class="stack">
-        <button class="btn-primary btn-big" onClick={() => void startShow(null)}>
-          Show my data
+        <button class="action-tile primary" onClick={() => void startShow(null)}>
+          <span class="tile-icon">
+            <Icon name="qr" />
+          </span>
+          <span class="grow">
+            <span class="tile-title">Show my data</span>
+            <span class="tile-sub">Display a looping code for your partner to scan</span>
+          </span>
+          <Icon name="chevron" size={18} class="row-chevron" />
         </button>
-        <button class="btn-big" onClick={() => setMode('scan')}>
-          Scan partner's screen
+        <button class="action-tile" onClick={() => setMode('scan')}>
+          <span class="tile-icon">
+            <Icon name="camera" />
+          </span>
+          <span class="grow">
+            <span class="tile-title">Scan partner's screen</span>
+            <span class="tile-sub">Use the camera to read their code</span>
+          </span>
+          <Icon name="chevron" size={18} class="row-chevron" />
         </button>
       </div>
-      <div class="card" style="margin-top:18px">
-        <p class="muted small">
-          Last synced:{' '}
-          {device.lastSyncAt ? new Date(device.lastSyncAt).toLocaleString() : 'never'}
+
+      <section class="group" style="margin-top:28px">
+        <h2 class="group-label">How it works</h2>
+        <div class="card">
+          <ol class="steps">
+            <li>One phone taps <strong>Show my data</strong>; the other scans it.</li>
+            <li>The scanning phone merges everything and shows the combined result back.</li>
+            <li>The first phone scans that — now you're both up to date.</li>
+            <li>Check codes match on both phones? You're identical.</li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2 class="group-label">This phone</h2>
+        <div class="list">
+          <div class="list-row setting-row">
+            <span>Last synced</span>
+            <span class="muted">
+              {device.lastSyncAt
+                ? new Date(device.lastSyncAt).toLocaleString(undefined, {
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                : 'Never'}
+            </span>
+          </div>
           {device.lastSyncStateHash && (
-            <>
-              {' · '}check code <strong>{device.lastSyncStateHash}</strong>
-            </>
+            <div class="list-row setting-row">
+              <span>Check code</span>
+              <span class="muted num" style="font-family:ui-monospace,monospace;letter-spacing:0.1em">
+                {device.lastSyncStateHash}
+              </span>
+            </div>
           )}
-        </p>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }

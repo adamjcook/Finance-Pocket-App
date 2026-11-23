@@ -1,6 +1,32 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
+ * The device record as actually stored in IndexedDB. The screen updates a
+ * moment before the write lands, and reloading inside that window aborts it —
+ * so persistence checks wait for the write before reloading.
+ */
+async function storedDevice(page: Page): Promise<{ theme?: string; dashboardOrder?: string[] } | null> {
+  return page.evaluate(async () => {
+    const [info] = await indexedDB.databases();
+    if (!info?.name) return null;
+    const db: IDBDatabase = await new Promise((resolve, reject) => {
+      const req = indexedDB.open(info.name!);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    try {
+      return await new Promise((resolve, reject) => {
+        const req = db.transaction('device').objectStore('device').get('device');
+        req.onsuccess = () => resolve(req.result ?? null);
+        req.onerror = () => reject(req.error);
+      });
+    } finally {
+      db.close();
+    }
+  });
+}
+
+/**
  * End-to-end flows against the production build (vite preview).
  * The two-device test uses window.__syncTest, which pipes the real QR frame
  * codec + merge + persistence, bypassing only the camera optics.
@@ -26,7 +52,7 @@ async function addAccount(
   await page.getByPlaceholder('e.g. Barclaycard, Marcus saver').fill(name);
   await page.locator('select').first().selectOption({ label: kind });
   if (owner) {
-    await page.locator('select').nth(1).selectOption({ label: owner });
+    await page.getByRole('group', { name: 'Whose is it?' }).getByRole('button', { name: owner }).click();
   }
   if (balance !== null) {
     await page.getByPlaceholder('0.00').fill(balance);
@@ -63,7 +89,7 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await page.goto('.#/accounts');
   await page.locator('.account-row', { hasText: 'Marcus Saver' }).getByRole('button', { name: '£1,000.00' }).click();
   await page.locator('.account-row', { hasText: 'Marcus Saver' }).locator('input').fill('1250');
-  await page.locator('.account-row', { hasText: 'Marcus Saver' }).getByRole('button', { name: '✓' }).click();
+  await page.locator('.account-row', { hasText: 'Marcus Saver' }).getByRole('button', { name: 'Save balance' }).click();
   await expect(page.getByRole('button', { name: '£1,250.00' })).toBeVisible();
 
   // A loan gets its own dashboard card and stays out of the card-payoff goal
@@ -241,14 +267,15 @@ test('light mode is opt-in, applies live, and persists across a reload', async (
 
   // Dark by default
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(20, 26, 33)');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(11, 13, 16)');
 
   await page.goto('.#/settings');
   await page.getByRole('button', { name: 'Light', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(244, 246, 248)');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(242, 243, 245)');
 
   // Persists across a reload — it's a device preference, not just an in-memory var
+  await expect.poll(async () => (await storedDevice(page))?.theme).toBe('light');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 
@@ -293,6 +320,7 @@ test('dashboard shows net worth, defaults to savings first, and cards are drag-r
   await expect(headings.nth(1)).toContainText('Savings & investments');
 
   // Persists across a reload — it's a device preference, not just in-memory
+  await expect.poll(async () => (await storedDevice(page))?.dashboardOrder?.[0]).toBe('debt');
   await page.reload();
   await expect(page.locator('.dash-section h2').nth(0)).toContainText('Credit card debt');
 });
@@ -327,7 +355,7 @@ test('dragging one card past two others in a single motion lands correctly', asy
   // All three cards collapse to bare heading rows for the duration — no
   // "card" body should be visible anywhere on the board while dragging.
   await page.mouse.move(cx, handleBox.y + 10);
-  await expect(page.locator('.card')).toHaveCount(0);
+  await expect(page.locator('.dash-body')).toHaveCount(0);
 
   const loansBox = await loansSection.boundingBox();
   if (!loansBox) throw new Error('expected bounding box');
@@ -335,7 +363,7 @@ test('dragging one card past two others in a single motion lands correctly', asy
   await page.mouse.move(cx, loansBox.y + loansBox.height + 40);
   await page.mouse.up();
 
-  await expect(page.locator('.card')).toHaveCount(3);
+  await expect(page.locator('.dash-body')).toHaveCount(3);
   await expect(headings.nth(0)).toContainText('Credit card debt');
   await expect(headings.nth(1)).toContainText('Loans');
   await expect(headings.nth(2)).toContainText('Savings & investments');

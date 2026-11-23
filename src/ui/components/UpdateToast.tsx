@@ -11,11 +11,11 @@ export function UpdateToast() {
 
   return (
     <div class="toast" role="status">
-      <span style="flex:1">A new version of the app is ready.</span>
+      <span style="flex:1">A new version is ready.</span>
       <button class="btn-primary" onClick={() => void updateServiceWorker(true)}>
         Update
       </button>
-      <button onClick={() => (setNeedRefresh as (v: boolean) => void)(false)}>Later</button>
+      <button class="btn-quiet" onClick={() => (setNeedRefresh as (v: boolean) => void)(false)}>Later</button>
     </div>
   );
 }

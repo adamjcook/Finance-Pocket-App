@@ -11,14 +11,17 @@ interface Props {
   placeholder?: string;
   symbol?: string;
   inputRef?: (el: HTMLInputElement | null) => void;
+  /** Stretch to the full width of its container. */
+  wide?: boolean;
+  ariaLabel?: string;
 }
 
 /** Decimal money field: numeric keyboard, pence-accurate parsing, invalid highlight. */
-export function MoneyInput({ initial, onChange, onEnter, autoFocus, placeholder, symbol = '£', inputRef }: Props) {
+export function MoneyInput({ initial, onChange, onEnter, autoFocus, placeholder, symbol = '£', inputRef, wide, ariaLabel }: Props) {
   const [text, setText] = useState(initial === null ? '' : minorToInput(initial));
   const invalid = text.trim() !== '' && parseMoney(text) === null;
   return (
-    <span class="money-input">
+    <span class={`money-input ${wide ? 'wide' : ''}`}>
       <span class="prefix">{symbol}</span>
       <input
         ref={inputRef}
@@ -27,6 +30,7 @@ export function MoneyInput({ initial, onChange, onEnter, autoFocus, placeholder,
         enterkeyhint={onEnter ? 'next' : 'done'}
         autofocus={autoFocus}
         placeholder={placeholder ?? '0.00'}
+        aria-label={ariaLabel}
         value={text}
         class={invalid ? 'invalid' : ''}
         onInput={(e) => {

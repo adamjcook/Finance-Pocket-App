@@ -57,32 +57,29 @@ export function ScanPanel({ onComplete, onCancel }: Props) {
     };
   }, []);
 
+  const got = received.filter(Boolean).length;
   return (
     <div>
       {error ? (
         <div class="error-box">{error}</div>
       ) : (
-        <video ref={videoRef} class="scan-video" playsInline muted />
+        <div class="scan-frame">
+          <video ref={videoRef} class="scan-video" playsInline muted />
+        </div>
       )}
-      {!error &&
-        (received.length > 0 ? (
-          <>
-            <div class="progress-strip">
-              {received.map((got, i) => (
-                <span key={i} class={`progress-cell ${got ? 'got' : ''}`} />
-              ))}
-            </div>
-            <p class="muted small" style="margin-top:6px">
-              {received.filter(Boolean).length} of {received.length} pieces — hold steady, missing
-              pieces come around again
-            </p>
-          </>
-        ) : (
-          <p class="muted small" style="margin-top:10px">
-            Point the camera at the code on your partner's phone.
+      {!error && received.length > 0 && (
+        <>
+          <div class="progress-strip" role="progressbar" aria-valuemin={0} aria-valuemax={received.length} aria-valuenow={got}>
+            {received.map((g, i) => (
+              <span key={i} class={`progress-cell ${g ? 'got' : ''}`} />
+            ))}
+          </div>
+          <p class="small muted num" style="margin-top:8px">
+            {got} of {received.length} pieces — hold steady, missing pieces come around again
           </p>
-        ))}
-      <button class="btn-big" style="margin-top:12px" onClick={onCancel}>
+        </>
+      )}
+      <button class="btn-big" style="margin-top:16px" onClick={onCancel}>
         Cancel
       </button>
     </div>
