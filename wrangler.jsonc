@@ -4,6 +4,8 @@
 {
   "name": "finpair",
   "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "preview_urls": false,
   "assets": {
     "directory": "./dist"
   }
