@@ -77,9 +77,9 @@ The app deploys to GitHub Pages automatically on every push to `main` via
 
 ## Dev environment
 
-Cloudflare Pages builds `develop` on every push and deploys a mock-data copy
-to its own `pages.dev` domain, installable on your phone alongside the real
-app. It's safe to poke at freely:
+A Cloudflare Worker builds `develop` on every push and serves a mock-data copy
+from its own `workers.dev` domain, installable on your phone alongside the
+real app. It's safe to poke at freely:
 
 - **Completely separate from the real app.** It lives on a different domain
   (origin), so it can't read or write the real app's accounts/balances, and
@@ -96,8 +96,10 @@ app. It's safe to poke at freely:
 To work on it: push to `develop` and the dev site updates within a minute or
 two. `main` and the real production deployment (GitHub Pages) are untouched.
 
-Cloudflare Pages project settings: production branch `develop`, build command
-`npm run build:dev`, output directory `dist`, Node version from `.node-version`.
+Cloudflare Worker `finpair-dev` (Workers Builds): branch `develop`, build
+command `npm run build:dev`, deploy command `npx wrangler deploy`. The output
+directory and Worker name live in `wrangler.jsonc`; the Node version comes from
+`.node-version`.
 
 Locally,
 `npm run build:dev` (or `npm run dev`, which is isolated automatically by
