@@ -98,9 +98,10 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await page.goto('.#/');
   await expect(page.getByRole('heading', { name: 'FinPair' })).toBeVisible();
   await expect(page.locator('.subtitle', { hasText: 'Adam & Sam' })).toBeVisible();
-  await expect(page.getByText('£1,500.00').first()).toBeVisible();
+  // Home shows whole pounds throughout.
+  await expect(page.locator('.big-number', { hasText: '£1,500' })).toBeVisible();
   await expect(page.getByRole('img', { name: '50% paid off' })).toBeVisible(); // half of the £3,000 peak
-  await expect(page.getByText('£1,500.00 of £3,000.00 paid off')).toBeVisible();
+  await expect(page.getByText('£1,500 of £3,000 paid off')).toBeVisible();
 
   // A second change through the Update button; balances on the list are plain text
   await page.goto('.#/accounts');
@@ -120,9 +121,9 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await expect(page.getByText('still owed on loans')).toBeVisible();
   const loansCard = page.locator('.dash-section', { hasText: 'Loans' });
   await expect(loansCard.getByRole('img', { name: '0% paid off' })).toBeVisible(); // ring, like the cards'
-  await expect(loansCard).toContainText('£0.00 of £9,000.00 paid off');
-  await expect(page.getByText('£9,000.00').first()).toBeVisible();
-  await expect(page.getByText('£1,500.00').first()).toBeVisible(); // card debt unchanged
+  await expect(loansCard).toContainText('£0 of £9,000 paid off');
+  await expect(loansCard.locator('.big-number')).toHaveText('£9,000');
+  await expect(page.locator('.dash-section', { hasText: 'Credit card debt' }).locator('.big-number')).toHaveText('£1,500'); // unchanged
 
   // Goals live on each account: a pay-off date for the card and the loan.
   const year = new Date().getUTCFullYear() + 1;
@@ -133,13 +134,16 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
     await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
   }
+  // Each pay-off goal shows inside its own card, not in a separate Goals card.
   await page.goto('.#/');
-  const goals = page.locator('.dash-section', { hasText: 'Goals' });
-  await expect(goals).toContainText(`Pay off by 1 Jun ${year}`);
-  await expect(goals).toContainText(`Pay off by 1 Nov ${year}`);
-  await expect(goals).toContainText('£1,500.00 left');
-  await expect(goals.getByRole('img', { name: 'Barclaycard: 50% paid off' })).toBeVisible();
-  await expect(goals).toContainText(/about £[\d,.]+\/month/);
+  const cards = page.locator('.dash-section', { hasText: 'Credit card debt' });
+  const loans = page.locator('.dash-section', { hasText: 'still owed on loans' });
+  await expect(cards).toContainText(`Pay off by 1 Jun ${year}`);
+  await expect(cards).toContainText('£1,500 left');
+  await expect(cards.getByRole('img', { name: 'Barclaycard: 50% paid off' })).toBeVisible();
+  await expect(cards).toContainText(/about £[\d,]+\/month/);
+  await expect(loans).toContainText(`Pay off by 1 Nov ${year}`);
+  await expect(page.locator('.dash-section', { hasText: 'Savings goals' })).toHaveCount(0);
 });
 
 test('second phone joins via setup and owners stay consistent (no flip)', async ({ browser }) => {
@@ -225,7 +229,7 @@ test('two phones converge through a full QR-frame sync round trip', async ({ bro
   for (const phone of [phoneA, phoneB]) {
     await phone.goto('.#/');
     await phone.reload();
-    await expect(phone.getByText('£5,000.00').first()).toBeVisible();
+    await expect(phone.locator('.dash-section', { hasText: 'Credit card debt' }).locator('.big-number')).toHaveText('£5,000');
     await expect(phone.getByText('left to clear')).toBeVisible();
   }
 
@@ -437,8 +441,8 @@ test('Trading 212 link imports daily readings and shows the day and overall chan
 
   // Home: the move on the day (+£120.50) and the overall gain (+£1,120.50, 12.4%).
   await page.goto('.#/');
-  await expect(page.locator('.mini-stats')).toContainText('+£120.50 today');
-  await expect(page.locator('.mini-stats')).toContainText('+£1,120.50 (12.4%) overall');
+  await expect(page.locator('.mini-stats')).toContainText('+£121 today');
+  await expect(page.locator('.mini-stats')).toContainText('+£1,121 (12.4%) overall');
 });
 
 test('pot goals on Home, 0% deal and stale-balance pills, and the Reminders section', async ({ page }) => {
@@ -457,10 +461,10 @@ test('pot goals on Home, 0% deal and stale-balance pills, and the Reminders sect
   await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
 
   await page.goto('.#/');
-  const goals = page.locator('.dash-section', { hasText: 'Goals' });
+  const goals = page.locator('.dash-section', { hasText: 'Savings goals' });
   await expect(goals).toContainText('Wedding Fund');
-  await expect(goals).toContainText('£2,000.00 of £10,000.00');
-  await expect(goals).toContainText('£8,000.00 to go');
+  await expect(goals).toContainText('£2,000 of £10,000');
+  await expect(goals).toContainText('£8,000 to go');
   await expect(goals).toContainText(`to reach it by 1 Jun ${nextYear}`);
   await expect(goals.getByRole('img', { name: 'Wedding Fund: 20% of goal' })).toBeVisible();
 
@@ -570,13 +574,20 @@ test('payday update: mistypes are caught, drafts survive a reload, and a check-i
 
   // A malformed amount says so in words and blocks saving.
   await input.fill('12a');
-  await expect(page.getByText('Not a valid amount')).toBeVisible();
+  await expect(page.getByText(/Not a valid amount\. Use numbers only/)).toBeVisible();
   await expect(input).toHaveAttribute('aria-invalid', 'true');
   await expect(page.getByRole('button', { name: 'Fix the amount in red first' })).toBeDisabled();
 
   // An extra zero gets a gentle double-check, but can still be saved.
   await input.fill('18000');
   await expect(page.locator('.row-warn')).toHaveText('£18,000.00? It was £1,800.00');
+  // …and pressing Save first asks for a second look, listing just that row.
+  const save = page.locator('.sticky-action > .btn-primary');
+  await expect(save).toHaveText('Save 1 update · 1 to double-check');
+  await save.click();
+  await expect(page.getByRole('alert')).toContainText('Double-check before saving');
+  await expect(page.getByRole('alert')).toContainText('Barclaycard£18,000.00 · was £1,800.00');
+  await expect(save).toHaveText('Save anyway');
 
   // A sensible figure survives the app being reloaded mid-update.
   await input.fill('1600');

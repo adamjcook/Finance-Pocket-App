@@ -81,7 +81,9 @@ export function CheckInCard({
     const up = checkIn.savingsChange > 0;
     lines.push({ label: 'Savings', text: `${up ? 'up' : 'down'} ${money(checkIn.savingsChange)}`, good: up });
   }
-  const anyGood = checkIn.milestones.length > 0 || lines.some((l) => l.good);
+  // Judged on the whole picture: savings up £250 doesn't make a month where
+  // card debt rose by much more a "nicely done" one.
+  const anyGood = checkIn.milestones.length > 0 || checkIn.netChange > 0;
 
   const undo = async () => {
     const { device } = getStore();

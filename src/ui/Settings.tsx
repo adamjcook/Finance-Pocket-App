@@ -57,7 +57,7 @@ export function Settings() {
       // Not a sync with the partner, so it leaves the Sync screen's check code alone.
       const summary = await mergePayload(asSyncPayload(parsed));
       setImportMsg(
-        `Imported: ${summary.newSnapshots} balance update(s), ${summary.accountsChanged} account change(s).`,
+        `Imported ${plural(summary.newSnapshots, 'balance update')} and ${plural(summary.accountsChanged, 'account change')}.`,
       );
     } catch (err) {
       setImportMsg(`That file couldn't be imported. ${err instanceof Error ? err.message : String(err)}`);
@@ -245,13 +245,21 @@ export function Settings() {
             <div class="list-row" key={s.id}>
               <div class="grow">
                 <div class="row-title num">{formatMoney(s.balance, currency)}</div>
-                <div class="row-sub num">{s.at.slice(0, 16).replace('T', ' ')}</div>
+                <div class="row-sub num">
+                  {new Date(s.at).toLocaleString('en-GB', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </div>
               </div>
               <button
                 class="btn-sm btn-danger"
                 onClick={() => void mutate((st) => voidSnapshot(st, ctx(), s.id))}
               >
-                Undo entry
+                Undo
               </button>
             </div>
           ))}
@@ -446,3 +454,5 @@ export function Settings() {
     </div>
   );
 }
+
+const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;

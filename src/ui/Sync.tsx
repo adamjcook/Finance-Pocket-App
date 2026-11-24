@@ -82,7 +82,8 @@ export function Sync() {
               loopRef.current?.setSpeed(slower);
             }}
           >
-            {speed >= 700 ? 'Slowest' : speed >= 550 ? 'Slower' : 'Normal speed'}
+            {/* Says what tapping will do, not the speed it's at. */}
+            {speed >= 700 ? 'Back to normal speed' : 'Slow down'}
           </button>
           <button
             class="btn-big btn-primary"
@@ -193,9 +194,7 @@ export function Sync() {
           {device.lastSyncStateHash && (
             <div class="list-row setting-row">
               <span>Check code</span>
-              <span class="muted num" style="font-family:ui-monospace,monospace;letter-spacing:0.1em">
-                {device.lastSyncStateHash}
-              </span>
+              <span class="muted check-code">{device.lastSyncStateHash}</span>
             </div>
           )}
         </div>

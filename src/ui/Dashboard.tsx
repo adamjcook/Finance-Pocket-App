@@ -13,7 +13,7 @@ import {
   toDay,
   todayISO,
 } from '../logic/progress';
-import { formatMoney, formatMoneyWhole } from '../logic/money';
+import { formatMoneyWhole } from '../logic/money';
 import { lastWorkingDay } from '../../worker/src/ukdates';
 import { checkInFor, latestUpdateBatch } from '../logic/checkin';
 import { whenSplashGone } from './components/Splash';
@@ -31,7 +31,7 @@ const SECTION_META: Record<DashboardSectionKey, { heading: string }> = {
   growth: { heading: 'Savings & investments' },
   debt: { heading: 'Credit card debt' },
   loans: { heading: 'Loans' },
-  goals: { heading: 'Goals' },
+  goals: { heading: 'Savings goals' },
 };
 
 interface Drag {
@@ -169,7 +169,7 @@ export function Dashboard() {
       };
     })
     .sort((x, y) => x.account.goalDate!.localeCompare(y.account.goalDate!));
-  const hasGoals = pots.length + payoffs.length > 0;
+  const hasGoals = pots.length > 0; // pay-off goals live in the debt and loan cards
 
   // Trading 212 link: the linked account's move on its latest day, and its
   // overall gain from the Worker's latest reading.
@@ -188,7 +188,7 @@ export function Dashboard() {
     }
   }
   const t212Latest = t212Account ? device.t212?.latest : null;
-  const signed = (minor: number) => `${minor >= 0 ? '+' : '−'}${formatMoney(Math.abs(minor), currency)}`;
+  const signed = (minor: number) => `${minor >= 0 ? '+' : '−'}${formatMoneyWhole(Math.abs(minor), currency)}`;
 
   const reordering = dragKey !== null || editing;
   const names = `${settings.partnerAName} & ${settings.partnerBName}`;
@@ -278,6 +278,44 @@ export function Dashboard() {
     return 0;
   };
 
+  // Each card's or loan's own pay-off goal, shown inside its card rather
+  // than repeated in a separate Goals card.
+  const payoffList = (kind: 'credit_card' | 'loan') => {
+    const list = payoffs.filter((p) => p.account.kind === kind);
+    if (list.length === 0) return null;
+    return (
+      <div class="pots payoffs">
+        {list.map((p) => (
+            <div class="pot" key={p.account.id}>
+              <div class="pot-head">
+                <span class="pot-name">{p.account.name}</span>
+                <span class="pot-figures num">
+                  <strong>{formatMoneyWhole(p.current, currency)}</strong> left
+                </span>
+              </div>
+              <div class="goal-bar" role="img" aria-label={`${p.account.name}: ${p.pct.toFixed(0)}% paid off`}>
+                <span style={`width:${p.pct}%`} />
+              </div>
+              <div class="pot-note">
+                {p.current <= 0 ? (
+                  <span class="positive done-note">
+                    <Icon name="check" size={14} /> Paid off
+                  </span>
+                ) : p.monthly !== null ? (
+                  <>
+                    Pay off by {formatDay(p.account.goalDate!)} · about{' '}
+                    <strong class="num">{formatMoneyWhole(p.monthly, currency)}/month</strong>
+                  </>
+                ) : (
+                  <>Pay-off date {formatDay(p.account.goalDate!)} has passed — set a new one on the account</>
+                )}
+              </div>
+            </div>
+          ))}
+      </div>
+    );
+  };
+
   const sectionBody = (key: DashboardSectionKey) => {
     if (key === 'debt') {
       return (
@@ -290,12 +328,13 @@ export function Dashboard() {
                   <div class="big-number">{formatMoneyWhole(debt.current, currency)}</div>
                   <div class="figure-caption">left to clear</div>
                   <div class="figure-caption positive num" style="margin-top:8px;font-weight:550">
-                    {formatMoney(debt.paidOff, currency)} of {formatMoney(debt.baseline, currency)} paid off
+                    {formatMoneyWhole(debt.paidOff, currency)} of {formatMoneyWhole(debt.baseline, currency)} paid off
                   </div>
                   {debt.delta30 !== 0 && <DebtChange change={debt.delta30} currency={currency} />}
                 </div>
               </div>
               <Chart series={debt.series} currency={currency} color="var(--debt)" />
+              {payoffList('credit_card')}
             </>
           ) : (
             <p class="empty-note">
@@ -309,13 +348,12 @@ export function Dashboard() {
     if (key === 'goals') {
       return (
         <div class="dash-body pots">
-          {pots.length > 0 && payoffs.length > 0 && <h3 class="pots-label">Saving up</h3>}
           {pots.map((p) => (
             <div class="pot" key={p.account.id}>
               <div class="pot-head">
                 <span class="pot-name">{p.account.name}</span>
                 <span class="pot-figures num">
-                  <strong>{formatMoney(p.current, currency)}</strong> of {formatMoney(p.goal, currency)}
+                  <strong>{formatMoneyWhole(p.current, currency)}</strong> of {formatMoneyWhole(p.goal, currency)}
                 </span>
               </div>
               <div class="goal-bar" role="img" aria-label={`${p.account.name}: ${p.pct.toFixed(0)}% of goal`}>
@@ -323,47 +361,23 @@ export function Dashboard() {
               </div>
               <div class="pot-note">
                 {p.current >= p.goal ? (
-                  <span class="positive">Goal reached 🎉</span>
+                  <span class="positive done-note">
+                    <Icon name="check" size={14} /> Goal reached
+                  </span>
                 ) : (
                   <>
-                    {formatMoney(p.goal - p.current, currency)} to go
+                    {formatMoneyWhole(p.goal - p.current, currency)} to go
                     {p.account.goalDate &&
                       (p.monthly !== null ? (
                         <>
                           {' '}
-                          · about <strong class="num">{formatMoney(p.monthly, currency)}/month</strong> to
+                          · about <strong class="num">{formatMoneyWhole(p.monthly, currency)}/month</strong> to
                           reach it by {formatDay(p.account.goalDate)}
                         </>
                       ) : (
                         <> · goal date {formatDay(p.account.goalDate)} has passed</>
                       ))}
                   </>
-                )}
-              </div>
-            </div>
-          ))}
-          {pots.length > 0 && payoffs.length > 0 && <h3 class="pots-label">Paying off</h3>}
-          {payoffs.map((p) => (
-            <div class="pot" key={p.account.id}>
-              <div class="pot-head">
-                <span class="pot-name">{p.account.name}</span>
-                <span class="pot-figures num">
-                  <strong>{formatMoney(p.current, currency)}</strong> left
-                </span>
-              </div>
-              <div class="goal-bar" role="img" aria-label={`${p.account.name}: ${p.pct.toFixed(0)}% paid off`}>
-                <span style={`width:${p.pct}%`} />
-              </div>
-              <div class="pot-note">
-                {p.current <= 0 ? (
-                  <span class="positive">Paid off 🎉</span>
-                ) : p.monthly !== null ? (
-                  <>
-                    Pay off by {formatDay(p.account.goalDate!)} · about{' '}
-                    <strong class="num">{formatMoney(p.monthly, currency)}/month</strong>
-                  </>
-                ) : (
-                  <>Pay-off date {formatDay(p.account.goalDate!)} has passed — set a new one on the account</>
                 )}
               </div>
             </div>
@@ -380,7 +394,7 @@ export function Dashboard() {
               <div class="big-number">{formatMoneyWhole(loans.current, currency)}</div>
               <div class="figure-caption">still owed on loans</div>
               <div class="figure-caption positive num" style="margin-top:8px;font-weight:550">
-                {formatMoney(loans.paidOff, currency)} of {formatMoney(loans.baseline, currency)} paid off
+                {formatMoneyWhole(loans.paidOff, currency)} of {formatMoneyWhole(loans.baseline, currency)} paid off
               </div>
               {loans.delta30 !== 0 && <DebtChange change={loans.delta30} currency={currency} />}
             </div>
@@ -388,6 +402,7 @@ export function Dashboard() {
           {loans.series.length > 1 && (
             <Chart series={loans.series} currency={currency} color="var(--debt)" />
           )}
+          {payoffList('loan')}
         </div>
       );
     }
@@ -405,7 +420,7 @@ export function Dashboard() {
                 <div>
                   <span class={`delta ${up ? 'delta-up' : 'delta-down'}`}>
                     <Icon name={up ? 'up' : 'down'} />
-                    {formatMoney(Math.abs(growth.delta30), currency)}
+                    {formatMoneyWhole(Math.abs(growth.delta30), currency)}
                   </span>
                   <div class="delta-note">last 30 days</div>
                 </div>
@@ -585,7 +600,7 @@ function DebtChange({ change, currency }: { change: number; currency: string }) 
     <div class="debt-change">
       <span class={`delta ${down ? 'delta-up' : 'delta-flat'}`}>
         <Icon name={down ? 'down' : 'up'} />
-        {formatMoney(Math.abs(change), currency)}
+        {formatMoneyWhole(Math.abs(change), currency)}
       </span>
       <span class="delta-note">last 30 days</span>
     </div>
