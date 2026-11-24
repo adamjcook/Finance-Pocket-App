@@ -21,14 +21,14 @@ export function Setup() {
   const [nameA, setNameA] = useState('');
   const [nameB, setNameB] = useState('');
   const [currency, setCurrency] = useState('GBP');
-  // The two colours are fixed to the app icon's circles — the only choice
-  // is which one is "yours"; your partner gets the other automatically.
-  const [myColor, setMyColor] = useState<'teal' | 'amber'>('teal');
+  // Two fixed owner colours (blue / pink) — the only choice is which one is
+  // "yours"; your partner gets the other automatically.
+  const [myColor, setMyColor] = useState<'blue' | 'pink'>('blue');
 
   const save = async () => {
     const { device } = getStore();
     const [partnerAColor, partnerBColor] =
-      myColor === 'teal'
+      myColor === 'blue'
         ? [DEFAULT_PARTNER_A_COLOR, DEFAULT_PARTNER_B_COLOR]
         : [DEFAULT_PARTNER_B_COLOR, DEFAULT_PARTNER_A_COLOR];
     await mutate((s) =>
@@ -85,20 +85,20 @@ export function Setup() {
                 type="button"
                 class="colour-choice"
                 style={`background:${DEFAULT_PARTNER_A_COLOR}`}
-                aria-label="Teal"
-                aria-pressed={myColor === 'teal'}
-                onClick={() => setMyColor('teal')}
+                aria-label="Blue"
+                aria-pressed={myColor === 'blue'}
+                onClick={() => setMyColor('blue')}
               />
               <button
                 type="button"
                 class="colour-choice"
                 style={`background:${DEFAULT_PARTNER_B_COLOR}`}
-                aria-label="Amber"
-                aria-pressed={myColor === 'amber'}
-                onClick={() => setMyColor('amber')}
+                aria-label="Pink"
+                aria-pressed={myColor === 'pink'}
+                onClick={() => setMyColor('pink')}
               />
             </div>
-            <p class="field-hint">Your partner gets the other one — the two circles of the app icon.</p>
+            <p class="field-hint">Your partner gets the other one. Joint accounts are purple.</p>
           </div>
         </div>
         <button class="btn-primary btn-big" style="margin-top:20px" onClick={() => void save()}>

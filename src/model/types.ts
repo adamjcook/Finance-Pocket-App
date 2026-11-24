@@ -137,8 +137,22 @@ export interface T212DeviceStatus {
 /** Currencies offered at setup and in Settings (display-only; amounts aren't converted). */
 export const CURRENCIES = ['GBP', 'EUR', 'USD'];
 
-export const DEFAULT_PARTNER_A_COLOR = '#4fd1a5';
-export const DEFAULT_PARTNER_B_COLOR = '#f2a65a';
+/**
+ * Owner colours: blue and pink for the two partners, purple (their mix) for
+ * joint accounts — kept clear of the app's green (growth/progress), orange
+ * (money owed) and yellow. Each has a hand-picked shade for light mode.
+ */
+export const DEFAULT_PARTNER_A_COLOR = '#6ea8fe';
+export const DEFAULT_PARTNER_B_COLOR = '#f28dc0';
+export const OWNER_COLOR_SHADES: Record<string, { dark: string; light: string }> = {
+  [DEFAULT_PARTNER_A_COLOR]: { dark: '#6ea8fe', light: '#2563eb' },
+  [DEFAULT_PARTNER_B_COLOR]: { dark: '#f28dc0', light: '#c2307a' },
+};
+/** Colours saved before the palette changed (the icon's teal and amber), mapped to their replacements. */
+export const LEGACY_PARTNER_COLORS: Record<string, string> = {
+  '#4fd1a5': DEFAULT_PARTNER_A_COLOR,
+  '#f2a65a': DEFAULT_PARTNER_B_COLOR,
+};
 
 export type Theme = 'dark' | 'light';
 

@@ -230,43 +230,43 @@ test('alias survives switching banks', async ({ page }) => {
 });
 
 test('the setup colour choice applies on the accounts page, persists, and darkens in light mode', async ({ page }) => {
-  // Colours are no longer freely pickable — Setup offers only the app icon's
-  // two fixed colours, and whichever one you pick, your partner gets the other.
+  // Setup offers the two fixed owner colours (blue / pink); whichever one you
+  // pick, your partner gets the other.
   await page.goto('.');
   await page.getByRole('button', { name: 'Set up on this phone first' }).click();
   await page.getByPlaceholder('e.g. Adam').fill('Adam');
   await page.getByPlaceholder('e.g. Sam').fill('Sam');
-  await page.getByRole('button', { name: 'Amber' }).click();
+  await page.getByRole('button', { name: 'Pink' }).click();
   await page.getByRole('button', { name: 'Get started' }).click();
   await expect(page.getByRole('heading', { name: 'New account' })).toBeVisible();
 
   await addAccount(page, 'Barclaycard', 'Credit card', '1500', 'Adam');
 
-  // Adam (partner A) picked amber, so Sam (partner B) gets teal — swapped
-  // from the default A=teal/B=amber assignment.
+  // Adam (partner A) picked pink, so Sam (partner B) gets blue — swapped
+  // from the default A=blue/B=pink assignment.
   await page.goto('.#/accounts');
-  await expect(page.locator('.owner-key .owner-dot-a')).toHaveCSS('background-color', 'rgb(242, 166, 90)');
-  await expect(page.locator('.owner-key .owner-dot-b')).toHaveCSS('background-color', 'rgb(79, 209, 165)');
+  await expect(page.locator('.owner-key .owner-dot-a')).toHaveCSS('background-color', 'rgb(242, 141, 192)');
+  await expect(page.locator('.owner-key .owner-dot-b')).toHaveCSS('background-color', 'rgb(110, 168, 254)');
   const bar = page.locator('.account-row', { hasText: 'Barclaycard' }).locator('.owner-bar');
-  await expect(bar).toHaveCSS('background-color', 'rgb(242, 166, 90)');
+  await expect(bar).toHaveCSS('background-color', 'rgb(242, 141, 192)');
 
   // Persists across a reload (settings are stored, not just an in-memory var)
   await page.reload();
-  await expect(bar).toHaveCSS('background-color', 'rgb(242, 166, 90)');
+  await expect(bar).toHaveCSS('background-color', 'rgb(242, 141, 192)');
 
-  // In light mode the fixed colour gets darkened for contrast against a
-  // white card — same idea as --accent/--debt.
+  // In light mode each colour switches to its own deeper shade for contrast
+  // against a white card.
   await page.goto('.#/settings');
   await page.getByRole('button', { name: 'Light', exact: true }).click();
   await page.goto('.#/accounts');
-  await expect(bar).not.toHaveCSS('background-color', 'rgb(242, 166, 90)');
+  await expect(bar).not.toHaveCSS('background-color', 'rgb(242, 141, 192)');
   const [r, g, b] = await bar.evaluate((el) =>
     getComputedStyle(el)
       .backgroundColor.match(/[\d.]+/g)!
       .slice(0, 3)
       .map(Number),
   );
-  expect(r + g + b).toBeLessThan(242 + 166 + 90); // darker than the raw amber, not just different
+  expect(r + g + b).toBeLessThan(242 + 141 + 192); // darker than the raw amber, not just different
 });
 
 test('light mode is opt-in, applies live, and persists across a reload', async ({ page }) => {

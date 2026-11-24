@@ -2,6 +2,7 @@ import { useEffect } from 'preact/hooks';
 import { getStore, mutate, storeError, useApp } from './model/store';
 import { useRoute } from './router';
 import { DEFAULT_PARTNER_A_COLOR, DEFAULT_PARTNER_B_COLOR } from './model/types';
+import { ownerShades } from './logic/ownerColors';
 import { Dashboard } from './ui/Dashboard';
 import { Accounts } from './ui/Accounts';
 import { AccountForm } from './ui/AccountForm';
@@ -15,13 +16,6 @@ import { Icon, type IconName } from './ui/components/Icon';
 import { pullReadings } from './integrations/t212';
 import { migrateSettingsGoals } from './model/repo';
 import { refreshReminders, registrationFacts } from './integrations/push';
-
-const HEX_COLOR = /^#[0-9a-f]{6}$/i;
-
-/** Defensive: a color synced from an older/other app version might not be valid CSS. */
-function safeColor(value: string | undefined, fallback: string): string {
-  return value && HEX_COLOR.test(value) ? value : fallback;
-}
 
 const TABS: { route: string; label: string; icon: IconName }[] = [
   { route: '/', label: 'Home', icon: 'home' },
@@ -41,8 +35,12 @@ export function App() {
   useEffect(() => {
     if (!app) return;
     const root = document.documentElement.style;
-    root.setProperty('--partner-a', safeColor(app.state.settings.partnerAColor, DEFAULT_PARTNER_A_COLOR));
-    root.setProperty('--partner-b', safeColor(app.state.settings.partnerBColor, DEFAULT_PARTNER_B_COLOR));
+    const a = ownerShades(app.state.settings.partnerAColor, DEFAULT_PARTNER_A_COLOR);
+    const b = ownerShades(app.state.settings.partnerBColor, DEFAULT_PARTNER_B_COLOR);
+    root.setProperty('--partner-a', a.dark);
+    root.setProperty('--partner-a-light', a.light);
+    root.setProperty('--partner-b', b.dark);
+    root.setProperty('--partner-b-light', b.light);
   }, [app?.state.settings.partnerAColor, app?.state.settings.partnerBColor]);
 
   useEffect(() => {
