@@ -9,6 +9,7 @@ import { Sync } from './ui/Sync';
 import { Settings } from './ui/Settings';
 import { Setup } from './ui/Setup';
 import { UpdateToast } from './ui/components/UpdateToast';
+import { Splash } from './ui/components/Splash';
 import { Icon, type IconName } from './ui/components/Icon';
 import { pullReadings } from './integrations/t212';
 import { migrateSettingsGoals } from './model/repo';
@@ -26,12 +27,37 @@ const THEME_COLOR = { dark: '#0b0d10', light: '#f2f3f5' } as const;
 
 export function App() {
   const app = useApp();
+  const setupDone = !!app && app.state.settings.updatedBy !== '';
+  // The splash sits beside the screens (not inside either branch below), so
+  // it keeps running smoothly when storage finishes opening underneath it.
+  return (
+    <>
+      <Screens />
+      {!(app === null && storeError()) && (
+        <Splash
+          ready={app !== null}
+          names={setupDone ? `${app!.state.settings.partnerAName} & ${app!.state.settings.partnerBName}` : null}
+        />
+      )}
+    </>
+  );
+}
+
+function Screens() {
+  const app = useApp();
   const route = useRoute();
 
   useEffect(() => {
     if (!app) return;
     document.documentElement.setAttribute('data-theme', app.device.theme);
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[app.device.theme]);
+    // Remembered for index.html, which applies it before the first frame so the
+    // welcome splash opens in the right theme. Storage stays the real source.
+    try {
+      localStorage.setItem('finpair-theme', app.device.theme);
+    } catch {
+      /* private mode etc. — the splash just starts dark */
+    }
   }, [app?.device.theme]);
 
   // Trading 212 link: pick up any new daily readings when the app opens or
@@ -68,11 +94,11 @@ export function App() {
 
   if (!app) {
     const error = storeError();
+    // While storage opens, the welcome splash (in App) covers the screen.
+    if (!error) return null;
     return (
       <div class="loading">
-        {error
-          ? `Couldn't open this phone's storage (${error.message}). Close the app fully and reopen it; if this keeps happening, check Chrome isn't blocking site data.`
-          : 'Loading…'}
+        {`Couldn't open this phone's storage (${error.message}). Close the app fully and reopen it; if this keeps happening, check Chrome isn't blocking site data.`}
       </div>
     );
   }
