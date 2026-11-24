@@ -1510,7 +1510,7 @@ label.field > span:first-child,
    animations fill backwards only, so this transition is free to run. */
 .splash-handoff .splash-greeting {
   opacity: 0;
-  transition: opacity 120ms ease-out;
+  transition: opacity 200ms ease-out;
 }
 
 @media (prefers-reduced-motion: no-preference) {

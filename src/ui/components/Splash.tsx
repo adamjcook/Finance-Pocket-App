@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 
 let shownThisLaunch = false;
 
-const ENTER_MS = 850; // circles meet by ~640ms, greeting settled by ~720ms
+const ENTER_MS = 1500; // circles meet by ~640ms; greeting settled by ~720ms, then held ~0.8s to read
 const EXIT_MS = 380;
 const EASE_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
 
