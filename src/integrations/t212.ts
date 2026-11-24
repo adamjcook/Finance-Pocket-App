@@ -117,7 +117,14 @@ async function record(readings: T212Reading[], workerStatus: WorkerStatus | null
 }
 
 async function fail(err: unknown): Promise<never> {
-  const message = err instanceof Error ? err.message : String(err);
+  // fetch() rejects with a bare TypeError ("Failed to fetch") when the Worker
+  // can't be reached at all; say what that means instead.
+  const message =
+    err instanceof TypeError
+      ? "Couldn't reach your Worker. Check the address, and that this phone is online."
+      : err instanceof Error
+        ? err.message
+        : String(err);
   await patchDevice({
     t212: { checkedAt: new Date().toISOString(), error: message, latest: getStore().device.t212?.latest ?? null },
   });

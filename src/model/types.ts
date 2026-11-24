@@ -139,7 +139,8 @@ export const CURRENCIES = ['GBP', 'EUR', 'USD'];
 export type Theme = 'dark' | 'light';
 
 export type DashboardSectionKey = 'growth' | 'goals' | 'debt' | 'loans';
-export const DEFAULT_DASHBOARD_ORDER: DashboardSectionKey[] = ['growth', 'goals', 'debt', 'loans'];
+// Clearing the card debt is the first job, so it leads on a new phone.
+export const DEFAULT_DASHBOARD_ORDER: DashboardSectionKey[] = ['debt', 'growth', 'goals', 'loans'];
 
 /** Which reminders this phone wants (Settings → Reminders). */
 export interface ReminderPrefs {
@@ -172,6 +173,13 @@ export interface DeviceState {
   t212?: T212DeviceStatus | null;
   /** Reminder notifications on this phone (added later — absent until turned on). */
   push?: PushDeviceState | null;
+  /**
+   * Which of the two partners this phone belongs to, so Settings can say
+   * "You" and "Your partner". Absent on phones set up before it existed.
+   */
+  me?: 'A' | 'B' | null;
+  /** What Home's news line has shown or been told to drop, on this phone. */
+  news?: import('../logic/news').NewsMemory | null;
 }
 
 /** Everything that syncs between the two phones. */

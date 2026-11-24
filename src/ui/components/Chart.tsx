@@ -149,6 +149,12 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
       </p>
       <svg
         ref={svgRef}
+        role="img"
+        aria-label={
+          series.length
+            ? `Chart from ${formatDay(series[0].day)}, ${formatMoney(series[0].value, currency)}, to ${formatDay(series[series.length - 1].day)}, ${formatMoney(series[series.length - 1].value, currency)}`
+            : 'No history yet'
+        }
         viewBox={`0 0 ${W} ${LABEL_BAND + height + 18}`}
         onPointerDown={startDrag}
         onPointerMove={continueDrag}

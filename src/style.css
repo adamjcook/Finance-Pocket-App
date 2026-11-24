@@ -369,6 +369,14 @@ h2,
   color: var(--text-3);
 }
 
+.row-chevron.open {
+  transform: rotate(90deg);
+}
+
+.row-chevron {
+  transition: transform 150ms ease-out;
+}
+
 /* ---- buttons ---------------------------------------------------------------- */
 
 button,
@@ -608,6 +616,19 @@ label.field > span:first-child,
 /* settings-style row with a control on the right */
 .setting-row {
   justify-content: space-between;
+}
+
+/* "Which of you is this phone?": the question above, the two names below it. */
+.whose-phone {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.whose-phone .segmented button {
+  flex: 1;
 }
 
 .setting-row > .setting-label {
@@ -1469,6 +1490,194 @@ label.field > span:first-child,
   min-height: 36px;
   padding: 0 14px;
   font-size: var(--fs-subhead);
+}
+
+/* ---- Home: check-in, payday and empty cards --------------------------------- */
+
+.home-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
+  padding: 16px 18px 18px;
+  margin-bottom: 12px;
+}
+
+/* Home's one line of news: quieter than a card, but still its own moment. */
+.home-card.news {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 10px 14px 18px;
+}
+
+.home-card.news p {
+  flex: 1;
+  padding-top: 5px;
+  font-weight: var(--fw-label);
+  text-wrap: pretty;
+}
+
+.home-card.news .btn-icon {
+  min-height: 32px;
+  width: 32px;
+  flex: none;
+}
+
+/* A card straight under the header gets room to breathe from the logo row,
+   matching the gap the net-worth figure has when no card is showing. */
+.dash-top + .home-card,
+.dash-top + .home-card.news {
+  margin-top: 18px;
+}
+
+/* The end of the payday update: tinted with the growth colour so it reads as
+   good news at a glance, in either theme. */
+.home-card.checkin {
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.home-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.home-card-head h2 {
+  font-size: var(--fs-heading);
+  font-weight: var(--fw-strong);
+  letter-spacing: -0.012em;
+  padding-top: 2px;
+}
+
+.home-card-head .btn-icon {
+  min-height: 32px;
+  width: 32px;
+  margin: -4px -8px 0 0;
+}
+
+.home-card-text {
+  color: var(--text-2);
+  font-size: var(--fs-footnote);
+  margin: 4px 0 12px;
+}
+
+.home-card .btn-big {
+  gap: 8px;
+}
+
+.checkin-lines {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.checkin-lines li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.checkin-lines strong {
+  font-weight: var(--fw-strong);
+}
+
+.milestones {
+  list-style: none;
+  padding: 0;
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.milestones li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: var(--fw-label);
+}
+
+.milestone-mark {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex: none;
+  color: var(--primary-ink);
+  background: var(--accent);
+}
+
+.checkin-undo {
+  margin: 12px 0 -6px -14px;
+}
+
+.hero-note {
+  margin-top: 6px;
+  font-size: var(--fs-footnote);
+  color: var(--text-3);
+}
+
+/* A debt total's 30-day move; up is stated plainly, not in alarm colours. */
+.debt-change {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.debt-change .delta-note {
+  margin-top: 0;
+}
+
+.delta-flat {
+  color: var(--text-2);
+  background: var(--surface-2);
+}
+
+.pots-label {
+  font-size: var(--fs-footnote);
+  font-weight: var(--fw-label);
+  color: var(--text-2);
+  margin-bottom: -8px;
+}
+
+.pots-label + .pot ~ .pots-label,
+.pot + .pots-label {
+  margin-top: 6px;
+}
+
+.reorder-controls {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.reorder-controls .drag-handle:disabled {
+  opacity: 0.35;
+}
+
+.reorder-toggle {
+  display: flex;
+  margin: 8px auto 0;
+}
+
+/* Update mode: a mistyped amount says so in words, not just a red border. */
+.row-error,
+.row-warn {
+  /* these are sentences to read, so they wrap instead of trailing off */
+  white-space: normal;
+  overflow: visible;
+}
+
+.row-error {
+  color: var(--danger);
+}
+
+.row-warn {
+  color: var(--debt);
 }
 
 /* ---- motion ---------------------------------------------------------------- */

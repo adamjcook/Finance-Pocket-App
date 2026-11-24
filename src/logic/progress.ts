@@ -131,8 +131,21 @@ export function peakCombined(effective: Snapshot[]): number {
   return peak;
 }
 
+/** Change over the last 30 days of a daily series ending at `current`. */
+function change30(series: SeriesPoint[], current: number, today: string): number {
+  if (!series.length) return 0;
+  const monthAgo = addDays(today, -30);
+  let past = series[0].value;
+  for (const p of series) {
+    if (p.day <= monthAgo) past = p.value;
+    else break;
+  }
+  return current - past;
+}
+
 export interface DebtProgress {
   current: number;
+  delta30: number; // change over the last 30 days (negative = paid down)
   baseline: number; // 0 when no data
   paidOff: number; // baseline - current, floored at 0
   pct: number; // 0..100
@@ -145,7 +158,7 @@ export function debtProgress(state: SyncedState, today: string): DebtProgress {
   const baseline = state.settings.debtBaselineMinor ?? peakCombined(effective);
   const paidOff = Math.max(0, baseline - current);
   const pct = baseline > 0 ? Math.min(100, Math.max(0, (paidOff / baseline) * 100)) : 0;
-  return { current, baseline, paidOff, pct, series };
+  return { current, delta30: change30(series, current, today), baseline, paidOff, pct, series };
 }
 
 export interface GrowthProgress {
@@ -157,15 +170,7 @@ export interface GrowthProgress {
 /** Combined savings + investments progress. */
 export function growthProgress(state: SyncedState, today: string): GrowthProgress {
   const { current, series } = kindTotals(state, GROWTH_KINDS, today);
-  const first = series.length ? series[0].value : 0;
-  const monthAgo = addDays(today, -30);
-  let past = first;
-  for (const p of series) {
-    if (p.day <= monthAgo) past = p.value;
-    else break;
-  }
-  const delta30 = series.length ? current - past : 0;
-  return { current, delta30, series };
+  return { current, delta30: change30(series, current, today), series };
 }
 
 /**
@@ -178,7 +183,7 @@ export function loanProgress(state: SyncedState, today: string): DebtProgress {
   const baseline = peakCombined(effective);
   const paidOff = Math.max(0, baseline - current);
   const pct = baseline > 0 ? Math.min(100, Math.max(0, (paidOff / baseline) * 100)) : 0;
-  return { current, baseline, paidOff, pct, series };
+  return { current, delta30: change30(series, current, today), baseline, paidOff, pct, series };
 }
 
 /** Average Gregorian month, in days. */
@@ -212,4 +217,26 @@ export function monthlyToTarget(
   const months = monthsUntil(today, targetDate);
   if (months <= 0) return null;
   return Math.ceil(Math.abs(target - current) / months);
+}
+
+/**
+ * The most recent payday on or before `today`: the last working day of this
+ * month once it has arrived, otherwise last month's.
+ */
+export function latestPayday(today: string, lastWorkingDay: (y: number, m: number) => string): string {
+  const [y, m] = today.split('-').map(Number);
+  const thisMonth = lastWorkingDay(y, m);
+  if (today >= thisMonth) return thisMonth;
+  return m === 1 ? lastWorkingDay(y - 1, 12) : lastWorkingDay(y, m - 1);
+}
+
+/** Day (YYYY-MM-DD) of the latest balance typed in by hand, or null if none. */
+export function lastManualUpdate(state: SyncedState): string | null {
+  let last: string | null = null;
+  for (const s of effectiveSnapshots(state.snapshots, state.voids)) {
+    if (s.deviceId === 't212') continue; // the daily automatic readings
+    const day = toDay(s.at);
+    if (last === null || day > last) last = day;
+  }
+  return last;
 }

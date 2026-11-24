@@ -15,6 +15,22 @@ export function formatMoney(minor: number, currency: string): string {
   return formatter(currency).format(minor / 100);
 }
 
+const wholeFormatters = new Map<string, Intl.NumberFormat>();
+
+/**
+ * Whole units, for headline figures where pence are noise: "£19,650".
+ * Negative amounts use a true minus sign: "−£1,235".
+ */
+export function formatMoneyWhole(minor: number, currency: string): string {
+  let f = wholeFormatters.get(currency);
+  if (!f) {
+    f = new Intl.NumberFormat('en-GB', { style: 'currency', currency, maximumFractionDigits: 0, minimumFractionDigits: 0 });
+    wholeFormatters.set(currency, f);
+  }
+  const s = f.format(Math.abs(minor) / 100);
+  return Math.round(minor / 100) < 0 ? `−${s}` : s;
+}
+
 /** The currency's symbol, e.g. "£" for GBP (falls back to the code itself). */
 export function currencySymbol(currency: string): string {
   return formatter(currency).formatToParts(0).find((p) => p.type === 'currency')?.value ?? currency;

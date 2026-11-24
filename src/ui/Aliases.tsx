@@ -11,6 +11,7 @@ export function Aliases() {
   const [newName, setNewName] = useState('');
   const [newAccountId, setNewAccountId] = useState('');
   const [repointing, setRepointing] = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
 
   if (!app) return null;
   const { state } = app;
@@ -50,7 +51,7 @@ export function Aliases() {
         <h1>Aliases</h1>
         <p class="lede">
           An alias is a role — like "Main Savings" — pointed at whichever real account currently
-          plays it. Switch banks, re-point the alias, and its chart carries straight on.
+          plays it. Change banks, switch the alias over, and its chart carries straight on.
         </p>
       </header>
 
@@ -68,7 +69,7 @@ export function Aliases() {
                 <div class="row-sub" style="margin-top:2px">currently: {accountName(al.accountId)}</div>
               </div>
               <button class="btn-sm" onClick={() => setRepointing(repointing === al.id ? null : al.id)}>
-                Re-point
+                Switch account
               </button>
             </div>
             {series.length > 1 && <Chart series={series} currency={state.settings.currency} color="var(--accent)" />}
@@ -106,15 +107,22 @@ export function Aliases() {
                 )}
               </div>
             )}
+            {/* Two taps: removing an alias drops its chart, and there's no undo. */}
             <button
-              class="btn-sm btn-quiet"
+              class={`btn-sm ${confirmRemove === al.id ? 'btn-danger' : 'btn-quiet'}`}
               style="margin:12px 0 0 -14px"
               onClick={() => {
+                if (confirmRemove !== al.id) {
+                  setConfirmRemove(al.id);
+                  return;
+                }
+                setConfirmRemove(null);
                 const { device } = getStore();
                 void mutate((s) => updateAlias(s, { deviceId: device.deviceId }, al.id, { archived: true }));
               }}
+              onBlur={() => setConfirmRemove((c) => (c === al.id ? null : c))}
             >
-              Remove alias
+              {confirmRemove === al.id ? 'Tap again to remove' : 'Remove alias'}
             </button>
           </div>
         );

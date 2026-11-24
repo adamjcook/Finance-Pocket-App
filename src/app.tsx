@@ -28,17 +28,20 @@ const THEME_COLOR = { dark: '#0b0d10', light: '#f2f3f5' } as const;
 export function App() {
   const app = useApp();
   const setupDone = !!app && app.state.settings.updatedBy !== '';
+  // The greeting is for whoever opened this phone: just their name once the
+  // phone knows whose it is (Settings › You two), both names until then.
+  let greetName: string | null = null;
+  if (app && setupDone) {
+    const { partnerAName, partnerBName } = app.state.settings;
+    const me = app.device.me;
+    greetName = me === 'A' ? partnerAName : me === 'B' ? partnerBName : `${partnerAName} & ${partnerBName}`;
+  }
   // The splash sits beside the screens (not inside either branch below), so
   // it keeps running smoothly when storage finishes opening underneath it.
   return (
     <>
       <Screens />
-      {!(app === null && storeError()) && (
-        <Splash
-          ready={app !== null}
-          names={setupDone ? `${app!.state.settings.partnerAName} & ${app!.state.settings.partnerBName}` : null}
-        />
-      )}
+      {!(app === null && storeError()) && <Splash ready={app !== null} names={greetName} />}
     </>
   );
 }
@@ -109,8 +112,9 @@ function Screens() {
   if (!setupDone) screen = <Setup />;
   else if (route === '/') screen = <Dashboard />;
   else if (route === '/accounts') screen = <Accounts key="list" />;
-  else if (route === '/accounts/new') screen = <AccountForm id={null} />;
-  else if (route.startsWith('/accounts/')) screen = <AccountForm id={route.slice('/accounts/'.length)} />;
+  // Keyed by route so moving between accounts never carries one form's state into another.
+  else if (route === '/accounts/new') screen = <AccountForm key="new" id={null} />;
+  else if (route.startsWith('/accounts/')) screen = <AccountForm key={route} id={route.slice('/accounts/'.length)} />;
   else if (route === '/aliases') screen = <Aliases />;
   // Update mode of the Accounts page (also where the payday reminder lands).
   else if (route === '/update') screen = <Accounts key="update" updating />;

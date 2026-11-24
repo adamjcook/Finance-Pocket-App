@@ -24,6 +24,8 @@ export function Settings() {
   const [t212Busy, setT212Busy] = useState<'check' | 'reading' | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMsg, setPushMsg] = useState<{ text: string; error: boolean } | null>(null);
+  // Trading 212 and reminders are one-time setup most visits never need.
+  const [connectionsOpen, setConnectionsOpen] = useState(false);
 
   if (!app) return null;
   const { state, device } = app;
@@ -58,7 +60,7 @@ export function Settings() {
         `Imported: ${summary.newSnapshots} balance update(s), ${summary.accountsChanged} account change(s).`,
       );
     } catch (err) {
-      setImportMsg(`Import failed: ${err instanceof Error ? err.message : String(err)}`);
+      setImportMsg(`That file couldn't be imported. ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -111,6 +113,8 @@ export function Settings() {
     </div>
   );
 
+  const nameOf = (who: 'A' | 'B') => (who === 'A' ? state.settings.partnerAName : state.settings.partnerBName);
+
   const fixSnapshots = fixAccountId
     ? effectiveSnapshots(state.snapshots, state.voids)
         .filter((s) => s.accountId === fixAccountId)
@@ -150,20 +154,35 @@ export function Settings() {
       <section class="group">
         <h2 class="group-label">You two</h2>
         <div class="list">
-          <label class="list-row setting-row">
-            <span class="setting-label">Partner 1</span>
-            <input
-              value={state.settings.partnerAName}
-              onChange={(e) => saveField({ partnerAName: (e.target as HTMLInputElement).value })}
-            />
-          </label>
-          <label class="list-row setting-row">
-            <span class="setting-label">Partner 2</span>
-            <input
-              value={state.settings.partnerBName}
-              onChange={(e) => saveField({ partnerBName: (e.target as HTMLInputElement).value })}
-            />
-          </label>
+          {/* Which partner this phone belongs to — so the rows below can say
+              "You" and "Your partner" and be right on both phones. */}
+          <div class="list-row whose-phone">
+            <span class="setting-label" id="whose-label">
+              {device.me ? 'This phone is' : 'Which of you is this phone?'}
+            </span>
+            <div class="segmented" role="group" aria-labelledby="whose-label">
+              {(['A', 'B'] as const).map((who) => (
+                <button key={who} aria-pressed={device.me === who} onClick={() => void patchDevice({ me: who })}>
+                  {nameOf(who)}
+                </button>
+              ))}
+            </div>
+          </div>
+          {(device.me ? ([device.me, device.me === 'A' ? 'B' : 'A'] as const) : (['A', 'B'] as const)).map((who, i) => (
+            <label class="list-row setting-row" key={who}>
+              <span class="setting-label">{device.me ? (i === 0 ? 'You' : 'Your partner') : 'Name'}</span>
+              <input
+                value={nameOf(who)}
+                onChange={(e) =>
+                  saveField(
+                    who === 'A'
+                      ? { partnerAName: (e.target as HTMLInputElement).value }
+                      : { partnerBName: (e.target as HTMLInputElement).value },
+                  )
+                }
+              />
+            </label>
+          ))}
           <label class="list-row setting-row">
             <span class="setting-label">Currency</span>
             <select
@@ -186,118 +205,7 @@ export function Settings() {
       </section>
 
       <section class="group">
-        <h2 class="group-label">Trading 212</h2>
-        <div class="list">
-          <label class="list-row setting-row">
-            <span class="setting-label">Linked account</span>
-            <select
-              aria-label="Trading 212 linked account"
-              value={link.accountId}
-              onChange={(e) => saveLink({ accountId: (e.target as HTMLSelectElement).value })}
-            >
-              <option value="">Not linked</option>
-              {t212Accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label class="list-row setting-row">
-            <span class="setting-label">Worker address</span>
-            <input
-              type="url"
-              inputMode="url"
-              autoComplete="off"
-              spellcheck={false}
-              placeholder="Paste address"
-              value={link.endpoint}
-              onChange={(e) => saveLink({ endpoint: (e.target as HTMLInputElement).value.trim() })}
-            />
-          </label>
-          <label class="list-row setting-row">
-            <span class="setting-label">Access token</span>
-            <input
-              type="password"
-              autoComplete="off"
-              placeholder="FINPAIR_TOKEN"
-              value={link.token}
-              onChange={(e) => saveLink({ token: (e.target as HTMLInputElement).value.trim() })}
-            />
-          </label>
-          {linkReady(state.settings.t212) && (
-            <div class="list-row" style="gap:8px">
-              <button class="btn-sm grow" disabled={t212Busy !== null} onClick={() => void runT212('check')}>
-                {t212Busy === 'check' ? 'Checking…' : 'Check now'}
-              </button>
-              <button class="btn-sm grow" disabled={t212Busy !== null} onClick={() => void runT212('reading')}>
-                {t212Busy === 'reading' ? 'Reading…' : 'Read now'}
-              </button>
-            </div>
-          )}
-        </div>
-        <p class={`group-footer ${t212Status?.error ? 'owed' : ''}`} role="status">
-          {!linkReady(state.settings.t212)
-            ? 'Records your Trading 212 account total at 9pm every day, so the chart shows each day’s change. Needs the finpair-t212 Worker — see the README.'
-            : t212Status?.error
-              ? t212Status.error
-              : t212Status?.latest
-                ? `Last reading ${formatDay(t212Status.latest.day)}, ${new Date(t212Status.latest.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}: ${formatMoney(t212Status.latest.totalMinor, currency)}${t212Status.latest.final ? '' : ' (provisional — the 9pm reading replaces it)'}.`
-                : 'Linked. The first reading arrives at 9pm, or tap “Read now”.'}
-        </p>
-      </section>
-
-      <section class="group">
-        <h2 class="group-label">Reminders</h2>
-        <div class="list">
-          <div class="list-row">
-            <div class="grow">
-              <div class="row-title">Notifications on this phone</div>
-            </div>
-            <button
-              class="switch"
-              role="switch"
-              aria-checked={!!push?.enabled}
-              aria-label="Notifications on this phone"
-              disabled={pushBusy || !pushSupported() || !workerReady(state.settings.t212)}
-              onClick={() =>
-                void runPush(
-                  push?.enabled ? disableReminders : enableReminders,
-                  push?.enabled ? undefined : 'Reminders are on for this phone.',
-                )
-              }
-            />
-          </div>
-          {push?.enabled && (
-            <>
-              {reminderRow('monthly', 'Update your balances', '9am on payday — the last working day of each month')}
-              {reminderRow('promo', '0% deals ending', '30, 7 and 1 days before — set the date on each card')}
-              {linkReady(state.settings.t212) &&
-                reminderRow('drop', 'Trading 212 drops', 'When the linked account is down 5% or more on the week')}
-              <div class="list-row">
-                <button
-                  class="btn-sm grow"
-                  disabled={pushBusy}
-                  onClick={() => void runPush(sendTestReminder, 'Test sent — it should appear in a few seconds.')}
-                >
-                  Send a test notification
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-        <p class={`group-footer ${pushMsg?.error ? 'owed' : ''}`} role="status">
-          {pushMsg?.text ??
-            (!pushSupported()
-              ? "This browser can't show notifications. Install FinPair to your home screen in Chrome to use reminders."
-              : !workerReady(state.settings.t212)
-                ? 'Reminders are sent by the same Worker as the Trading 212 link — add its address and token above first.'
-                : 'Each phone chooses its own reminders. They come from your Worker, so they arrive even when FinPair is closed.')}
-        </p>
-      </section>
-
-      <section class="group">
-        <h2 class="group-label">Debt baseline</h2>
+        <h2 class="group-label">How “paid off” is measured</h2>
         <div class="list">
           <label class="list-row setting-row">
             <span class="setting-label">Starting debt</span>
@@ -305,11 +213,11 @@ export function Settings() {
               <MoneyInput
                 initial={state.settings.debtBaselineMinor}
                 symbol={currencySymbol(currency)}
-                placeholder="auto (peak)"
+                placeholder="Highest so far"
                 onChange={(minor) => saveField({ debtBaselineMinor: minor })}
               />
               {state.settings.debtBaselineMinor !== null &&
-                clearButton('Use auto', () => saveField({ debtBaselineMinor: null }))}
+                clearButton('Go back to your highest debt so far', () => saveField({ debtBaselineMinor: null }))}
             </span>
           </label>
         </div>
@@ -320,7 +228,7 @@ export function Settings() {
       </section>
 
       <section class="group">
-        <h2 class="group-label">Fix a mistyped balance</h2>
+        <h2 class="group-label">Undo a mistyped balance</h2>
         <div class="list">
           <label class="list-row setting-row">
             <span class="setting-label">Account</span>
@@ -383,9 +291,157 @@ export function Settings() {
         </p>
       </section>
 
+      <section class="group">
+        <h2 class="group-label">Connections (optional)</h2>
+        <div class="list">
+          <button
+            class="list-row tappable btn-row"
+            aria-expanded={connectionsOpen}
+            aria-controls="connections"
+            onClick={() => setConnectionsOpen(!connectionsOpen)}
+          >
+            <Icon name="link" />
+            <span class="grow">
+              Trading 212 and reminders
+              <span class="row-sub" style="display:block">
+                {workerReady(state.settings.t212)
+                  ? [
+                      linkReady(state.settings.t212) &&
+                        `Linked to ${state.accounts.find((a) => a.id === state.settings.t212?.accountId)?.name ?? 'an account'}`,
+                      push?.enabled ? 'reminders on' : 'reminders off',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  : 'Not set up · needs your own Worker'}
+              </span>
+            </span>
+            <Icon name="chevron" size={18} class={`row-chevron ${connectionsOpen ? 'open' : ''}`} />
+          </button>
+        </div>
+      </section>
+      {connectionsOpen && (
+        <div id="connections" class="connections">
+      <section class="group">
+        <h2 class="group-label">Trading 212</h2>
+        <div class="list">
+          <label class="list-row setting-row">
+            <span class="setting-label">Linked account</span>
+            <select
+              aria-label="Trading 212 linked account"
+              value={link.accountId}
+              onChange={(e) => saveLink({ accountId: (e.target as HTMLSelectElement).value })}
+            >
+              <option value="">Not linked</option>
+              {t212Accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label class="list-row setting-row">
+            <span class="setting-label">Worker address</span>
+            <input
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              spellcheck={false}
+              placeholder="Paste address"
+              value={link.endpoint}
+              onChange={(e) => saveLink({ endpoint: (e.target as HTMLInputElement).value.trim() })}
+            />
+          </label>
+          <label class="list-row setting-row">
+            <span class="setting-label">Access token</span>
+            <input
+              type="password"
+              name="finpair-token"
+              autoComplete="off"
+              placeholder="FINPAIR_TOKEN"
+              value={link.token}
+              onChange={(e) => saveLink({ token: (e.target as HTMLInputElement).value.trim() })}
+            />
+          </label>
+          {linkReady(state.settings.t212) && (
+            <div class="list-row" style="gap:8px">
+              <button class="btn-sm grow" disabled={t212Busy !== null} onClick={() => void runT212('check')}>
+                {t212Busy === 'check' ? 'Checking…' : 'Check now'}
+              </button>
+              <button class="btn-sm grow" disabled={t212Busy !== null} onClick={() => void runT212('reading')}>
+                {t212Busy === 'reading' ? 'Reading…' : 'Read now'}
+              </button>
+            </div>
+          )}
+        </div>
+        <p class={`group-footer ${t212Status?.error ? 'owed' : ''}`} role="status">
+          {!linkReady(state.settings.t212)
+            ? 'Records your Trading 212 account total at 9pm every day, so the chart shows each day’s change. Needs your own small Cloudflare Worker: the setup steps are under “Trading 212 link” in FinPair’s README on GitHub.'
+            : t212Status?.error
+              ? t212Status.error
+              : t212Status?.latest
+                ? `Last reading ${formatDay(t212Status.latest.day)}, ${new Date(t212Status.latest.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}: ${formatMoney(t212Status.latest.totalMinor, currency)}${t212Status.latest.final ? '' : ' (provisional — the 9pm reading replaces it)'}.`
+                : 'Linked. The first reading arrives at 9pm, or tap “Read now”.'}
+        </p>
+        </section>
+
+        <section class="group">
+        <h2 class="group-label">Reminders</h2>
+        <div class="list">
+          <div class="list-row">
+            <div class="grow">
+              <div class="row-title">Notifications on this phone</div>
+            </div>
+            <button
+              class="switch"
+              role="switch"
+              aria-checked={!!push?.enabled}
+              aria-label="Notifications on this phone"
+              disabled={pushBusy || !pushSupported() || !workerReady(state.settings.t212)}
+              onClick={() =>
+                void runPush(
+                  push?.enabled ? disableReminders : enableReminders,
+                  push?.enabled ? undefined : 'Reminders are on for this phone.',
+                )
+              }
+            />
+          </div>
+          {push?.enabled && (
+            <>
+              {reminderRow('monthly', 'Update your balances', '9am on payday — the last working day of each month')}
+              {reminderRow('promo', '0% deals ending', '30, 7 and 1 days before — set the date on each card')}
+              {linkReady(state.settings.t212) &&
+                reminderRow('drop', 'Trading 212 drops', 'When the linked account is down 5% or more on the week')}
+              <div class="list-row">
+                <button
+                  class="btn-sm grow"
+                  disabled={pushBusy}
+                  onClick={() => void runPush(sendTestReminder, 'Test sent — it should appear in a few seconds.')}
+                >
+                  Send a test notification
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+        <p class={`group-footer ${pushMsg?.error ? 'owed' : ''}`} role="status">
+          {pushMsg?.text ??
+            (!pushSupported()
+              ? "This browser can't show notifications. Install FinPair to your home screen in Chrome to use reminders."
+              : !workerReady(state.settings.t212)
+                ? 'Reminders are sent by the same Worker as the Trading 212 link — add its address and token above first.'
+                : 'Each phone chooses its own reminders. They come from your Worker, so they arrive even when FinPair is closed.')}
+        </p>
+        </section>
+
+        </div>
+      )}
+
       <p class="about">
         <Icon name="shield" size={16} />
-        Data never leaves your phones except via Sync and backups · device {device.deviceId.slice(0, 8)}
+        {workerReady(state.settings.t212)
+          ? 'Your data stays on your two phones. Only Sync, your backup files and your own Worker (Trading 212 and reminders) take anything off them'
+          : 'Your data never leaves your two phones except through Sync and the backup files you save'}{' '}
+        · device {device.deviceId.slice(0, 8)}
       </p>
     </div>
   );

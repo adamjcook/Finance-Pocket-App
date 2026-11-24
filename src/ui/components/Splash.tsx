@@ -27,7 +27,7 @@ function greeting(now = new Date()): string {
 interface Props {
   /** True once the store has loaded; the splash never leaves before this. */
   ready: boolean;
-  /** "Adam & Sam" once set up; null on first run (no greeting then). */
+  /** "Adam" (or "Adam & Sam" before the phone knows whose it is); null on first run, so no greeting. */
   names: string | null;
 }
 
