@@ -11,6 +11,8 @@ import { Sync } from './ui/Sync';
 import { Settings } from './ui/Settings';
 import { Setup } from './ui/Setup';
 import { UpdateToast } from './ui/components/UpdateToast';
+import { Icon, type IconName } from './ui/components/Icon';
+import { pullReadings } from './integrations/t212';
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
@@ -19,13 +21,16 @@ function safeColor(value: string | undefined, fallback: string): string {
   return value && HEX_COLOR.test(value) ? value : fallback;
 }
 
-const TABS = [
-  { route: '/', label: 'Home', icon: '⌂' },
-  { route: '/accounts', label: 'Accounts', icon: '☰' },
-  { route: '/update', label: 'Update', icon: '✎' },
-  { route: '/sync', label: 'Sync', icon: '⇄' },
-  { route: '/settings', label: 'Settings', icon: '⚙' },
+const TABS: { route: string; label: string; icon: IconName }[] = [
+  { route: '/', label: 'Home', icon: 'home' },
+  { route: '/accounts', label: 'Accounts', icon: 'accounts' },
+  { route: '/update', label: 'Update', icon: 'update' },
+  { route: '/sync', label: 'Sync', icon: 'sync' },
+  { route: '/settings', label: 'Settings', icon: 'settings' },
 ];
+
+/** Status-bar colour for the installed app — matches --bg for each theme. */
+const THEME_COLOR = { dark: '#0b0d10', light: '#f2f3f5' } as const;
 
 export function App() {
   const app = useApp();
@@ -41,7 +46,21 @@ export function App() {
   useEffect(() => {
     if (!app) return;
     document.documentElement.setAttribute('data-theme', app.device.theme);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[app.device.theme]);
   }, [app?.device.theme]);
+
+  // Trading 212 link: pick up any new daily readings when the app opens or
+  // comes back to the foreground (throttled inside pullReadings).
+  const t212 = app?.state.settings.t212;
+  useEffect(() => {
+    if (!t212) return;
+    void pullReadings();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void pullReadings();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [t212?.accountId, t212?.endpoint, t212?.token]);
 
   if (!app) {
     const error = storeError();
@@ -75,9 +94,9 @@ export function App() {
   return (
     <div class="shell">
       {import.meta.env.VITE_DEV_BUILD === '1' && (
-        <div class="dev-banner">DEV BUILD — mock data, not your real account</div>
+        <div class="dev-banner">Dev build · mock data</div>
       )}
-      <main class="screen">{screen}</main>
+      <main class={`screen ${setupDone ? '' : 'screen-setup'}`}>{screen}</main>
       {setupDone && (
         <nav class="tabbar">
           {TABS.map((t) => (
@@ -85,10 +104,9 @@ export function App() {
               key={t.route}
               href={`#${t.route}`}
               class={`tab ${activeTab?.route === t.route ? 'active' : ''}`}
+              aria-current={activeTab?.route === t.route ? 'page' : undefined}
             >
-              <span class="tab-icon" aria-hidden="true">
-                {t.icon}
-              </span>
+              <Icon name={t.icon} size={24} />
               {t.label}
             </a>
           ))}

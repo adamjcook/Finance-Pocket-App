@@ -84,6 +84,40 @@ export interface Settings extends Meta {
    */
   partnerAColor?: string;
   partnerBColor?: string;
+  /**
+   * Trading 212 daily-value link (see worker/ and src/integrations/t212.ts).
+   * Synced so both phones import the same readings into the same account.
+   * Added after v1 shipped — undefined reads as "not linked".
+   */
+  t212?: T212Link | null;
+}
+
+export interface T212Link {
+  /** The FinPair account the daily readings are recorded against. */
+  accountId: UUID;
+  /** Base URL of the finpair-t212 Worker, e.g. https://finpair-t212.<you>.workers.dev */
+  endpoint: string;
+  /** The Worker's FINPAIR_TOKEN. Only unlocks reading the daily totals. */
+  token: string;
+}
+
+/** The latest Trading 212 reading this phone has seen (amounts in minor units). */
+export interface T212Reading {
+  day: string;
+  at: ISOTime;
+  currency: string;
+  totalMinor: number;
+  costMinor: number;
+  unrealisedMinor: number;
+  final: boolean;
+}
+
+/** This phone's view of the Trading 212 link: when it last checked and what it found. */
+export interface T212DeviceStatus {
+  checkedAt: ISOTime;
+  /** Problem from this phone's last check, or from the Worker's last scheduled reading. */
+  error: string | null;
+  latest: T212Reading | null;
 }
 
 /** Currencies offered at setup and in Settings (display-only; amounts aren't converted). */
@@ -107,6 +141,8 @@ export interface DeviceState {
   theme: Theme;
   /** Dashboard card order for this phone only — drag-to-reorder, not shared with the partner's. */
   dashboardOrder: DashboardSectionKey[];
+  /** Last Trading 212 check on this phone (added later — absent until the first one). */
+  t212?: T212DeviceStatus | null;
 }
 
 /** Everything that syncs between the two phones. */
@@ -136,6 +172,7 @@ export const DEFAULT_SETTINGS: Settings = {
   savingsTargetDate: null,
   partnerAColor: DEFAULT_PARTNER_A_COLOR,
   partnerBColor: DEFAULT_PARTNER_B_COLOR,
+  t212: null,
   updatedAt: new Date(0).toISOString(),
   updatedBy: '',
 };

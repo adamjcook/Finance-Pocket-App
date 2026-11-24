@@ -7,6 +7,7 @@ import { ScanPanel } from './components/ScanPanel';
 import { loadMockData } from '../dev/mockData';
 import { toDay, todayISO } from '../logic/progress';
 import { starterQuote } from '../logic/wisdom';
+import { Icon } from './components/Icon';
 
 type Mode = 'choose' | 'form' | 'join';
 
@@ -42,41 +43,22 @@ export function Setup() {
     navigate('/accounts/new');
   };
 
-  return (
-    <>
-      <div class="title-row">
-        <img src={`${import.meta.env.BASE_URL}${import.meta.env.VITE_ICON_DIR}/favicon.svg`} class="app-logo" alt="" />
-        <h1>FinPair</h1>
-      </div>
+  const logo = `${import.meta.env.BASE_URL}${import.meta.env.VITE_ICON_DIR}/favicon.svg`;
+  const back = (
+    <button class="back-link" onClick={() => setMode('choose')}>
+      <Icon name="back" size={20} />
+      Back
+    </button>
+  );
 
-      {mode === 'choose' && (
-        <>
-          <p class="muted" style="margin-bottom:18px">
-            A shared finance tracker for the two of you. Everything stays on your phones — no
-            accounts, no cloud.
-          </p>
-          <p class="wisdom" style="margin-bottom:18px">{starterQuote(toDay(todayISO()))}</p>
-          <div class="stack">
-            <button class="btn-primary btn-big" onClick={() => setMode('form')}>
-              Set up on this phone first
-            </button>
-            <button class="btn-big" onClick={() => setMode('join')}>
-              Join your partner's setup
-            </button>
-            {import.meta.env.VITE_DEV_BUILD === '1' && (
-              <button class="btn-big" onClick={() => void loadMockData().then(() => navigate('/'))}>
-                Load mock data
-              </button>
-            )}
-          </div>
-          <p class="muted small" style="margin-top:14px">
-            Set up on <strong>one</strong> phone only; the other should join by scanning. That
-            keeps names and account owners consistent on both phones.
-          </p>
-        </>
-      )}
-
-      {mode === 'form' && (
+  if (mode === 'form') {
+    return (
+      <div>
+        {back}
+        <header class="page-header" style="display:block;padding-top:6px">
+          <h1>Set up FinPair</h1>
+          <p class="lede">Just the basics — you can change any of this later in Settings.</p>
+        </header>
         <div class="card">
           <label class="field">
             <span>Your name</span>
@@ -96,9 +78,9 @@ export function Setup() {
               ))}
             </select>
           </label>
-          <label class="field">
-            <span>Your colour</span>
-            <div class="row" style="gap:12px">
+          <div class="field">
+            <span class="field-label">Your colour</span>
+            <div class="row" style="gap:16px;padding:4px 0 0 5px">
               <button
                 type="button"
                 class="colour-choice"
@@ -116,34 +98,60 @@ export function Setup() {
                 onClick={() => setMyColor('amber')}
               />
             </div>
-            <p class="muted small" style="margin-top:6px">
-              Your partner gets the other colour — these two match the app icon.
-            </p>
-          </label>
-          <div class="stack">
-            <button class="btn-primary btn-big" onClick={() => void save()}>
-              Get started
-            </button>
-            <button class="btn-big" onClick={() => setMode('choose')}>
-              Back
-            </button>
+            <p class="field-hint">Your partner gets the other one — the two circles of the app icon.</p>
           </div>
         </div>
-      )}
+        <button class="btn-primary btn-big" style="margin-top:20px" onClick={() => void save()}>
+          Get started
+        </button>
+      </div>
+    );
+  }
 
-      {mode === 'join' && (
-        <>
-          <p class="muted" style="margin-bottom:14px">
-            On your partner's phone, open <strong>Sync</strong> and tap{' '}
-            <strong>"Show my data"</strong> — then scan their screen here. Their setup, accounts
-            and history will carry over.
+  if (mode === 'join') {
+    return (
+      <div>
+        {back}
+        <header class="page-header" style="display:block;padding-top:6px">
+          <h1>Join your partner</h1>
+          <p class="lede">
+            On their phone, open <strong>Sync</strong> and tap <strong>Show my data</strong>, then
+            scan their screen here. Their setup, accounts and history carry over.
           </p>
-          <ScanPanel
-            onComplete={() => navigate('/')}
-            onCancel={() => setMode('choose')}
-          />
-        </>
-      )}
-    </>
+        </header>
+        <ScanPanel onComplete={() => navigate('/')} onCancel={() => setMode('choose')} />
+      </div>
+    );
+  }
+
+  return (
+    <div class="welcome">
+      <div class="welcome-hero">
+        <img src={logo} class="welcome-logo" alt="" />
+        <h1>FinPair</h1>
+        <p class="lede">
+          Your shared money, side by side. Everything stays on your two phones — no accounts, no
+          cloud.
+        </p>
+        <p class="quote">{starterQuote(toDay(todayISO()))}</p>
+      </div>
+      <div class="welcome-actions">
+        <button class="btn-primary btn-big" onClick={() => setMode('form')}>
+          Set up on this phone first
+        </button>
+        <button class="btn-big" onClick={() => setMode('join')}>
+          Join your partner's setup
+        </button>
+        {import.meta.env.VITE_DEV_BUILD === '1' && (
+          <button class="btn-big btn-quiet" onClick={() => void loadMockData().then(() => navigate('/'))}>
+            Load mock data
+          </button>
+        )}
+      </div>
+      <p class="welcome-note">
+        Set up on <strong>one</strong> phone only — the other joins by scanning, so names and
+        owners match on both.
+      </p>
+    </div>
   );
 }

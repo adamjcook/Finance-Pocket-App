@@ -1,6 +1,32 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
+ * The device record as actually stored in IndexedDB. The screen updates a
+ * moment before the write lands, and reloading inside that window aborts it —
+ * so persistence checks wait for the write before reloading.
+ */
+async function storedDevice(page: Page): Promise<{ theme?: string; dashboardOrder?: string[] } | null> {
+  return page.evaluate(async () => {
+    const [info] = await indexedDB.databases();
+    if (!info?.name) return null;
+    const db: IDBDatabase = await new Promise((resolve, reject) => {
+      const req = indexedDB.open(info.name!);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    try {
+      return await new Promise((resolve, reject) => {
+        const req = db.transaction('device').objectStore('device').get('device');
+        req.onsuccess = () => resolve(req.result ?? null);
+        req.onerror = () => reject(req.error);
+      });
+    } finally {
+      db.close();
+    }
+  });
+}
+
+/**
  * End-to-end flows against the production build (vite preview).
  * The two-device test uses window.__syncTest, which pipes the real QR frame
  * codec + merge + persistence, bypassing only the camera optics.
@@ -26,7 +52,7 @@ async function addAccount(
   await page.getByPlaceholder('e.g. Barclaycard, Marcus saver').fill(name);
   await page.locator('select').first().selectOption({ label: kind });
   if (owner) {
-    await page.locator('select').nth(1).selectOption({ label: owner });
+    await page.getByRole('group', { name: 'Whose is it?' }).getByRole('button', { name: owner }).click();
   }
   if (balance !== null) {
     await page.getByPlaceholder('0.00').fill(balance);
@@ -63,7 +89,7 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await page.goto('.#/accounts');
   await page.locator('.account-row', { hasText: 'Marcus Saver' }).getByRole('button', { name: '£1,000.00' }).click();
   await page.locator('.account-row', { hasText: 'Marcus Saver' }).locator('input').fill('1250');
-  await page.locator('.account-row', { hasText: 'Marcus Saver' }).getByRole('button', { name: '✓' }).click();
+  await page.locator('.account-row', { hasText: 'Marcus Saver' }).getByRole('button', { name: 'Save balance' }).click();
   await expect(page.getByRole('button', { name: '£1,250.00' })).toBeVisible();
 
   // A loan gets its own dashboard card and stays out of the card-payoff goal
@@ -241,14 +267,15 @@ test('light mode is opt-in, applies live, and persists across a reload', async (
 
   // Dark by default
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(20, 26, 33)');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(11, 13, 16)');
 
   await page.goto('.#/settings');
   await page.getByRole('button', { name: 'Light', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(244, 246, 248)');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(242, 243, 245)');
 
   // Persists across a reload — it's a device preference, not just an in-memory var
+  await expect.poll(async () => (await storedDevice(page))?.theme).toBe('light');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 
@@ -293,6 +320,7 @@ test('dashboard shows net worth, defaults to savings first, and cards are drag-r
   await expect(headings.nth(1)).toContainText('Savings & investments');
 
   // Persists across a reload — it's a device preference, not just in-memory
+  await expect.poll(async () => (await storedDevice(page))?.dashboardOrder?.[0]).toBe('debt');
   await page.reload();
   await expect(page.locator('.dash-section h2').nth(0)).toContainText('Credit card debt');
 });
@@ -327,7 +355,7 @@ test('dragging one card past two others in a single motion lands correctly', asy
   // All three cards collapse to bare heading rows for the duration — no
   // "card" body should be visible anywhere on the board while dragging.
   await page.mouse.move(cx, handleBox.y + 10);
-  await expect(page.locator('.card')).toHaveCount(0);
+  await expect(page.locator('.dash-body')).toHaveCount(0);
 
   const loansBox = await loansSection.boundingBox();
   if (!loansBox) throw new Error('expected bounding box');
@@ -335,8 +363,61 @@ test('dragging one card past two others in a single motion lands correctly', asy
   await page.mouse.move(cx, loansBox.y + loansBox.height + 40);
   await page.mouse.up();
 
-  await expect(page.locator('.card')).toHaveCount(3);
+  await expect(page.locator('.dash-body')).toHaveCount(3);
   await expect(headings.nth(0)).toContainText('Credit card debt');
   await expect(headings.nth(1)).toContainText('Loans');
   await expect(headings.nth(2)).toContainText('Savings & investments');
+});
+
+test('Trading 212 link imports daily readings and shows the day and overall change', async ({ page }) => {
+  // A fake finpair-t212 Worker: yesterday's 9pm reading plus one taken today
+  // (stamped when requested, so it's newer than the opening balance below).
+  const yesterday = new Date(Date.now() - 86400000);
+  yesterday.setUTCHours(21, 0, 0, 0);
+  const reading = (at: Date, totalMinor: number) => ({
+    day: at.toISOString().slice(0, 10),
+    at: at.toISOString(),
+    currency: 'GBP',
+    totalMinor,
+    costMinor: 900000,
+    unrealisedMinor: totalMinor - 900000,
+    final: true,
+  });
+  const auths: string[] = [];
+  await page.route('https://t212.example/**', async (route) => {
+    auths.push((await route.request().headerValue('authorization')) ?? '');
+    const today = new Date();
+    await route.fulfill({
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({
+        readings: [reading(yesterday, 1000000), reading(today, 1012050)],
+        status: { ok: true, at: today.toISOString() },
+      }),
+    });
+  });
+
+  await completeSetup(page, 'Adam', 'Sam');
+  await addAccount(page, 'Stocks ISA', 'Investment', '9500');
+
+  await page.goto('.#/settings');
+  await page.getByLabel('Trading 212 linked account').selectOption({ label: 'Stocks ISA' });
+  await page.getByPlaceholder('https://…workers.dev').fill('https://t212.example');
+  await page.getByPlaceholder('https://…workers.dev').press('Tab');
+  await page.getByPlaceholder('FINPAIR_TOKEN').fill('secret-token');
+  await page.getByPlaceholder('FINPAIR_TOKEN').press('Tab');
+  await page.getByRole('button', { name: 'Check now' }).click();
+  await expect(page.getByText(/Last reading .*£10,120\.50/)).toBeVisible();
+  expect(auths.at(-1)).toBe('Bearer secret-token');
+
+  // The ISA's balance follows the latest reading, and it's marked as automatic.
+  await page.goto('.#/accounts');
+  const row = page.locator('.account-row', { hasText: 'Stocks ISA' });
+  await expect(row.getByRole('button', { name: '£10,120.50' })).toBeVisible();
+  await expect(row.getByText('Auto')).toBeVisible();
+
+  // Home: the move on the day (+£120.50) and the overall gain (+£1,120.50, 12.4%).
+  await page.goto('.#/');
+  await expect(page.locator('.mini-stats')).toContainText('+£120.50 today');
+  await expect(page.locator('.mini-stats')).toContainText('+£1,120.50 (12.4%) overall');
 });

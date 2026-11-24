@@ -5,8 +5,8 @@ interface Props {
 }
 
 /** Circular progress with the percentage in the middle. */
-export function ProgressRing({ pct, size = 108, label = 'paid off' }: Props) {
-  const stroke = 10;
+export function ProgressRing({ pct, size = 104, label = 'paid off' }: Props) {
+  const stroke = 9;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const filled = (Math.max(0, Math.min(100, pct)) / 100) * c;
@@ -17,7 +17,7 @@ export function ProgressRing({ pct, size = 108, label = 'paid off' }: Props) {
         cy={size / 2}
         r={r}
         fill="none"
-        stroke="var(--bg-inset)"
+        stroke="var(--surface-3)"
         stroke-width={stroke}
       />
       <circle
@@ -37,8 +37,9 @@ export function ProgressRing({ pct, size = 108, label = 'paid off' }: Props) {
         text-anchor="middle"
         dominant-baseline="central"
         fill="var(--text)"
-        font-size={size / 4.5}
-        font-weight="750"
+        font-size={size / 4.4}
+        font-weight="700"
+        letter-spacing="-0.03em"
       >
         {pct.toFixed(0)}%
       </text>
@@ -46,8 +47,9 @@ export function ProgressRing({ pct, size = 108, label = 'paid off' }: Props) {
         x="50%"
         y="66%"
         text-anchor="middle"
-        fill="var(--text-dim)"
-        font-size={size / 10}
+        fill="var(--text-3)"
+        font-size={size / 9.5}
+        font-weight="500"
       >
         {label}
       </text>

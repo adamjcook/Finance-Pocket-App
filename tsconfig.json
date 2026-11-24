@@ -15,5 +15,5 @@
     "noEmit": true,
     "types": ["vite/client", "vite-plugin-pwa/preact"]
   },
-  "include": ["src", "tests"]
+  "include": ["src", "tests", "worker/src"]
 }

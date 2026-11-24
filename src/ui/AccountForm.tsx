@@ -6,6 +6,7 @@ import { ACCOUNT_KIND_LABELS, OWED_KINDS } from '../model/types';
 import { MoneyInput } from './components/MoneyInput';
 import { currencySymbol } from '../logic/money';
 import { navigate } from '../router';
+import { Icon } from './components/Icon';
 
 interface Props {
   id: string | null; // null = create
@@ -22,7 +23,7 @@ export function AccountForm({ id }: Props) {
   const [opening, setOpening] = useState<number | null>(null);
 
   if (!app) return null;
-  if (id && !existing) return <p class="muted">Account not found.</p>;
+  if (id && !existing) return <p class="empty">Account not found.</p>;
   const { state } = app;
 
   const save = async () => {
@@ -51,9 +52,22 @@ export function AccountForm({ id }: Props) {
     navigate('/accounts');
   };
 
+  const owners: { value: Owner; label: string }[] = [
+    { value: 'A', label: state.settings.partnerAName },
+    { value: 'B', label: state.settings.partnerBName },
+    { value: 'joint', label: 'Joint' },
+  ];
+
   return (
     <div>
-      <h1>{existing ? 'Edit account' : 'New account'}</h1>
+      <button class="back-link" onClick={() => navigate('/accounts')}>
+        <Icon name="back" size={20} />
+        Accounts
+      </button>
+      <header class="page-header" style="padding-top:6px">
+        <h1>{existing ? 'Edit account' : 'New account'}</h1>
+      </header>
+
       <div class="card">
         <label class="field">
           <span>Name</span>
@@ -65,11 +79,11 @@ export function AccountForm({ id }: Props) {
           />
         </label>
         <label class="field">
-          <span>Bank / provider (optional)</span>
+          <span>Bank or provider</span>
           <input
             value={institution}
             onInput={(e) => setInstitution((e.target as HTMLInputElement).value)}
-            placeholder="e.g. Barclays"
+            placeholder="Optional — e.g. Barclays"
           />
         </label>
         <label class="field">
@@ -82,53 +96,60 @@ export function AccountForm({ id }: Props) {
             ))}
           </select>
         </label>
-        <label class="field">
-          <span>Whose is it?</span>
-          <select value={owner} onChange={(e) => setOwner((e.target as HTMLSelectElement).value as Owner)}>
-            <option value="A">{state.settings.partnerAName}</option>
-            <option value="B">{state.settings.partnerBName}</option>
-            <option value="joint">Joint</option>
-          </select>
-        </label>
+        <div class="field">
+          <span class="field-label" id="owner-label">
+            Whose is it?
+          </span>
+          <div class="segmented" role="group" aria-labelledby="owner-label">
+            {owners.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                aria-pressed={owner === o.value}
+                onClick={() => setOwner(o.value)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
         {!existing && (
           <label class="field">
-            <span>{OWED_KINDS.includes(kind) ? 'Current amount owed' : 'Current balance'} (optional)</span>
-            <MoneyInput initial={null} symbol={currencySymbol(state.settings.currency)} onChange={setOpening} />
+            <span>{OWED_KINDS.includes(kind) ? 'Amount owed today' : 'Balance today'}</span>
+            <MoneyInput
+              initial={null}
+              symbol={currencySymbol(state.settings.currency)}
+              onChange={setOpening}
+              wide
+            />
+            <p class="field-hint">Optional — you can add it later from Update.</p>
           </label>
         )}
-        <div class="stack">
-          <button class="btn-primary btn-big" disabled={!name.trim()} onClick={() => void save()}>
-            {existing ? 'Save changes' : 'Add account'}
-          </button>
-          <button class="btn-big" onClick={() => navigate('/accounts')}>
-            Cancel
-          </button>
-        </div>
+      </div>
+
+      <div class="stack" style="margin-top:20px">
+        <button class="btn-primary btn-big" disabled={!name.trim()} onClick={() => void save()}>
+          {existing ? 'Save changes' : 'Add account'}
+        </button>
+        <button class="btn-big btn-quiet" onClick={() => navigate('/accounts')}>
+          Cancel
+        </button>
       </div>
 
       {existing && (
-        <div class="card">
-          {existing.archived ? (
-            <>
-              <p class="muted small" style="margin-bottom:10px">
-                This account is archived. Its history still counts up to the point it was archived.
-              </p>
-              <button class="btn-big" onClick={() => void setArchived(false)}>
-                Restore account
-              </button>
-            </>
-          ) : (
-            <>
-              <p class="muted small" style="margin-bottom:10px">
-                Closed this account? Archiving hides it and stops it counting towards your totals —
-                all its history is kept and it stays synced to your partner's phone.
-              </p>
-              <button class="btn-danger btn-big" onClick={() => void setArchived(true)}>
-                Archive account
-              </button>
-            </>
-          )}
-        </div>
+        <section class="group" style="margin-top:30px">
+          <button
+            class={`btn-big ${existing.archived ? '' : 'btn-danger'}`}
+            onClick={() => void setArchived(!existing.archived)}
+          >
+            {existing.archived ? 'Restore account' : 'Archive account'}
+          </button>
+          <p class="group-footer">
+            {existing.archived
+              ? 'This account is archived. Its history still counts up to the point it was archived.'
+              : "Closed this account? Archiving hides it; its history still counts up to today, and it stays synced to your partner's phone."}
+          </p>
+        </section>
       )}
     </div>
   );

@@ -3,6 +3,8 @@ import { useApp, mutate, getStore } from '../model/store';
 import { addAlias, aliasSeries, repointAlias, updateAccount, updateAlias } from '../model/repo';
 import { toDay, todayISO } from '../logic/progress';
 import { Chart } from './components/Chart';
+import { Icon } from './components/Icon';
+import { navigate } from '../router';
 
 export function Aliases() {
   const app = useApp();
@@ -36,101 +38,120 @@ export function Aliases() {
     setRepointing(null);
   };
 
+  const live = state.aliases.filter((al) => !al.archived);
+
   return (
     <div>
-      <h1>Aliases</h1>
-      <p class="muted" style="margin-bottom:14px">
-        An alias is a role — like "Main Savings" — that you can point at whichever real account
-        currently plays it. Switch banks and re-point the alias: its chart carries straight on.
-      </p>
+      <button class="back-link" onClick={() => navigate('/accounts')}>
+        <Icon name="back" size={20} />
+        Accounts
+      </button>
+      <header class="page-header" style="display:block;padding-top:6px">
+        <h1>Aliases</h1>
+        <p class="lede">
+          An alias is a role — like "Main Savings" — pointed at whichever real account currently
+          plays it. Switch banks, re-point the alias, and its chart carries straight on.
+        </p>
+      </header>
 
-      {state.aliases
-        .filter((al) => !al.archived)
-        .map((al) => {
-          const series = aliasSeries(state, al, today);
-          const others = activeAccounts.filter((a) => a.id !== al.accountId);
-          return (
-            <div class="card" key={al.id}>
-              <div class="row spread">
-                <div>
-                  <div class="account-name">{al.name}</div>
-                  <div class="muted small">currently: {accountName(al.accountId)}</div>
+      {live.map((al) => {
+        const series = aliasSeries(state, al, today);
+        const others = activeAccounts.filter((a) => a.id !== al.accountId);
+        return (
+          <div class="card" key={al.id}>
+            <div class="row spread" style="align-items:flex-start">
+              <div class="grow">
+                <div class="row" style="gap:8px">
+                  <Icon name="link" size={18} class="faint" />
+                  <span class="row-title">{al.name}</span>
                 </div>
-                <button style="padding:8px 12px" onClick={() => setRepointing(repointing === al.id ? null : al.id)}>
-                  Re-point
-                </button>
+                <div class="row-sub" style="margin-top:2px">currently: {accountName(al.accountId)}</div>
               </div>
-              {series.length > 1 && (
-                <div style="margin-top:10px">
-                  <Chart series={series} currency={state.settings.currency} color="var(--accent)" />
-                </div>
-              )}
-              {al.history.length > 1 && (
-                <p class="muted small" style="margin-top:8px">
-                  History: {al.history.map((h) => accountName(h.accountId)).join(' → ')}
-                </p>
-              )}
-              {repointing === al.id && (
-                <div style="margin-top:12px">
-                  {others.length === 0 ? (
-                    <p class="muted small">
-                      No other active account to point at — add the new bank's account first (Accounts tab).
+              <button class="btn-sm" onClick={() => setRepointing(repointing === al.id ? null : al.id)}>
+                Re-point
+              </button>
+            </div>
+            {series.length > 1 && <Chart series={series} currency={state.settings.currency} color="var(--accent)" />}
+            {al.history.length > 1 && (
+              <p class="small faint" style="margin-top:10px">
+                History: {al.history.map((h) => accountName(h.accountId)).join(' → ')}
+              </p>
+            )}
+            {repointing === al.id && (
+              <div class="goal">
+                {others.length === 0 ? (
+                  <p>No other active account to point at — add the new bank's account first (Accounts tab).</p>
+                ) : (
+                  <>
+                    <p style="margin-bottom:10px">
+                      Point "{al.name}" at which account? The old account will be archived (its
+                      history is kept and still shows in this alias's chart).
                     </p>
-                  ) : (
-                    <div class="stack">
-                      <p class="muted small">
-                        Point "{al.name}" at which account? The old account will be archived (its
-                        history is kept and still shows in this alias's chart).
-                      </p>
+                    <div class="stack" style="gap:6px">
                       {others.map((a) => (
-                        <button key={a.id} onClick={() => void repoint(al.id, a.id, al.accountId)}>
-                          {a.name}
-                          {a.institution ? ` · ${a.institution}` : ''}
+                        <button
+                          key={a.id}
+                          style="justify-content:space-between;background:var(--surface)"
+                          onClick={() => void repoint(al.id, a.id, al.accountId)}
+                        >
+                          <span>
+                            {a.name}
+                            {a.institution ? ` · ${a.institution}` : ''}
+                          </span>
+                          <Icon name="chevron" size={16} class="row-chevron" />
                         </button>
                       ))}
                     </div>
-                  )}
-                </div>
-              )}
-              <button
-                class="small"
-                style="margin-top:10px;padding:6px 10px;color:var(--text-dim)"
-                onClick={() => {
-                  const { device } = getStore();
-                  void mutate((s) => updateAlias(s, { deviceId: device.deviceId }, al.id, { archived: true }));
-                }}
-              >
-                Remove alias
-              </button>
-            </div>
-          );
-        })}
+                  </>
+                )}
+              </div>
+            )}
+            <button
+              class="btn-sm btn-quiet"
+              style="margin:12px 0 0 -14px"
+              onClick={() => {
+                const { device } = getStore();
+                void mutate((s) => updateAlias(s, { deviceId: device.deviceId }, al.id, { archived: true }));
+              }}
+            >
+              Remove alias
+            </button>
+          </div>
+        );
+      })}
 
-      <h2>New alias</h2>
-      <div class="card">
-        <label class="field">
-          <span>Alias name</span>
-          <input
-            value={newName}
-            onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
-            placeholder='e.g. "Main Savings", "Emergency fund"'
-          />
-        </label>
-        <label class="field">
-          <span>Points at</span>
-          <select value={newAccountId} onChange={(e) => setNewAccountId((e.target as HTMLSelectElement).value)}>
-            <option value="">Choose an account…</option>
-            {activeAccounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button class="btn-primary btn-big" disabled={!newName.trim() || !newAccountId} onClick={() => void create()}>
-          Create alias
-        </button>
-      </div>
+      <section class="group" style="margin-top:28px">
+        <h2 class="group-label">New alias</h2>
+        <div class="card">
+          <label class="field">
+            <span>Alias name</span>
+            <input
+              value={newName}
+              onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
+              placeholder="e.g. Main Savings"
+            />
+          </label>
+          <label class="field">
+            <span>Points at</span>
+            <select value={newAccountId} onChange={(e) => setNewAccountId((e.target as HTMLSelectElement).value)}>
+              <option value="">Choose an account…</option>
+              {activeAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            class="btn-primary btn-big"
+            style="margin-top:18px"
+            disabled={!newName.trim() || !newAccountId}
+            onClick={() => void create()}
+          >
+            Create alias
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

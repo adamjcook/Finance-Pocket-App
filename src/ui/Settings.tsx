@@ -1,17 +1,20 @@
 import { useState } from 'preact/hooks';
 import { useApp, mutate, getStore, patchDevice } from '../model/store';
 import { updateSettings, voidSnapshot } from '../model/repo';
-import { effectiveSnapshots } from '../logic/progress';
+import { effectiveSnapshots, formatDay } from '../logic/progress';
 import { asSyncPayload, buildPayload } from '../sync/codec';
-import { CURRENCIES } from '../model/types';
+import { CURRENCIES, GROWTH_KINDS, type T212Link } from '../model/types';
+import { linkReady, pullReadings, readingNow } from '../integrations/t212';
 import { mergePayload } from '../sync/apply';
 import { currencySymbol, formatMoney } from '../logic/money';
 import { MoneyInput } from './components/MoneyInput';
+import { Icon } from './components/Icon';
 
 export function Settings() {
   const app = useApp();
   const [fixAccountId, setFixAccountId] = useState('');
   const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [t212Busy, setT212Busy] = useState<'check' | 'reading' | null>(null);
 
   if (!app) return null;
   const { state, device } = app;
@@ -50,6 +53,24 @@ export function Settings() {
     }
   };
 
+  const link: T212Link = state.settings.t212 ?? { accountId: '', endpoint: '', token: '' };
+  const saveLink = (changes: Partial<T212Link>) => {
+    const next = { ...link, ...changes };
+    saveField({ t212: next.accountId || next.endpoint || next.token ? next : null });
+  };
+  const runT212 = async (kind: 'check' | 'reading') => {
+    setT212Busy(kind);
+    try {
+      await (kind === 'check' ? pullReadings({ force: true }) : readingNow());
+    } catch {
+      // the error is recorded on device.t212 and shown below
+    } finally {
+      setT212Busy(null);
+    }
+  };
+  const t212Status = device.t212;
+  const t212Accounts = state.accounts.filter((a) => GROWTH_KINDS.includes(a.kind) && !a.archived);
+
   const fixSnapshots = fixAccountId
     ? effectiveSnapshots(state.snapshots, state.voids)
         .filter((s) => s.accountId === fixAccountId)
@@ -57,219 +78,271 @@ export function Settings() {
         .reverse()
     : [];
 
+  const clearButton = (label: string, onClick: () => void) => (
+    <button type="button" class="clear-btn" aria-label={label} onClick={onClick}>
+      <Icon name="x" />
+    </button>
+  );
+
+  const dateRow = (label: string, value: string | null | undefined, onChange: (v: string | null) => void) => (
+    <label class="list-row setting-row">
+      <span class="setting-label">{label}</span>
+      <span class="setting-control">
+        <input
+          type="date"
+          value={value ?? ''}
+          onChange={(e) => onChange((e.target as HTMLInputElement).value || null)}
+        />
+        {value && clearButton(`Clear ${label.toLowerCase()}`, () => onChange(null))}
+      </span>
+    </label>
+  );
+
   return (
     <div>
-      <h1>Settings</h1>
+      <header class="page-header">
+        <h1>Settings</h1>
+      </header>
 
-      <h2>Appearance</h2>
-      <div class="card">
-        <p class="muted small" style="margin-bottom:10px">
-          This is a per-phone preference — it doesn't sync to your partner's phone.
-        </p>
-        <div class="row">
-          <button
-            class={device.theme === 'dark' ? 'btn-primary' : ''}
-            style="flex:1"
-            aria-pressed={device.theme === 'dark'}
-            onClick={() => void patchDevice({ theme: 'dark' })}
-          >
-            Dark
-          </button>
-          <button
-            class={device.theme === 'light' ? 'btn-primary' : ''}
-            style="flex:1"
-            aria-pressed={device.theme === 'light'}
-            onClick={() => void patchDevice({ theme: 'light' })}
-          >
-            Light
-          </button>
+      <section class="group">
+        <h2 class="group-label">Appearance</h2>
+        <div class="list">
+          <div class="list-row">
+            <div class="segmented grow" role="group" aria-label="Theme">
+              <button aria-pressed={device.theme === 'dark'} onClick={() => void patchDevice({ theme: 'dark' })}>
+                Dark
+              </button>
+              <button aria-pressed={device.theme === 'light'} onClick={() => void patchDevice({ theme: 'light' })}>
+                Light
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+        <p class="group-footer">Just for this phone — it doesn't sync to your partner's.</p>
+      </section>
 
-      <h2>Names</h2>
-      <div class="card">
-        <p class="muted small" style="margin-bottom:10px">
-          These names are shared between both phones and label who owns each account — keep them
-          the same on both sides.
-        </p>
-        <label class="field">
-          <span>Partner 1</span>
-          <input
-            value={state.settings.partnerAName}
-            onChange={(e) => saveField({ partnerAName: (e.target as HTMLInputElement).value })}
-          />
-        </label>
-        <label class="field">
-          <span>Partner 2</span>
-          <input
-            value={state.settings.partnerBName}
-            onChange={(e) => saveField({ partnerBName: (e.target as HTMLInputElement).value })}
-          />
-        </label>
-      </div>
-
-      <h2>Currency</h2>
-      <div class="card">
-        <select
-          aria-label="Currency"
-          value={currency}
-          onChange={(e) => saveField({ currency: (e.target as HTMLSelectElement).value })}
-        >
-          {CURRENCIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <h2>Debt baseline</h2>
-      <div class="card">
-        <p class="muted small" style="margin-bottom:10px">
-          "Paid off" progress is measured against your highest recorded combined debt. Set a manual
-          starting figure here if you'd rather measure from a specific point (e.g. what you owed
-          when you started clearing it).
-        </p>
-        <div class="row">
-          <MoneyInput
-            initial={state.settings.debtBaselineMinor}
-            symbol={currencySymbol(currency)}
-            placeholder="auto (peak)"
-            onChange={(minor) => saveField({ debtBaselineMinor: minor })}
-          />
-          {state.settings.debtBaselineMinor !== null && (
-            <button onClick={() => saveField({ debtBaselineMinor: null })}>Use auto</button>
-          )}
+      <section class="group">
+        <h2 class="group-label">You two</h2>
+        <div class="list">
+          <label class="list-row setting-row">
+            <span class="setting-label row" style="gap:8px">
+              <span class="owner-dot owner-dot-a" />
+              Partner 1
+            </span>
+            <input
+              value={state.settings.partnerAName}
+              onChange={(e) => saveField({ partnerAName: (e.target as HTMLInputElement).value })}
+            />
+          </label>
+          <label class="list-row setting-row">
+            <span class="setting-label row" style="gap:8px">
+              <span class="owner-dot owner-dot-b" />
+              Partner 2
+            </span>
+            <input
+              value={state.settings.partnerBName}
+              onChange={(e) => saveField({ partnerBName: (e.target as HTMLInputElement).value })}
+            />
+          </label>
+          <label class="list-row setting-row">
+            <span class="setting-label">Currency</span>
+            <select
+              aria-label="Currency"
+              value={currency}
+              onChange={(e) => saveField({ currency: (e.target as HTMLSelectElement).value })}
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
-      </div>
+        <p class="group-footer">
+          Shared by both phones. The names label who owns each account, so keep them the same on
+          both sides.
+        </p>
+      </section>
 
-      <h2>Goals</h2>
-      <div class="card">
-        <label class="field">
-          <span>Clear the credit cards by</span>
-          <div class="row">
-            <input
-              type="date"
-              value={state.settings.debtTargetDate ?? ''}
-              onChange={(e) =>
-                saveField({ debtTargetDate: (e.target as HTMLInputElement).value || null })
-              }
-            />
-            {state.settings.debtTargetDate && (
-              <button onClick={() => saveField({ debtTargetDate: null })}>Clear</button>
-            )}
-          </div>
-        </label>
-        <label class="field">
-          <span>Clear the loans by</span>
-          <div class="row">
-            <input
-              type="date"
-              value={state.settings.loanTargetDate ?? ''}
-              onChange={(e) =>
-                saveField({ loanTargetDate: (e.target as HTMLInputElement).value || null })
-              }
-            />
-            {state.settings.loanTargetDate && (
-              <button onClick={() => saveField({ loanTargetDate: null })}>Clear</button>
-            )}
-          </div>
-        </label>
-        <label class="field">
-          <span>Savings &amp; investments target</span>
-          <div class="row">
-            <MoneyInput
-              initial={state.settings.savingsTargetMinor ?? null}
-              symbol={currencySymbol(currency)}
-              placeholder="no target"
-              onChange={(minor) => saveField({ savingsTargetMinor: minor })}
-            />
-            {state.settings.savingsTargetMinor != null && (
-              <button onClick={() => saveField({ savingsTargetMinor: null })}>Clear</button>
-            )}
-          </div>
-        </label>
-        <label class="field">
-          <span>Reach the savings target by (optional)</span>
-          <div class="row">
-            <input
-              type="date"
-              value={state.settings.savingsTargetDate ?? ''}
-              onChange={(e) =>
-                saveField({ savingsTargetDate: (e.target as HTMLInputElement).value || null })
-              }
-            />
-            {state.settings.savingsTargetDate && (
-              <button onClick={() => saveField({ savingsTargetDate: null })}>Clear</button>
-            )}
-          </div>
-        </label>
-        <p class="muted small">
-          The dashboard shows roughly how much per month gets you there. Goals sync to your
+      <section class="group">
+        <h2 class="group-label">Goals</h2>
+        <div class="list">
+          {dateRow('Clear the cards by', state.settings.debtTargetDate, (v) => saveField({ debtTargetDate: v }))}
+          {dateRow('Clear the loans by', state.settings.loanTargetDate, (v) => saveField({ loanTargetDate: v }))}
+          <label class="list-row setting-row">
+            <span class="setting-label">Savings target</span>
+            <span class="setting-control">
+              <MoneyInput
+                initial={state.settings.savingsTargetMinor ?? null}
+                symbol={currencySymbol(currency)}
+                placeholder="no target"
+                onChange={(minor) => saveField({ savingsTargetMinor: minor })}
+              />
+              {state.settings.savingsTargetMinor != null &&
+                clearButton('Clear savings target', () => saveField({ savingsTargetMinor: null }))}
+            </span>
+          </label>
+          {dateRow('Reach it by', state.settings.savingsTargetDate, (v) => saveField({ savingsTargetDate: v }))}
+        </div>
+        <p class="group-footer">
+          The dashboard works out roughly how much per month gets you there. Goals sync to your
           partner's phone like everything else.
         </p>
-      </div>
+      </section>
 
-      <h2>Fix a mistyped balance</h2>
-      <div class="card">
-        <label class="field">
-          <span>Account</span>
-          <select value={fixAccountId} onChange={(e) => setFixAccountId((e.target as HTMLSelectElement).value)}>
-            <option value="">Choose…</option>
-            {state.accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {fixSnapshots.map((s) => (
-          <div class="account-row" key={s.id}>
-            <div class="account-main">
-              <div>{formatMoney(s.balance, currency)}</div>
-              <div class="muted small">{s.at.slice(0, 16).replace('T', ' ')}</div>
-            </div>
-            <button
-              class="btn-danger"
-              style="padding:7px 12px"
-              onClick={() => void mutate((st) => voidSnapshot(st, ctx(), s.id))}
+      <section class="group">
+        <h2 class="group-label">Trading 212</h2>
+        <div class="list">
+          <label class="list-row setting-row">
+            <span class="setting-label">Linked account</span>
+            <select
+              aria-label="Trading 212 linked account"
+              value={link.accountId}
+              onChange={(e) => saveLink({ accountId: (e.target as HTMLSelectElement).value })}
             >
-              Undo entry
-            </button>
-          </div>
-        ))}
-        {fixAccountId && fixSnapshots.length === 0 && (
-          <p class="muted small">No entries recorded for this account.</p>
-        )}
-      </div>
-
-      <h2>Backup</h2>
-      <div class="card stack">
-        <p class="muted small">
-          Your data lives only on your two phones. Every now and then, save a backup file
-          somewhere safe (it's the same format the sync uses).
+              <option value="">Not linked</option>
+              {t212Accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label class="list-row setting-row">
+            <span class="setting-label">Worker address</span>
+            <input
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              spellcheck={false}
+              placeholder="https://…workers.dev"
+              value={link.endpoint}
+              onChange={(e) => saveLink({ endpoint: (e.target as HTMLInputElement).value.trim() })}
+            />
+          </label>
+          <label class="list-row setting-row">
+            <span class="setting-label">Access token</span>
+            <input
+              type="password"
+              autoComplete="off"
+              placeholder="FINPAIR_TOKEN"
+              value={link.token}
+              onChange={(e) => saveLink({ token: (e.target as HTMLInputElement).value.trim() })}
+            />
+          </label>
+          {linkReady(state.settings.t212) && (
+            <div class="list-row" style="gap:8px">
+              <button class="btn-sm grow" disabled={t212Busy !== null} onClick={() => void runT212('check')}>
+                {t212Busy === 'check' ? 'Checking…' : 'Check now'}
+              </button>
+              <button class="btn-sm grow" disabled={t212Busy !== null} onClick={() => void runT212('reading')}>
+                {t212Busy === 'reading' ? 'Reading…' : 'Read now'}
+              </button>
+            </div>
+          )}
+        </div>
+        <p class={`group-footer ${t212Status?.error ? 'owed' : ''}`} role="status">
+          {!linkReady(state.settings.t212)
+            ? 'Records your Trading 212 account total at 9pm every day, so the chart shows each day’s change. Needs the finpair-t212 Worker — see the README.'
+            : t212Status?.error
+              ? t212Status.error
+              : t212Status?.latest
+                ? `Last reading ${formatDay(t212Status.latest.day)}, ${new Date(t212Status.latest.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}: ${formatMoney(t212Status.latest.totalMinor, currency)}${t212Status.latest.final ? '' : ' (provisional — the 9pm reading replaces it)'}.`
+                : 'Linked. The first reading arrives at 9pm, or tap “Read now”.'}
         </p>
-        <button class="btn-big" onClick={exportFile}>
-          Export backup file
-        </button>
-        <label class="btn btn-big" style="display:block">
-          Import / restore backup
-          <input
-            type="file"
-            accept="application/json"
-            style="display:none"
-            onChange={(e) => {
-              const file = (e.target as HTMLInputElement).files?.[0];
-              if (file) void importFile(file);
-            }}
-          />
-        </label>
-        {importMsg && <p class="muted small">{importMsg}</p>}
-      </div>
+      </section>
 
-      <p class="muted small" style="margin-top:16px">
-        This phone's device ID: {device.deviceId.slice(0, 8)} · data never leaves your phones
-        except via Sync and backups.
+      <section class="group">
+        <h2 class="group-label">Debt baseline</h2>
+        <div class="list">
+          <label class="list-row setting-row">
+            <span class="setting-label">Starting debt</span>
+            <span class="setting-control">
+              <MoneyInput
+                initial={state.settings.debtBaselineMinor}
+                symbol={currencySymbol(currency)}
+                placeholder="auto (peak)"
+                onChange={(minor) => saveField({ debtBaselineMinor: minor })}
+              />
+              {state.settings.debtBaselineMinor !== null &&
+                clearButton('Use auto', () => saveField({ debtBaselineMinor: null }))}
+            </span>
+          </label>
+        </div>
+        <p class="group-footer">
+          "Paid off" is measured against your highest recorded combined card debt. Set a figure
+          here to measure from a specific point instead, like what you owed when you started.
+        </p>
+      </section>
+
+      <section class="group">
+        <h2 class="group-label">Fix a mistyped balance</h2>
+        <div class="list">
+          <label class="list-row setting-row">
+            <span class="setting-label">Account</span>
+            <select value={fixAccountId} onChange={(e) => setFixAccountId((e.target as HTMLSelectElement).value)}>
+              <option value="">Choose…</option>
+              {state.accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {fixSnapshots.map((s) => (
+            <div class="list-row" key={s.id}>
+              <div class="grow">
+                <div class="row-title num">{formatMoney(s.balance, currency)}</div>
+                <div class="row-sub num">{s.at.slice(0, 16).replace('T', ' ')}</div>
+              </div>
+              <button
+                class="btn-sm btn-danger"
+                onClick={() => void mutate((st) => voidSnapshot(st, ctx(), s.id))}
+              >
+                Undo entry
+              </button>
+            </div>
+          ))}
+          {fixAccountId && fixSnapshots.length === 0 && (
+            <div class="list-row row-sub">No entries recorded for this account.</div>
+          )}
+        </div>
+        <p class="group-footer">Undoing an entry hides it everywhere, on both phones, without losing anything.</p>
+      </section>
+
+      <section class="group">
+        <h2 class="group-label">Backup</h2>
+        <div class="list">
+          <button class="list-row tappable btn-row" onClick={exportFile}>
+            <Icon name="download" />
+            <span class="grow">Export backup file</span>
+            <Icon name="chevron" size={18} class="row-chevron" />
+          </button>
+          <label class="list-row tappable btn-row">
+            <Icon name="upload" />
+            <span class="grow">Import / restore backup</span>
+            <Icon name="chevron" size={18} class="row-chevron" />
+            <input
+              type="file"
+              accept="application/json"
+              style="display:none"
+              onChange={(e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (file) void importFile(file);
+              }}
+            />
+          </label>
+        </div>
+        <p class="group-footer">
+          {importMsg ??
+            "Your data lives only on your two phones. Every now and then, save a backup file somewhere safe — it's the same format the sync uses."}
+        </p>
+      </section>
+
+      <p class="about">
+        <Icon name="shield" size={16} />
+        Data never leaves your phones except via Sync and backups · device {device.deviceId.slice(0, 8)}
       </p>
     </div>
   );

@@ -6,6 +6,13 @@ import { ACCOUNT_KIND_LABELS, GROWTH_KINDS, OWED_KINDS } from '../model/types';
 import { currencySymbol, formatMoney } from '../logic/money';
 import { MoneyInput } from './components/MoneyInput';
 import { navigate } from '../router';
+import { Icon } from './components/Icon';
+
+/** Up to two initials from the account name, for its list avatar. */
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  return (words.length > 1 ? words[0][0] + words[1][0] : (words[0] ?? '?').slice(0, 2)).toUpperCase();
+}
 
 function ownerLabel(owner: Account['owner'], a: string, b: string): string {
   return owner === 'A' ? a : owner === 'B' ? b : 'Joint';
@@ -52,30 +59,47 @@ export function Accounts() {
     },
   ];
 
+  const groupTotal = (accounts: Account[]) =>
+    accounts.reduce((sum, a) => (a.archived ? sum : sum + (balances.get(a.id)?.balance ?? 0)), 0);
+
   return (
     <div>
-      <div class="row spread">
+      <header class="page-header">
         <h1>Accounts</h1>
-        <a href="#/aliases" class="btn" style="padding:8px 14px">
-          Aliases
-        </a>
-      </div>
+        <div class="header-actions">
+          <a href="#/aliases" class="btn btn-sm">
+            Aliases
+          </a>
+          <button class="btn-icon btn-primary" aria-label="Add account" onClick={() => navigate('/accounts/new')}>
+            <Icon name="plus" size={20} />
+          </button>
+        </div>
+      </header>
 
       {state.accounts.length === 0 && (
-        <p class="muted">No accounts yet — tap + to add your first one.</p>
+        <div class="empty">
+          <div class="empty-icon">
+            <Icon name="accounts" size={26} />
+          </div>
+          <h3>No accounts yet</h3>
+          <p class="small">Add your cards, loans and savings — then keep their balances up to date together.</p>
+          <button class="btn-primary" style="margin-top:18px" onClick={() => navigate('/accounts/new')}>
+            Add your first account
+          </button>
+        </div>
       )}
 
       {visible.length > 0 && (
-        <div class="owner-key muted small">
-          <span class="row" style="gap:6px">
+        <div class="owner-key">
+          <span>
             <span class="owner-dot owner-dot-a" />
             {partnerAName}
           </span>
-          <span class="row" style="gap:6px">
+          <span>
             <span class="owner-dot owner-dot-b" />
             {partnerBName}
           </span>
-          <span class="row" style="gap:6px">
+          <span>
             <span class="owner-dot owner-dot-joint" />
             Joint
           </span>
@@ -85,19 +109,25 @@ export function Accounts() {
       {groups.map(
         (g) =>
           g.accounts.length > 0 && (
-            <div key={g.title}>
-              <h2>{g.title}</h2>
-              <div class="card" style="padding:4px 12px">
+            <section class="group" key={g.title}>
+              <h2 class="group-label">
+                {g.title}
+                <span class="group-total">{formatMoney(groupTotal(g.accounts), currency)}</span>
+              </h2>
+              <div class="list">
                 {g.accounts.map((a) => {
                   const alias = aliasForAccount(state, a.id);
                   const latest = balances.get(a.id);
                   return (
-                    <div class="account-row" key={a.id} style={a.archived ? 'opacity:.55' : ''}>
-                      <span
-                        class={`owner-bar owner-bar-${a.owner === 'joint' ? 'joint' : a.owner.toLowerCase()}`}
-                        role="img"
-                        aria-label={ownerLabel(a.owner, partnerAName, partnerBName)}
-                      />
+                    <div class={`list-row with-avatar account-row ${a.archived ? 'archived' : ''}`} key={a.id}>
+                      <span class="avatar">
+                        <span aria-hidden="true">{initials(a.name)}</span>
+                        <span
+                          class={`owner-bar owner-bar-${a.owner === 'joint' ? 'joint' : a.owner.toLowerCase()}`}
+                          role="img"
+                          aria-label={ownerLabel(a.owner, partnerAName, partnerBName)}
+                        />
+                      </span>
                       <div
                         class="account-main"
                         onClick={() => navigate(`/accounts/${a.id}`)}
@@ -105,14 +135,19 @@ export function Accounts() {
                         tabIndex={0}
                       >
                         <div class="account-name">
-                          {a.name}{' '}
+                          <span class="name-text">{a.name}</span>
                           {alias && <span class="chip chip-alias">{alias.name}</span>}
-                          {a.archived && <span class="chip">archived</span>}
+                          {state.settings.t212?.accountId === a.id && (
+                            <span class="chip" title="Updated daily from Trading 212">
+                              Auto
+                            </span>
+                          )}
+                          {a.archived && <span class="chip">Archived</span>}
                         </div>
-                        <div class="muted small">{a.institution || ACCOUNT_KIND_LABELS[a.kind]}</div>
+                        <div class="row-sub">{a.institution || ACCOUNT_KIND_LABELS[a.kind]}</div>
                       </div>
                       {editing === a.id ? (
-                        <span class="row">
+                        <span class="inline-edit">
                           <MoneyInput
                             initial={latest?.balance ?? null}
                             symbol={symbol}
@@ -120,43 +155,44 @@ export function Accounts() {
                             onChange={setDraft}
                             onEnter={() => void commit(a.id)}
                           />
-                          <button class="btn-primary" style="padding:8px 12px" onClick={() => void commit(a.id)}>
-                            ✓
+                          <button
+                            class="btn-icon btn-primary"
+                            aria-label="Save balance"
+                            onClick={() => void commit(a.id)}
+                          >
+                            <Icon name="check" size={20} />
                           </button>
                         </span>
                       ) : (
                         <button
-                          class="balance-btn"
+                          class={`balance-btn ${latest ? '' : 'unset'}`}
                           onClick={() => {
                             setEditing(a.id);
                             setDraft(latest?.balance ?? null);
                           }}
                           title="Tap to update this balance"
                         >
-                          {latest ? formatMoney(latest.balance, currency) : 'set balance'}
+                          {latest ? formatMoney(latest.balance, currency) : 'Set balance'}
                         </button>
                       )}
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </section>
           ),
       )}
 
-      <label class="row muted small" style="margin-top:14px">
-        <input
-          type="checkbox"
-          style="width:auto"
-          checked={showArchived}
-          onChange={(e) => setShowArchived((e.target as HTMLInputElement).checked)}
-        />
-        Show archived accounts
-      </label>
-
-      <button class="fab" aria-label="Add account" onClick={() => navigate('/accounts/new')}>
-        +
-      </button>
+      {state.accounts.some((a) => a.archived) && (
+        <label class="toggle-row">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived((e.target as HTMLInputElement).checked)}
+          />
+          Show archived accounts
+        </label>
+      )}
     </div>
   );
 }
