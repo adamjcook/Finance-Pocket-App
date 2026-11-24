@@ -8,6 +8,8 @@ import { MoneyInput } from './components/MoneyInput';
 import { navigate } from '../router';
 import { daysBetween, formatDay, STALE_AFTER_DAYS, toDay, todayISO } from '../logic/progress';
 import { Icon } from './components/Icon';
+import { looksLikeATypo, summariseCheckIn } from '../logic/checkin';
+import { clearDraft, loadDraft, saveDraft, setLastCheckIn } from '../model/lastCheckIn';
 
 /**
  * The accounts list, and — at #/update — the same list in update mode: every
@@ -18,8 +20,9 @@ import { Icon } from './components/Icon';
 export function Accounts({ updating = false }: { updating?: boolean }) {
   const app = useApp();
   const [showArchived, setShowArchived] = useState(false);
-  const [drafts, setDrafts] = useState<Map<string, number | null>>(new Map());
-  const [saved, setSaved] = useState(false);
+  // Update mode picks up where it left off if the app was closed mid-update.
+  const [drafts, setDrafts] = useState<Map<string, number | null>>(() => (updating ? loadDraft() : new Map()));
+  const [invalid, setInvalid] = useState<Set<string>>(new Set());
   const inputs = useRef(new Map<string, HTMLInputElement>());
 
   // The list and update mode are separate instances (keyed in app.tsx), so
@@ -57,9 +60,25 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
     return draft !== undefined && draft !== null && draft !== (balances.get(a.id)?.balance ?? null);
   });
 
+  const setDraft = (id: string, minor: number | null, isInvalid: boolean) => {
+    setDrafts((prev) => {
+      const next = new Map(prev).set(id, minor);
+      saveDraft(next);
+      return next;
+    });
+    setInvalid((prev) => {
+      if (prev.has(id) === isInvalid) return prev;
+      const next = new Set(prev);
+      if (isInvalid) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  // Save, then go Home to see how the two of you did (the check-in card).
   const saveAll = async () => {
-    if (changed.length === 0) return;
-    const { device } = getStore();
+    if (changed.length === 0 || invalid.size > 0) return;
+    const { device, state: before } = getStore();
     const at = new Date().toISOString();
     await mutate((s) =>
       addSnapshots(
@@ -68,11 +87,16 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
         changed.map((a) => ({ accountId: a.id, balance: drafts.get(a.id)!, at })),
       ),
     );
-    setSaved(true);
-    // Back to the list after a moment — unless they've already gone elsewhere.
-    setTimeout(() => {
-      if (location.hash === '#/update') navigate('/accounts');
-    }, 700);
+    const after = getStore().state;
+    const ids = after.snapshots.slice(before.snapshots.length).map((s) => s.id);
+    setLastCheckIn(summariseCheckIn(before, after, at, ids, toDay(todayISO())));
+    clearDraft();
+    navigate('/');
+  };
+
+  const cancel = () => {
+    clearDraft();
+    navigate('/accounts');
   };
 
   const pills = (a: Account) => {
@@ -109,18 +133,19 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
         <h1>{updating ? 'Update' : 'Accounts'}</h1>
         <div class="header-actions">
           {updating ? (
-            <button class="btn-sm" onClick={() => navigate('/accounts')}>
+            <button class="btn-sm" onClick={cancel}>
               Cancel
             </button>
           ) : (
             <>
+              {/* The payday update is the main job here, so it's the primary button. */}
               {visible.some((a) => !a.archived) && (
-                <button class="btn-sm" onClick={() => navigate('/update')}>
+                <button class="btn-sm btn-primary" onClick={() => navigate('/update')}>
                   <Icon name="update" size={16} />
                   Update
                 </button>
               )}
-              <button class="btn-icon btn-primary" aria-label="Add account" onClick={() => navigate('/accounts/new')}>
+              <button class="btn-icon" aria-label="Add account" onClick={() => navigate('/accounts/new')}>
                 <Icon name="plus" size={20} />
               </button>
             </>
@@ -160,26 +185,43 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
                 const current = latest?.balance ?? null;
                 const draft = drafts.get(a.id);
                 const isChanged = draft !== undefined && draft !== null && draft !== current;
+                const isInvalid = invalid.has(a.id);
+                const typo = isChanged && looksLikeATypo(current, draft);
+                const noteId = `note-${a.id}`;
                 return (
-                  <div class={`list-row account-row update-row ${isChanged ? 'changed' : ''}`} key={a.id}>
+                  <div
+                    class={`list-row account-row update-row ${isChanged ? 'changed' : ''} ${isInvalid ? 'is-invalid' : ''}`}
+                    key={a.id}
+                  >
                     <div class="grow">
                       <div class="row-title">{a.name}</div>
-                      <div class="row-sub num">
-                        {t212Id === a.id && 'Auto daily · '}
-                        {current !== null
-                          ? `${OWED_KINDS.includes(a.kind) ? 'Owed' : 'Was'} ${formatMoney(current, currency)}`
-                          : ACCOUNT_KIND_LABELS[a.kind]}
-                      </div>
+                      {isInvalid ? (
+                        <div class="row-sub row-error" id={noteId}>
+                          Not a valid amount
+                        </div>
+                      ) : typo ? (
+                        <div class="row-sub row-warn num" id={noteId}>
+                          {formatMoney(draft!, currency)}? It was {formatMoney(current!, currency)}
+                        </div>
+                      ) : (
+                        <div class="row-sub num">
+                          {t212Id === a.id && 'Auto daily · '}
+                          {current !== null
+                            ? `${OWED_KINDS.includes(a.kind) ? 'Owed' : 'Was'} ${formatMoney(current, currency)}`
+                            : ACCOUNT_KIND_LABELS[a.kind]}
+                        </div>
+                      )}
                     </div>
                     <MoneyInput
-                      initial={current}
+                      initial={draft ?? current}
                       symbol={symbol}
                       ariaLabel={`New balance for ${a.name}`}
+                      describedBy={isInvalid || typo ? noteId : undefined}
                       inputRef={(el) => {
                         if (el) inputs.current.set(a.id, el);
                         else inputs.current.delete(a.id);
                       }}
-                      onChange={(minor) => setDrafts((prev) => new Map(prev).set(a.id, minor))}
+                      onChange={(minor, bad) => setDraft(a.id, minor, bad)}
                       onEnter={() => inputs.current.get(order[i + 1])?.focus()}
                     />
                   </div>
@@ -222,16 +264,16 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
       {updating ? (
         visible.length > 0 && (
           <div class="sticky-action">
-            <button class="btn-primary btn-big" disabled={changed.length === 0} onClick={() => void saveAll()}>
-              {saved ? (
-                <>
-                  <Icon name="check" size={20} /> Saved
-                </>
-              ) : changed.length === 0 ? (
-                'Nothing changed yet'
-              ) : (
-                `Save ${changed.length} update${changed.length === 1 ? '' : 's'}`
-              )}
+            <button
+              class="btn-primary btn-big"
+              disabled={changed.length === 0 || invalid.size > 0}
+              onClick={() => void saveAll()}
+            >
+              {invalid.size > 0
+                ? `Fix the amount${invalid.size === 1 ? '' : 's'} in red first`
+                : changed.length === 0
+                  ? 'Nothing changed yet'
+                  : `Save ${changed.length} update${changed.length === 1 ? '' : 's'}`}
             </button>
           </div>
         )

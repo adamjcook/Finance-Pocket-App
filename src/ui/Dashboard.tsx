@@ -5,12 +5,18 @@ import {
   debtProgress,
   formatDay,
   growthProgress,
+  lastManualUpdate,
+  latestPayday,
   loanProgress,
   monthlyToTarget,
   toDay,
   todayISO,
 } from '../logic/progress';
-import { formatMoney } from '../logic/money';
+import { formatMoney, formatMoneyWhole } from '../logic/money';
+import { lastWorkingDay } from '../../worker/src/ukdates';
+import { useLastCheckIn } from '../model/lastCheckIn';
+import { navigate } from '../router';
+import { CheckInCard, PaydayCard } from './components/HomeCards';
 import { GROWTH_KINDS, OWED_KINDS, type DashboardSectionKey } from '../model/types';
 import { latestBalances } from '../model/repo';
 import { Chart } from './components/Chart';
@@ -59,6 +65,10 @@ export function Dashboard() {
   const sectionRefs = useRef(new Map<DashboardSectionKey, HTMLDivElement>());
   const [dragKey, setDragKey] = useState<DashboardSectionKey | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
+  // Reordering lives behind "Reorder cards" so the grips aren't on every card
+  // all the time; it's done once in a while, not every visit.
+  const [editing, setEditing] = useState(false);
+  const { checkIn, undone } = useLastCheckIn();
 
   // All cards collapse to their heading row for the duration of any drag —
   // measure that row's real height once it's rendered, rather than assuming
@@ -138,7 +148,12 @@ export function Dashboard() {
   const t212Latest = t212Account ? device.t212?.latest : null;
   const signed = (minor: number) => `${minor >= 0 ? '+' : '−'}${formatMoney(Math.abs(minor), currency)}`;
 
-  const reordering = dragKey !== null;
+  const reordering = dragKey !== null || editing;
+  const names = `${settings.partnerAName} & ${settings.partnerBName}`;
+  const hasAccounts = state.accounts.some((a) => !a.archived);
+  const lastUpdate = lastManualUpdate(state);
+  const payday = latestPayday(today, lastWorkingDay);
+  const paydayDue = hasAccounts && (lastUpdate === null || lastUpdate < payday);
   const baseVisible = device.dashboardOrder.filter(
     (k) => (k !== 'loans' || showLoans) && (k !== 'goals' || hasGoals),
   );
@@ -177,6 +192,14 @@ export function Dashboard() {
     setDragOffset(offset);
   };
 
+  // Keyboard and screen-reader alternative to dragging, in Reorder mode.
+  const moveBy = (key: DashboardSectionKey, by: -1 | 1) => {
+    const from = baseVisible.indexOf(key);
+    const to = from + by;
+    if (to < 0 || to >= baseVisible.length) return;
+    void patchDevice({ dashboardOrder: mergeVisibleOrder(device.dashboardOrder, baseVisible, moveItem(baseVisible, from, to)) });
+  };
+
   const endDrag = () => {
     const d = drag.current;
     if (!d) return;
@@ -213,11 +236,12 @@ export function Dashboard() {
               <div class="debt-hero">
                 <ProgressRing pct={debt.pct} />
                 <div class="grow">
-                  <div class="big-number">{formatMoney(debt.current, currency)}</div>
+                  <div class="big-number">{formatMoneyWhole(debt.current, currency)}</div>
                   <div class="figure-caption">left to clear</div>
                   <div class="figure-caption positive num" style="margin-top:8px;font-weight:550">
                     {formatMoney(debt.paidOff, currency)} of {formatMoney(debt.baseline, currency)} paid off
                   </div>
+                  {debt.delta30 !== 0 && <DebtChange change={debt.delta30} currency={currency} />}
                 </div>
               </div>
               <Chart series={debt.series} currency={currency} color="var(--debt)" />
@@ -234,6 +258,7 @@ export function Dashboard() {
     if (key === 'goals') {
       return (
         <div class="dash-body pots">
+          {pots.length > 0 && payoffs.length > 0 && <h3 class="pots-label">Saving up</h3>}
           {pots.map((p) => (
             <div class="pot" key={p.account.id}>
               <div class="pot-head">
@@ -266,6 +291,7 @@ export function Dashboard() {
               </div>
             </div>
           ))}
+          {pots.length > 0 && payoffs.length > 0 && <h3 class="pots-label">Paying off</h3>}
           {payoffs.map((p) => (
             <div class="pot" key={p.account.id}>
               <div class="pot-head">
@@ -300,11 +326,12 @@ export function Dashboard() {
           <div class="debt-hero">
             <ProgressRing pct={loans.pct} />
             <div class="grow">
-              <div class="big-number">{formatMoney(loans.current, currency)}</div>
+              <div class="big-number">{formatMoneyWhole(loans.current, currency)}</div>
               <div class="figure-caption">still owed on loans</div>
               <div class="figure-caption positive num" style="margin-top:8px;font-weight:550">
                 {formatMoney(loans.paidOff, currency)} of {formatMoney(loans.baseline, currency)} paid off
               </div>
+              {loans.delta30 !== 0 && <DebtChange change={loans.delta30} currency={currency} />}
             </div>
           </div>
           {loans.series.length > 1 && (
@@ -320,16 +347,18 @@ export function Dashboard() {
           <>
             <div class="figure-row">
               <div class="grow">
-                <div class="big-number">{formatMoney(growth.current, currency)}</div>
+                <div class="big-number">{formatMoneyWhole(growth.current, currency)}</div>
                 <div class="figure-caption">combined savings &amp; investments</div>
               </div>
-              <div>
-                <span class={`delta ${up ? 'delta-up' : 'delta-down'}`}>
-                  <Icon name={up ? 'up' : 'down'} />
-                  {formatMoney(Math.abs(growth.delta30), currency)}
-                </span>
-                <div class="delta-note">last 30 days</div>
-              </div>
+              {growth.delta30 !== 0 && (
+                <div>
+                  <span class={`delta ${up ? 'delta-up' : 'delta-down'}`}>
+                    <Icon name={up ? 'up' : 'down'} />
+                    {formatMoney(Math.abs(growth.delta30), currency)}
+                  </span>
+                  <div class="delta-note">last 30 days</div>
+                </div>
+              )}
             </div>
             {t212Account && (t212Day || t212Latest) && (
               <div class="mini-stats">
@@ -370,13 +399,31 @@ export function Dashboard() {
         </p>
       </header>
 
+      {checkIn ? (
+        <CheckInCard checkIn={checkIn} undone={undone} names={names} currency={currency} />
+      ) : (
+        paydayDue && <PaydayCard payday={payday} today={today} lastUpdate={lastUpdate} />
+      )}
+
       <section class="hero">
         <div class="hero-label">Net worth</div>
-        <div class={`net-worth ${netWorth < 0 ? 'negative' : ''}`}>
-          {netWorth >= 0 ? '' : '-'}
-          {formatMoney(Math.abs(netWorth), currency)}
-        </div>
+        <div class={`net-worth num ${netWorth < 0 ? 'negative' : ''}`}>{formatMoneyWhole(netWorth, currency)}</div>
+        {lastUpdate && <div class="hero-note">Balances as of {formatDay(lastUpdate)}</div>}
       </section>
+
+      {!hasAccounts && (
+        <section class="home-card">
+          <div class="home-card-head">
+            <h2>Start with your accounts</h2>
+          </div>
+          <p class="home-card-text">
+            Add your cards, loans and savings, and their balances. Home fills in from there.
+          </p>
+          <button class="btn-primary btn-big" onClick={() => navigate('/accounts/new')}>
+            Add your first account
+          </button>
+        </section>
+      )}
 
       {visible.map((key) => {
         const meta = SECTION_META[key];
@@ -400,22 +447,64 @@ export function Dashboard() {
           >
             <h2>
               {meta.heading}
-              <button
-                type="button"
-                class="drag-handle"
-                aria-label={`Reorder ${meta.heading}`}
-                onPointerDown={(e) => startDrag(key, e)}
-                onPointerMove={continueDrag}
-                onPointerUp={endDrag}
-                onPointerCancel={endDrag}
-              >
-                <Icon name="grip" size={18} />
-              </button>
+              {editing && (
+                <span class="reorder-controls">
+                  <button
+                    type="button"
+                    class="drag-handle"
+                    aria-label={`Move ${meta.heading} up`}
+                    disabled={baseVisible.indexOf(key) === 0}
+                    onClick={() => moveBy(key, -1)}
+                  >
+                    <Icon name="up" size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    class="drag-handle"
+                    aria-label={`Move ${meta.heading} down`}
+                    disabled={baseVisible.indexOf(key) === baseVisible.length - 1}
+                    onClick={() => moveBy(key, 1)}
+                  >
+                    <Icon name="down" size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    class="drag-handle"
+                    aria-label={`Drag to reorder ${meta.heading}`}
+                    onPointerDown={(e) => startDrag(key, e)}
+                    onPointerMove={continueDrag}
+                    onPointerUp={endDrag}
+                    onPointerCancel={endDrag}
+                  >
+                    <Icon name="grip" size={18} />
+                  </button>
+                </span>
+              )}
             </h2>
             {!reordering && sectionBody(key)}
           </div>
         );
       })}
+
+      {visible.length > 1 && (
+        <button class={`btn-sm ${editing ? 'btn-primary' : 'btn-quiet'} reorder-toggle`} onClick={() => setEditing(!editing)}>
+          {editing ? 'Done' : 'Reorder cards'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** A debt total's 30-day move: going down is good news, so it gets the teal. */
+function DebtChange({ change, currency }: { change: number; currency: string }) {
+  const down = change < 0;
+  return (
+    <div class="debt-change">
+      <span class={`delta ${down ? 'delta-up' : 'delta-flat'}`}>
+        <Icon name={down ? 'down' : 'up'} />
+        {formatMoney(Math.abs(change), currency)}
+      </span>
+      <span class="delta-note">last 30 days</span>
     </div>
   );
 }

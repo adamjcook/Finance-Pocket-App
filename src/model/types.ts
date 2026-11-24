@@ -139,7 +139,8 @@ export const CURRENCIES = ['GBP', 'EUR', 'USD'];
 export type Theme = 'dark' | 'light';
 
 export type DashboardSectionKey = 'growth' | 'goals' | 'debt' | 'loans';
-export const DEFAULT_DASHBOARD_ORDER: DashboardSectionKey[] = ['growth', 'goals', 'debt', 'loans'];
+// Clearing the card debt is the first job, so it leads on a new phone.
+export const DEFAULT_DASHBOARD_ORDER: DashboardSectionKey[] = ['debt', 'growth', 'goals', 'loans'];
 
 /** Which reminders this phone wants (Settings → Reminders). */
 export interface ReminderPrefs {
