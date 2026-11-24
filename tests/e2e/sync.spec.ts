@@ -498,12 +498,12 @@ test('charts: a swipe scrolls, a press-and-hold reads out a day with a vibration
   // light tick for the jump to a new day (one tick, however many days it skipped).
   expect(await touch('touchmove', at(0.98))).toBe(false);
   await expect(tooltip).toContainText('£900.00');
-  expect(await page.evaluate(() => (window as unknown as { __buzz: unknown[] }).__buzz)).toEqual([18, 8]);
+  expect(await page.evaluate(() => (window as unknown as { __buzz: unknown[] }).__buzz)).toEqual([18, 15]);
   // Small moves within the same day don't tick.
   await touch('touchmove', at(0.97));
   expect(await buzzes()).toBe(2);
   // Two day changes faster than the motor can deliver: only the first ticks.
-  await page.waitForTimeout(60);
+  await page.waitForTimeout(80);
   await touch('touchmove', at(0.6));
   await touch('touchmove', at(0.3));
   expect(await buzzes()).toBe(3);

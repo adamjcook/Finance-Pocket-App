@@ -9,8 +9,9 @@
 
 export const MIN_TICK_PX = 8;
 /** Never buzz more often than this, however fast the finger moves. */
-export const MIN_TICK_GAP_MS = 35;
-export const TICK_MS = 8;
+export const MIN_TICK_GAP_MS = 50;
+/** Long enough for typical phone motors to deliver (8ms was too short to feel). */
+export const TICK_MS = 15;
 export const ACTIVATE_MS = 18;
 
 export type TickStep = 'day' | 'week' | 'month';
