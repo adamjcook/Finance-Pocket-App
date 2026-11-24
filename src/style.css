@@ -1536,10 +1536,15 @@ label.field > span:first-child,
   /* tapped: jump straight to the finished mark, then hand off */
   .splash-skip .splash-a,
   .splash-skip .splash-b,
-  .splash-skip .splash-lens,
-  .splash-skip .splash-greeting {
+  .splash-skip .splash-lens {
     animation-duration: 1ms;
     animation-delay: 0ms;
+  }
+
+  /* a skip goes straight to the hand-off, so don't flash the greeting */
+  .splash-skip .splash-greeting {
+    animation: none;
+    opacity: 0;
   }
 }
 
