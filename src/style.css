@@ -1013,16 +1013,6 @@ label.field > span:first-child,
   font-weight: 500;
 }
 
-.inline-edit {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.inline-edit .money-input input {
-  width: 120px;
-}
-
 .chip {
   display: inline-block;
   flex: none;
@@ -1056,7 +1046,7 @@ label.field > span:first-child,
   color: var(--text-3);
 }
 
-/* ---- update balances --------------------------------------------------------- */
+/* ---- accounts: update mode --------------------------------------------------- */
 
 .update-row .money-input input {
   width: 132px;

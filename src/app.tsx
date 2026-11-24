@@ -5,7 +5,6 @@ import { Dashboard } from './ui/Dashboard';
 import { Accounts } from './ui/Accounts';
 import { AccountForm } from './ui/AccountForm';
 import { Aliases } from './ui/Aliases';
-import { UpdateBalances } from './ui/UpdateBalances';
 import { Sync } from './ui/Sync';
 import { Settings } from './ui/Settings';
 import { Setup } from './ui/Setup';
@@ -18,7 +17,6 @@ import { refreshReminders, registrationFacts } from './integrations/push';
 const TABS: { route: string; label: string; icon: IconName }[] = [
   { route: '/', label: 'Home', icon: 'home' },
   { route: '/accounts', label: 'Accounts', icon: 'accounts' },
-  { route: '/update', label: 'Update', icon: 'update' },
   { route: '/sync', label: 'Sync', icon: 'sync' },
   { route: '/settings', label: 'Settings', icon: 'settings' },
 ];
@@ -84,17 +82,19 @@ export function App() {
   let screen;
   if (!setupDone) screen = <Setup />;
   else if (route === '/') screen = <Dashboard />;
-  else if (route === '/accounts') screen = <Accounts />;
+  else if (route === '/accounts') screen = <Accounts key="list" />;
   else if (route === '/accounts/new') screen = <AccountForm id={null} />;
   else if (route.startsWith('/accounts/')) screen = <AccountForm id={route.slice('/accounts/'.length)} />;
   else if (route === '/aliases') screen = <Aliases />;
-  else if (route === '/update') screen = <UpdateBalances />;
+  // Update mode of the Accounts page (also where the payday reminder lands).
+  else if (route === '/update') screen = <Accounts key="update" updating />;
   else if (route === '/sync') screen = <Sync />;
   else if (route === '/settings') screen = <Settings />;
   else screen = <Dashboard />;
 
+  const tabRoute = route === '/update' ? '/accounts' : route;
   const activeTab = TABS.find(
-    (t) => route === t.route || (t.route !== '/' && route.startsWith(t.route)),
+    (t) => tabRoute === t.route || (t.route !== '/' && tabRoute.startsWith(t.route)),
   );
 
   return (
