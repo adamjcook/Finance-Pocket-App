@@ -37,7 +37,8 @@ export function AccountForm({ id }: Props) {
     const isPot = GROWTH_KINDS.includes(kind);
     const extras = {
       goalMinor: isPot ? goalMinor : null,
-      goalDate: isPot && goalMinor !== null ? goalDate || null : null,
+      // Pots: the date to reach the target by. Cards/loans: the date to pay off by.
+      goalDate: isPot ? (goalMinor !== null ? goalDate || null : null) : OWED_KINDS.includes(kind) ? goalDate || null : null,
       promoEndsOn: kind === 'credit_card' ? promoEndsOn || null : null,
     };
     if (existing) {
@@ -153,11 +154,24 @@ export function AccountForm({ id }: Props) {
             <p class="field-hint">Optional. Add a date and Home works out the monthly amount.</p>
           </div>
         )}
+        {OWED_KINDS.includes(kind) && (
+          <label class="field">
+            <span>Pay off by</span>
+            <input
+              type="date"
+              aria-label="Pay off by"
+              value={goalDate}
+              onInput={(e) => setGoalDate((e.target as HTMLInputElement).value)}
+            />
+            <p class="field-hint">Optional. Home's Goals card shows the monthly amount it takes.</p>
+          </label>
+        )}
         {kind === 'credit_card' && (
           <label class="field">
             <span>0% deal ends</span>
             <input
               type="date"
+              aria-label="0% deal ends"
               value={promoEndsOn}
               onInput={(e) => setPromoEndsOn((e.target as HTMLInputElement).value)}
             />

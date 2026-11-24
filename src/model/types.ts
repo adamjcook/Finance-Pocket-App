@@ -30,7 +30,10 @@ export interface Account extends Meta {
    */
   /** Savings/investment pot goal in minor units; null = no goal. */
   goalMinor?: number | null;
-  /** Optional date (YYYY-MM-DD) to reach the pot goal by. */
+  /**
+   * Savings/investment pots: optional date (YYYY-MM-DD) to reach goalMinor by.
+   * Credit cards and loans: the date to pay the account off by.
+   */
   goalDate?: string | null;
   /** Credit cards: date (YYYY-MM-DD) the 0% deal ends; null = none. */
   promoEndsOn?: string | null;
@@ -76,8 +79,9 @@ export interface Settings extends Meta {
   /** Manual debt baseline override in minor units; null = auto (peak recorded debt). */
   debtBaselineMinor: number | null;
   /**
-   * Goal fields were added after v1 shipped, so records synced from an older
-   * app may lack them — read sites treat undefined as null.
+   * Retired whole-household goals, replaced by per-account goals (see
+   * Account.goalMinor / goalDate). Still read once to migrate older data
+   * (migrateSettingsGoals in repo.ts), then cleared.
    */
   /** Date (YYYY-MM-DD) by which the credit cards should be cleared; null = no goal. */
   debtTargetDate?: string | null;

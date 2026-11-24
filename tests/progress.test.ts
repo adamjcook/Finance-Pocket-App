@@ -4,11 +4,11 @@ import {
   debtProgress,
   effectiveSnapshots,
   growthProgress,
-  loanTotals,
+  loanProgress,
   monthlyToTarget,
   monthsUntil,
 } from '../src/logic/progress';
-import { aliasSeries, latestBalances, repointAlias, updateAccount } from '../src/model/repo';
+import { aliasSeries, latestBalances, migrateSettingsGoals, repointAlias, updateAccount } from '../src/model/repo';
 import { account, alias, settings, snapshot, state } from './helpers';
 import { parseMoney, minorToInput, formatMoney } from '../src/logic/money';
 
@@ -136,7 +136,7 @@ describe('growthProgress', () => {
 });
 
 describe('loans stay separate from the card goal', () => {
-  it('excludes loans from debtProgress and reports them via loanTotals', () => {
+  it('excludes loans from debtProgress and reports them via loanProgress', () => {
     const s = state({
       accounts: [
         account({ id: 'card-1', kind: 'credit_card' }),
@@ -148,8 +148,22 @@ describe('loans stay separate from the card goal', () => {
       ],
     });
     expect(debtProgress(s, '2026-01-01').current).toBe(1000_00);
-    expect(loanTotals(s, '2026-01-01').current).toBe(9000_00);
+    expect(loanProgress(s, '2026-01-01').current).toBe(9000_00);
     expect(growthProgress(s, '2026-01-01').current).toBe(0);
+  });
+
+  it('measures loan payoff against the highest combined loan balance', () => {
+    const s = state({
+      accounts: [account({ id: 'car', kind: 'loan' }), account({ id: 'student', kind: 'loan' })],
+      snapshots: [
+        snapshot({ accountId: 'car', balance: 8000_00, at: '2026-01-01T00:00:00.000Z' }),
+        snapshot({ accountId: 'student', balance: 4000_00, at: '2026-01-01T00:00:00.000Z' }),
+        snapshot({ accountId: 'car', balance: 6000_00, at: '2026-04-01T00:00:00.000Z' }),
+        snapshot({ accountId: 'student', balance: 3000_00, at: '2026-04-01T00:00:00.000Z' }),
+      ],
+    });
+    const p = loanProgress(s, '2026-04-01');
+    expect(p).toMatchObject({ current: 9000_00, baseline: 12000_00, paidOff: 3000_00, pct: 25 });
   });
 });
 
@@ -295,5 +309,29 @@ describe('archived accounts count up to the moment they were archived', () => {
     expect(renamed.accounts[0].archivedAt).toBe('2026-03-01T00:00:00.000Z');
     const restored = updateAccount(archived, { deviceId: 'd', now: '2026-05-01T00:00:00.000Z' }, 'acc', { archived: false });
     expect(restored.accounts[0].archivedAt).toBeNull();
+  });
+});
+
+describe('migrateSettingsGoals (goals moved from Settings to accounts)', () => {
+  it("copies the old clear-by dates onto each card and loan that doesn't have its own", () => {
+    const card = account({ id: 'c1', kind: 'credit_card' });
+    const own = account({ id: 'c2', kind: 'credit_card', goalDate: '2027-01-01' });
+    const loan = account({ id: 'l1', kind: 'loan' });
+    const saver = account({ id: 's1', kind: 'savings' });
+    const gone = account({ id: 'c3', kind: 'credit_card', archived: true });
+    const s0 = state({
+      accounts: [card, own, loan, saver, gone],
+      settings: settings({ debtTargetDate: '2027-06-01', loanTargetDate: '2027-11-01', savingsTargetMinor: 25000_00, savingsTargetDate: '2027-12-01' }),
+    });
+    const s1 = migrateSettingsGoals(s0, { deviceId: 'd', now: '2026-11-24T10:00:00.000Z' });
+    const goal = (id: string) => s1.accounts.find((a) => a.id === id)!.goalDate ?? null;
+    expect(goal('c1')).toBe('2027-06-01');
+    expect(goal('c2')).toBe('2027-01-01'); // its own date wins
+    expect(goal('l1')).toBe('2027-11-01');
+    expect(goal('s1')).toBeNull();
+    expect(goal('c3')).toBeNull(); // archived accounts untouched
+    expect(s1.settings).toMatchObject({ debtTargetDate: null, loanTargetDate: null, savingsTargetMinor: null, savingsTargetDate: null, updatedAt: '2026-11-24T10:00:00.000Z' });
+    // Nothing left to migrate: same state back.
+    expect(migrateSettingsGoals(s1, { deviceId: 'd' })).toBe(s1);
   });
 });

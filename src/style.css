@@ -796,35 +796,11 @@ label.field > span:first-child,
   font-weight: 700;
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
-  margin: 4px 0 14px;
+  margin-top: 4px;
 }
 
 .net-worth.negative {
   color: var(--debt);
-}
-
-/* the one-paragraph summary typed out on open (src/logic/wisdom.ts) */
-.wisdom {
-  color: var(--text-2);
-  font-size: 14px;
-  line-height: 1.6;
-  max-width: 46ch;
-}
-
-.typed-cursor {
-  display: inline-block;
-  width: 2px;
-  height: 1em;
-  margin-left: 1px;
-  background: var(--accent);
-  vertical-align: -0.15em;
-  animation: typed-blink 0.9s steps(1) infinite;
-}
-
-@keyframes typed-blink {
-  50% {
-    opacity: 0;
-  }
 }
 
 /* reorderable dashboard cards: each section *is* the card, so collapsing to
@@ -1011,9 +987,12 @@ label.field > span:first-child,
   width: 100%;
   height: auto;
   overflow: visible;
-  /* Own the drag entirely — otherwise the browser can treat a scrub as a
-     page scroll and cancel it mid-drag. */
-  touch-action: none;
+  /* Vertical swipes scroll the page as normal; a press-and-hold reads out
+     days instead (Chart.tsx), and then blocks scrolling itself. */
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .chart-empty {
@@ -1573,11 +1552,6 @@ label.field > span:first-child,
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .typed-cursor {
-    animation: none;
-  }
-}
 
 /* ---- settings extras -------------------------------------------------------- */
 

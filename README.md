@@ -18,8 +18,9 @@ offline. The two phones stay in sync by literally showing each other QR codes.
 - *Aliases for bank-switchers*: create an alias like "Main Savings" and point it at whichever
   real account currently plays that role. When you switch banks, add the new account and
   re-point the alias — its history and chart carry straight on, and the old account is archived.
-- *Goals for each pot*: give a savings pot (say, the wedding fund) its own target and
-  date; Home shows progress and the monthly amount to get there.
+- *Goals on each account*: give a savings pot (say, the wedding fund) a target and date,
+  or a card or loan a date to pay it off by; Home's Goals card shows the progress and the
+  monthly amount each one takes.
 - *Mistake-proof*: balances are an append-only history; a mistyped entry can be undone from
   Settings without losing anything.
 
