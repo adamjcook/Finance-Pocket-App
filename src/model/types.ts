@@ -173,6 +173,13 @@ export interface DeviceState {
   t212?: T212DeviceStatus | null;
   /** Reminder notifications on this phone (added later — absent until turned on). */
   push?: PushDeviceState | null;
+  /**
+   * Which of the two partners this phone belongs to, so Settings can say
+   * "You" and "Your partner". Absent on phones set up before it existed.
+   */
+  me?: 'A' | 'B' | null;
+  /** What Home's news line has shown or been told to drop, on this phone. */
+  news?: import('../logic/news').NewsMemory | null;
 }
 
 /** Everything that syncs between the two phones. */

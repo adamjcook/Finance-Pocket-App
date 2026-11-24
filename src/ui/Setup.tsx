@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import { mutate, getStore } from '../model/store';
+import { mutate, getStore, patchDevice } from '../model/store';
 import { updateSettings } from '../model/repo';
 import { CURRENCIES } from '../model/types';
 import { navigate } from '../router';
@@ -31,6 +31,8 @@ export function Setup() {
         currency,
       }),
     );
+    // Whoever sets up typed "Your name" first, so this phone is theirs.
+    await patchDevice({ me: 'A' });
     navigate('/accounts/new');
   };
 
@@ -88,7 +90,14 @@ export function Setup() {
             scan their screen here. Their setup, accounts and history carry over.
           </p>
         </header>
-        <ScanPanel onComplete={() => navigate('/')} onCancel={() => setMode('choose')} />
+        <ScanPanel
+          onComplete={() => {
+            // The joining phone is the partner's; Settings can change it.
+            void patchDevice({ me: 'B' });
+            navigate('/');
+          }}
+          onCancel={() => setMode('choose')}
+        />
       </div>
     );
   }

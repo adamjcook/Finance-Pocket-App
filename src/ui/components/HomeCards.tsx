@@ -1,7 +1,17 @@
+import { useEffect } from 'preact/hooks';
 import type { CheckIn } from '../../logic/checkin';
+import type { DeviceState, SyncedState } from '../../model/types';
+import {
+  cardForecast,
+  EMPTY_NEWS_MEMORY,
+  homeNews,
+  rememberDismissed,
+  rememberForecast,
+  rememberShown,
+} from '../../logic/news';
 import { formatMoney } from '../../logic/money';
 import { daysBetween, formatDay } from '../../logic/progress';
-import { getStore, mutate } from '../../model/store';
+import { getStore, mutate, patchDevice } from '../../model/store';
 import { voidSnapshot } from '../../model/repo';
 import { markCheckInUndone, setLastCheckIn } from '../../model/lastCheckIn';
 import { navigate } from '../../router';
@@ -127,6 +137,41 @@ export function PaydayCard({ payday, today, lastUpdate }: { payday: string; toda
       <button class="btn-primary btn-big" onClick={() => navigate('/update')}>
         <Icon name="update" size={18} />
         Update balances
+      </button>
+    </section>
+  );
+}
+
+/**
+ * One line of news, only on days there is some (see logic/news.ts). Always
+ * mounted so this phone keeps noticing forecast changes; renders nothing when
+ * quiet or when a check-in or payday card already has the top of Home.
+ */
+export function NewsLine({ state, device, today, hidden }: { state: SyncedState; device: DeviceState; today: string; hidden: boolean }) {
+  const memory = device.news ?? EMPTY_NEWS_MEMORY;
+  const forecast = cardForecast(state, today);
+  useEffect(() => {
+    const next = rememberForecast(memory, forecast, today);
+    if (next !== memory) void patchDevice({ news: next });
+  }, [forecast]);
+
+  const news = hidden ? null : homeNews(state, today, memory);
+  useEffect(() => {
+    if (!news) return;
+    const next = rememberShown(memory, news.key, today);
+    if (next !== memory) void patchDevice({ news: next });
+  }, [news?.key]);
+
+  if (!news) return null;
+  return (
+    <section class="home-card news" aria-live="polite">
+      <p>{news.text}</p>
+      <button
+        class="btn-icon btn-quiet"
+        aria-label="Dismiss"
+        onClick={() => void patchDevice({ news: rememberDismissed(memory, news.key) })}
+      >
+        <Icon name="x" size={18} />
       </button>
     </section>
   );

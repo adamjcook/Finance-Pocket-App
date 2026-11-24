@@ -113,6 +113,8 @@ export function Settings() {
     </div>
   );
 
+  const nameOf = (who: 'A' | 'B') => (who === 'A' ? state.settings.partnerAName : state.settings.partnerBName);
+
   const fixSnapshots = fixAccountId
     ? effectiveSnapshots(state.snapshots, state.voids)
         .filter((s) => s.accountId === fixAccountId)
@@ -152,20 +154,35 @@ export function Settings() {
       <section class="group">
         <h2 class="group-label">You two</h2>
         <div class="list">
-          <label class="list-row setting-row">
-            <span class="setting-label">Partner 1</span>
-            <input
-              value={state.settings.partnerAName}
-              onChange={(e) => saveField({ partnerAName: (e.target as HTMLInputElement).value })}
-            />
-          </label>
-          <label class="list-row setting-row">
-            <span class="setting-label">Partner 2</span>
-            <input
-              value={state.settings.partnerBName}
-              onChange={(e) => saveField({ partnerBName: (e.target as HTMLInputElement).value })}
-            />
-          </label>
+          {/* Which partner this phone belongs to — so the rows below can say
+              "You" and "Your partner" and be right on both phones. */}
+          <div class="list-row whose-phone">
+            <span class="setting-label" id="whose-label">
+              {device.me ? 'This phone is' : 'Which of you is this phone?'}
+            </span>
+            <div class="segmented" role="group" aria-labelledby="whose-label">
+              {(['A', 'B'] as const).map((who) => (
+                <button key={who} aria-pressed={device.me === who} onClick={() => void patchDevice({ me: who })}>
+                  {nameOf(who)}
+                </button>
+              ))}
+            </div>
+          </div>
+          {(device.me ? ([device.me, device.me === 'A' ? 'B' : 'A'] as const) : (['A', 'B'] as const)).map((who, i) => (
+            <label class="list-row setting-row" key={who}>
+              <span class="setting-label">{device.me ? (i === 0 ? 'You' : 'Your partner') : 'Name'}</span>
+              <input
+                value={nameOf(who)}
+                onChange={(e) =>
+                  saveField(
+                    who === 'A'
+                      ? { partnerAName: (e.target as HTMLInputElement).value }
+                      : { partnerBName: (e.target as HTMLInputElement).value },
+                  )
+                }
+              />
+            </label>
+          ))}
           <label class="list-row setting-row">
             <span class="setting-label">Currency</span>
             <select

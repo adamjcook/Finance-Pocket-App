@@ -173,6 +173,18 @@ test('second phone joins via setup and owners stay consistent (no flip)', async 
   const hashB = await phoneB.evaluate(() => window.__syncTest.stateHash());
   expect(hashA).toBe(hashB);
 
+  // Settings names the two of you from each phone's own side. A set up, so
+  // it already knows it's Adam's; B (joined through the test hook rather than
+  // the scanner) asks once, then says "You" for Sam.
+  await phoneA.goto('.#/settings');
+  await expect(phoneA.locator('.setting-row', { hasText: 'Your partner' }).locator('input')).toHaveValue('Sam');
+  await expect(phoneA.locator('.setting-row', { hasText: /^You/ }).first().locator('input')).toHaveValue('Adam');
+  await phoneB.goto('.#/settings');
+  const whose = phoneB.getByRole('group', { name: 'Which of you is this phone?' });
+  await whose.getByRole('button', { name: 'Sam' }).click();
+  await expect(phoneB.getByRole('group', { name: 'This phone is' }).getByRole('button', { name: 'Sam' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(phoneB.locator('.setting-row', { hasText: 'Your partner' }).locator('input')).toHaveValue('Adam');
+
   await contextA.close();
   await contextB.close();
 });

@@ -618,6 +618,19 @@ label.field > span:first-child,
   justify-content: space-between;
 }
 
+/* "Which of you is this phone?": the question above, the two names below it. */
+.whose-phone {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.whose-phone .segmented button {
+  flex: 1;
+}
+
 .setting-row > .setting-label {
   flex: none;
   max-width: 55%;
@@ -1489,9 +1502,31 @@ label.field > span:first-child,
   margin-bottom: 12px;
 }
 
+/* Home's one line of news: quieter than a card, but still its own moment. */
+.home-card.news {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 10px 14px 18px;
+}
+
+.home-card.news p {
+  flex: 1;
+  padding-top: 5px;
+  font-weight: var(--fw-label);
+  text-wrap: pretty;
+}
+
+.home-card.news .btn-icon {
+  min-height: 32px;
+  width: 32px;
+  flex: none;
+}
+
 /* A card straight under the header gets room to breathe from the logo row,
    matching the gap the net-worth figure has when no card is showing. */
-.dash-top + .home-card {
+.dash-top + .home-card,
+.dash-top + .home-card.news {
   margin-top: 18px;
 }
 

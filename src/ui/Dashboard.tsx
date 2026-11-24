@@ -16,7 +16,7 @@ import { formatMoney, formatMoneyWhole } from '../logic/money';
 import { lastWorkingDay } from '../../worker/src/ukdates';
 import { useLastCheckIn } from '../model/lastCheckIn';
 import { navigate } from '../router';
-import { CheckInCard, PaydayCard } from './components/HomeCards';
+import { CheckInCard, NewsLine, PaydayCard } from './components/HomeCards';
 import { GROWTH_KINDS, OWED_KINDS, type DashboardSectionKey } from '../model/types';
 import { latestBalances } from '../model/repo';
 import { Chart } from './components/Chart';
@@ -404,6 +404,7 @@ export function Dashboard() {
       ) : (
         paydayDue && <PaydayCard payday={payday} today={today} lastUpdate={lastUpdate} />
       )}
+      <NewsLine state={state} device={device} today={today} hidden={!!checkIn || paydayDue} />
 
       <section class="hero">
         <div class="hero-label">Net worth</div>
