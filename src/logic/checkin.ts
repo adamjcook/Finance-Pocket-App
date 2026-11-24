@@ -15,6 +15,8 @@ export interface CheckIn {
   cardChange: number;
   loanChange: number;
   savingsChange: number;
+  /** Net worth after − before (savings up, debts down both count). */
+  netChange: number;
   /** Which of those totals this couple actually tracks (so we don't say "£0"). */
   has: { cards: boolean; loans: boolean; savings: boolean };
   /** Moments worth naming, most important first. */
@@ -69,6 +71,11 @@ export function summariseCheckIn(
     cardChange: debtAfter.current - debtBefore.current,
     loanChange: loansAfter.current - loansBefore.current,
     savingsChange: savingsAfter.current - savingsBefore.current,
+    netChange:
+      savingsAfter.current -
+      savingsBefore.current -
+      (debtAfter.current - debtBefore.current) -
+      (loansAfter.current - loansBefore.current),
     has: {
       cards: debtAfter.series.length > 0,
       loans: loansAfter.series.length > 0,

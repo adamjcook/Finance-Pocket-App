@@ -86,6 +86,9 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await expect(checkIn).toContainText('Card debt');
   await expect(checkIn).toContainText('down £1,500.00');
   await expect(checkIn.getByRole('button', { name: 'Undo this update' })).toBeVisible();
+  // Net worth went up, so Home celebrates it — once.
+  await expect(page.locator('.net-gain')).toHaveText('£1,500.00 since your last update');
+  await expect(page.locator('.app-logo.celebrate')).toHaveCount(1);
   await page.goto('.#/accounts');
   await expect(page.locator('.account-row', { hasText: 'Barclaycard' })).toContainText('£1,500.00');
 

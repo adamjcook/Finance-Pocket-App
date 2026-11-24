@@ -27,11 +27,14 @@ export function CheckInCard({
   undone,
   names,
   currency,
+  celebrate = false,
 }: {
   checkIn: CheckIn;
   undone: boolean;
   names: string;
   currency: string;
+  /** Net worth went up: the card arrives with a little more ceremony. */
+  celebrate?: boolean;
 }) {
   const money = (minor: number) => formatMoney(Math.abs(minor), currency);
   const lines: { label: string; text: string; good: boolean }[] = [];
@@ -76,7 +79,7 @@ export function CheckInCard({
   }
 
   return (
-    <section class="home-card checkin" aria-live="polite">
+    <section class={`home-card checkin ${celebrate ? 'celebrate' : ''}`} aria-live="polite">
       <div class="home-card-head">
         <h2>{anyGood ? `Nicely done, ${names}` : `All up to date, ${names}`}</h2>
         <button class="btn-icon btn-quiet" aria-label="Dismiss" onClick={dismiss}>
@@ -100,8 +103,8 @@ export function CheckInCard({
       )}
       {checkIn.milestones.length > 0 && (
         <ul class="milestones">
-          {checkIn.milestones.map((m) => (
-            <li key={m}>
+          {checkIn.milestones.map((m, i) => (
+            <li key={m} style={`--i:${i}`}>
               <span class="milestone-mark" aria-hidden="true">
                 <Icon name="check" size={14} />
               </span>

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { useApp, patchDevice } from '../model/store';
 import {
   effectiveSnapshots,
@@ -14,7 +14,8 @@ import {
 } from '../logic/progress';
 import { formatMoney, formatMoneyWhole } from '../logic/money';
 import { lastWorkingDay } from '../../worker/src/ukdates';
-import { useLastCheckIn } from '../model/lastCheckIn';
+import { takeCelebration, useLastCheckIn } from '../model/lastCheckIn';
+import { LogoMark } from './components/LogoMark';
 import { navigate } from '../router';
 import { CheckInCard, NewsLine, PaydayCard } from './components/HomeCards';
 import { GROWTH_KINDS, OWED_KINDS, type DashboardSectionKey } from '../model/types';
@@ -69,6 +70,14 @@ export function Dashboard() {
   // all the time; it's done once in a while, not every visit.
   const [editing, setEditing] = useState(false);
   const { checkIn, undone } = useLastCheckIn();
+  // Arriving Home from an update that raised net worth: play the moment once.
+  const [celebrating] = useState(() => takeCelebration());
+  useEffect(() => {
+    if (!celebrating) return;
+    // One light tap as the count lands, alongside the logo's pulse.
+    const t = setTimeout(() => navigator.vibrate?.(15), 1050);
+    return () => clearTimeout(t);
+  }, []);
 
   // All cards collapse to their heading row for the duration of any drag —
   // measure that row's real height once it's rendered, rather than assuming
@@ -392,7 +401,7 @@ export function Dashboard() {
   return (
     <div>
       <header class="dash-top">
-        <img src={`${import.meta.env.BASE_URL}${import.meta.env.VITE_ICON_DIR}/favicon.svg`} class="app-logo" alt="" />
+        <LogoMark class="app-logo" celebrate={celebrating} />
         <h1>FinPair</h1>
         <p class="subtitle">
           {settings.partnerAName} &amp; {settings.partnerBName}
@@ -400,7 +409,7 @@ export function Dashboard() {
       </header>
 
       {checkIn ? (
-        <CheckInCard checkIn={checkIn} undone={undone} names={names} currency={currency} />
+        <CheckInCard checkIn={checkIn} undone={undone} names={names} currency={currency} celebrate={celebrating} />
       ) : (
         paydayDue && <PaydayCard payday={payday} today={today} lastUpdate={lastUpdate} />
       )}
@@ -408,7 +417,19 @@ export function Dashboard() {
 
       <section class="hero">
         <div class="hero-label">Net worth</div>
-        <div class={`net-worth num ${netWorth < 0 ? 'negative' : ''}`}>{formatMoneyWhole(netWorth, currency)}</div>
+        <div class={`net-worth num ${netWorth < 0 ? 'negative' : ''}`}>
+          {celebrating && checkIn ? (
+            <CountUp from={netWorth - checkIn.netChange} to={netWorth} currency={currency} />
+          ) : (
+            formatMoneyWhole(netWorth, currency)
+          )}
+        </div>
+        {celebrating && checkIn && (
+          <div class="net-gain num">
+            <Icon name="up" size={14} />
+            {formatMoney(checkIn.netChange, currency)} since your last update
+          </div>
+        )}
         {lastUpdate && <div class="hero-note">Balances as of {formatDay(lastUpdate)}</div>}
       </section>
 
@@ -507,5 +528,36 @@ function DebtChange({ change, currency }: { change: number; currency: string }) 
       </span>
       <span class="delta-note">last 30 days</span>
     </div>
+  );
+}
+
+/**
+ * Net worth rolling from where it was to where it is now. Decelerates into
+ * the new figure; with reduced motion it simply shows the new figure.
+ */
+function CountUp({ from, to, currency }: { from: number; to: number; currency: string }) {
+  const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [value, setValue] = useState(reduce ? to : from);
+  useEffect(() => {
+    if (reduce) return;
+    const delay = 150;
+    const duration = 900;
+    let raf = 0;
+    const start = performance.now() + delay;
+    const tick = (now: number) => {
+      const t = Math.min(1, Math.max(0, (now - start) / duration));
+      const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t); // ease-out expo
+      setValue(Math.round(from + (to - from) * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return (
+    <>
+      {/* Screen readers get the final figure, not every frame of the count. */}
+      <span aria-hidden="true">{formatMoneyWhole(value, currency)}</span>
+      <span class="visually-hidden">{formatMoneyWhole(to, currency)}</span>
+    </>
   );
 }
