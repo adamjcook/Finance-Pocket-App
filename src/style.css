@@ -13,7 +13,7 @@
   --separator: rgb(255 255 255 / 0.07);
   --text: #f3f5f7;
   --text-2: #a1a8b2;
-  --text-3: #6d747f;
+  --text-3: #838a95; /* ≥4.5:1 on --bg, --surface and --surface-2 */
 
   /* Primary actions: high-contrast ink rather than a brand colour, so the
      teal/amber below stay meaningful as data colours. */
@@ -32,6 +32,27 @@
   --radius-sm: 10px;
   --gutter: 20px;
   --tabbar-h: 58px;
+
+  /* Type roles. One family (Inter Variable); each role is a size the eye can
+     tell apart from its neighbours, named for its job rather than its value.
+     Pixels on purpose: the app is phone-only and the layout is tuned to them. */
+  --fs-display: 44px; /* net worth, first-run wordmark */
+  --fs-title: 30px; /* page titles and headline figures */
+  --fs-lead: 17px; /* first-run lede */
+  --fs-heading: 17px; /* section titles, the Home wordmark */
+  --fs-body: 16px; /* rows, inputs, balances */
+  --fs-control: 15px; /* buttons, page ledes */
+  --fs-subhead: 14px; /* card headings, compact rows, toasts */
+  --fs-footnote: 13px; /* field labels, hints, row subtitles */
+  --fs-caption: 12px; /* chart tooltips, small notes */
+  --fs-micro: 11px; /* tab labels, chips, the dev banner */
+
+  /* Light text on a dark ground reads thinner, so dark mode carries body text
+     half a step heavier; light mode drops back to the regular weight. */
+  --fw-body: 450;
+  --fw-label: 550;
+  --fw-strong: 600;
+  --fw-bold: 700;
   color-scheme: dark;
 }
 
@@ -43,7 +64,7 @@
   --separator: rgb(15 20 30 / 0.08);
   --text: #0e1116;
   --text-2: #5a626e;
-  --text-3: #8a919b;
+  --text-3: #646c77; /* ≥4.5:1 on --bg, --surface and --surface-2 */
   --primary: #0e1116;
   --primary-ink: #ffffff;
   --accent: #0c8a68;
@@ -51,6 +72,7 @@
   --danger: #d92d20;
   --card-shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
   --overlay-shadow: 0 12px 32px rgb(16 24 40 / 0.16);
+  --fw-body: 400;
   color-scheme: light;
 }
 
@@ -72,7 +94,8 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  font-size: 16px;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
   line-height: 1.45;
   font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
@@ -126,8 +149,8 @@ body {
   z-index: 20;
   background: #e0b400;
   color: #1b1400;
-  font-size: 11px;
-  font-weight: 650;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
   text-align: center;
   padding: 4px 10px calc(4px);
   padding-top: calc(4px + env(safe-area-inset-top));
@@ -137,18 +160,37 @@ body {
 
 /* ---- typography ---------------------------------------------------------- */
 
+/* Headings wrap into even lines; running copy avoids a lone last word. */
+h1,
+h2,
+h3,
+.large-title,
+.section-title {
+  text-wrap: balance;
+}
+
+p,
+li,
+.lede,
+.small,
+.field-hint,
+.group-footer,
+.figure-caption {
+  text-wrap: pretty;
+}
+
 h1,
 .large-title {
-  font-size: 30px;
+  font-size: var(--fs-title);
   line-height: 1.15;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: -0.025em;
 }
 
 h2,
 .section-title {
-  font-size: 17px;
-  font-weight: 600;
+  font-size: var(--fs-heading);
+  font-weight: var(--fw-strong);
   letter-spacing: -0.012em;
 }
 
@@ -161,13 +203,13 @@ h2,
 }
 
 .small {
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   line-height: 1.4;
 }
 
 .lede {
   color: var(--text-2);
-  font-size: 15px;
+  font-size: var(--fs-control);
   line-height: 1.5;
 }
 
@@ -255,14 +297,14 @@ h2,
   justify-content: space-between;
   align-items: baseline;
   padding: 0 4px 8px;
-  font-size: 13px;
-  font-weight: 550;
+  font-size: var(--fs-footnote);
+  font-weight: var(--fw-label);
   color: var(--text-2);
 }
 
 .group-footer {
   padding: 8px 4px 0;
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   line-height: 1.45;
   color: var(--text-3);
 }
@@ -303,7 +345,7 @@ h2,
 }
 
 .row-title {
-  font-weight: 550;
+  font-weight: var(--fw-label);
   letter-spacing: -0.006em;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -311,7 +353,7 @@ h2,
 }
 
 .row-sub {
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   color: var(--text-2);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -329,8 +371,8 @@ button,
   -webkit-appearance: none;
   appearance: none;
   font: inherit;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--fs-control);
+  font-weight: var(--fw-strong);
   letter-spacing: -0.006em;
   display: inline-flex;
   align-items: center;
@@ -396,14 +438,14 @@ button:disabled {
 .btn-big {
   width: 100%;
   min-height: 54px;
-  font-size: 16px;
+  font-size: var(--fs-body);
   border-radius: 16px;
 }
 
 .btn-sm {
   min-height: 34px;
   padding: 0 14px;
-  font-size: 14px;
+  font-size: var(--fs-subhead);
   border-radius: 999px;
 }
 
@@ -507,15 +549,15 @@ label.field + label.field,
 label.field > span:first-child,
 .field-label {
   display: block;
-  font-size: 13px;
-  font-weight: 550;
+  font-size: var(--fs-footnote);
+  font-weight: var(--fw-label);
   color: var(--text-2);
   margin-bottom: 7px;
 }
 
 .field-hint {
   margin-top: 7px;
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   color: var(--text-3);
 }
 
@@ -535,8 +577,8 @@ label.field > span:first-child,
   border-radius: 9px;
   background: transparent;
   color: var(--text-2);
-  font-size: 14px;
-  font-weight: 550;
+  font-size: var(--fs-subhead);
+  font-weight: var(--fw-label);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -650,7 +692,7 @@ label.field > span:first-child,
   padding: 0 12px 0 26px;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  font-weight: 550;
+  font-weight: var(--fw-label);
 }
 
 .money-input.wide,
@@ -696,8 +738,8 @@ label.field > span:first-child,
   align-items: center;
   justify-content: center;
   gap: 3px;
-  font-size: 10.5px;
-  font-weight: 550;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-label);
   letter-spacing: 0.01em;
   text-decoration: none;
   color: var(--text-3);
@@ -729,15 +771,15 @@ label.field > span:first-child,
 }
 
 .dash-top h1 {
-  font-size: 17px;
+  font-size: var(--fs-heading);
   letter-spacing: -0.01em;
-  font-weight: 650;
+  font-weight: var(--fw-bold);
 }
 
 .subtitle {
   margin-left: auto;
-  font-size: 13px;
-  font-weight: 550;
+  font-size: var(--fs-footnote);
+  font-weight: var(--fw-label);
   color: var(--text-2);
   padding: 5px 12px;
   border-radius: 999px;
@@ -753,15 +795,15 @@ label.field > span:first-child,
 }
 
 .hero-label {
-  font-size: 13px;
-  font-weight: 550;
+  font-size: var(--fs-footnote);
+  font-weight: var(--fw-label);
   color: var(--text-2);
 }
 
 .net-worth {
-  font-size: 44px;
+  font-size: var(--fs-display);
   line-height: 1.1;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
   margin-top: 4px;
@@ -801,8 +843,8 @@ label.field > span:first-child,
   justify-content: space-between;
   gap: 8px;
   padding: 14px 8px 0 18px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--fs-subhead);
+  font-weight: var(--fw-strong);
   color: var(--text-2);
   letter-spacing: 0;
 }
@@ -841,15 +883,15 @@ label.field > span:first-child,
 }
 
 .big-number {
-  font-size: 30px;
+  font-size: var(--fs-title);
   line-height: 1.15;
-  font-weight: 650;
+  font-weight: var(--fw-bold);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
 .figure-caption {
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   color: var(--text-2);
   margin-top: 2px;
 }
@@ -860,8 +902,8 @@ label.field > span:first-child,
   gap: 3px;
   padding: 4px 9px 4px 7px;
   border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--fs-footnote);
+  font-weight: var(--fw-strong);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -882,7 +924,7 @@ label.field > span:first-child,
 }
 
 .delta-note {
-  font-size: 12px;
+  font-size: var(--fs-caption);
   color: var(--text-3);
   text-align: right;
   margin-top: 4px;
@@ -900,19 +942,19 @@ label.field > span:first-child,
   padding: 12px 14px;
   border-radius: var(--radius);
   background: var(--surface-2);
-  font-size: 13.5px;
+  font-size: var(--fs-subhead);
   line-height: 1.45;
   color: var(--text-2);
 }
 
 .goal strong {
   color: var(--text);
-  font-weight: 600;
+  font-weight: var(--fw-strong);
 }
 
 .goal.done {
   color: var(--accent);
-  font-weight: 600;
+  font-weight: var(--fw-strong);
 }
 
 .goal-bar {
@@ -931,7 +973,7 @@ label.field > span:first-child,
 }
 
 .empty-note {
-  font-size: 14px;
+  font-size: var(--fs-subhead);
   color: var(--text-2);
   line-height: 1.5;
 }
@@ -944,8 +986,8 @@ label.field > span:first-child,
 
 .chart-tooltip {
   min-height: 18px;
-  font-size: 12.5px;
-  font-weight: 550;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
@@ -965,7 +1007,7 @@ label.field > span:first-child,
 
 .chart-empty {
   margin-top: 12px;
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   color: var(--text-3);
 }
 
@@ -982,7 +1024,7 @@ label.field > span:first-child,
 }
 
 .account-name {
-  font-weight: 550;
+  font-weight: var(--fw-label);
   letter-spacing: -0.006em;
   display: flex;
   align-items: center;
@@ -998,22 +1040,22 @@ label.field > span:first-child,
 
 .balance {
   flex: none;
-  font-size: 15.5px;
-  font-weight: 600;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-strong);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .balance.unset {
   color: var(--text-3);
-  font-weight: 500;
+  font-weight: var(--fw-label);
 }
 
 .chip {
   display: inline-block;
   flex: none;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-strong);
   padding: 2px 7px;
   border-radius: 6px;
   background: var(--surface-2);
@@ -1032,7 +1074,7 @@ label.field > span:first-child,
   gap: 10px;
   margin-top: 20px;
   padding: 0 4px;
-  font-size: 14px;
+  font-size: var(--fs-subhead);
   color: var(--text-2);
   cursor: pointer;
 }
@@ -1086,8 +1128,8 @@ label.field > span:first-child,
 }
 
 .empty h3 {
-  font-size: 17px;
-  font-weight: 600;
+  font-size: var(--fs-heading);
+  font-weight: var(--fw-strong);
   color: var(--text);
   margin-bottom: 6px;
 }
@@ -1118,13 +1160,13 @@ label.field > span:first-child,
 }
 
 .welcome-hero h1 {
-  font-size: 38px;
+  font-size: var(--fs-display);
   letter-spacing: -0.035em;
   margin-bottom: 10px;
 }
 
 .welcome-hero .lede {
-  font-size: 16.5px;
+  font-size: var(--fs-lead);
   max-width: 34ch;
 }
 
@@ -1133,7 +1175,7 @@ label.field > span:first-child,
   padding-left: 14px;
   border-left: 2px solid var(--surface-3);
   color: var(--text-3);
-  font-size: 14px;
+  font-size: var(--fs-subhead);
   line-height: 1.5;
 }
 
@@ -1145,7 +1187,7 @@ label.field > span:first-child,
 
 .welcome-note {
   margin-top: 14px;
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   text-align: center;
   color: var(--text-3);
   line-height: 1.45;
@@ -1160,7 +1202,7 @@ label.field > span:first-child,
   margin-left: -6px;
   background: transparent;
   color: var(--text-2);
-  font-weight: 550;
+  font-weight: var(--fw-label);
 }
 
 /* ---- sync ---------------------------------------------------------------- */
@@ -1201,15 +1243,15 @@ label.field > span:first-child,
 
 .tile-title {
   display: block;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-strong);
 }
 
 .tile-sub {
   display: block;
   margin-top: 2px;
-  font-size: 13px;
-  font-weight: 450;
+  font-size: var(--fs-footnote);
+  font-weight: var(--fw-body);
   color: var(--text-2);
   line-height: 1.4;
 }
@@ -1224,7 +1266,7 @@ label.field > span:first-child,
   counter-increment: step;
   position: relative;
   padding: 0 0 14px 36px;
-  font-size: 14px;
+  font-size: var(--fs-subhead);
   line-height: 1.5;
   color: var(--text-2);
 }
@@ -1245,8 +1287,8 @@ label.field > span:first-child,
   place-items: center;
   background: var(--surface-2);
   color: var(--text);
-  font-size: 12.5px;
-  font-weight: 650;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
 }
 
 .qr-holder {
@@ -1321,7 +1363,7 @@ label.field > span:first-child,
 .hash-code {
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
   font-size: 32px;
-  font-weight: 600;
+  font-weight: var(--fw-strong);
   letter-spacing: 0.22em;
   text-align: center;
   padding: 16px 0 16px 0.22em;
@@ -1344,14 +1386,14 @@ label.field > span:first-child,
 .stat-line {
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
+  font-size: var(--fs-subhead);
   padding: 6px 0;
   color: var(--text-2);
 }
 
 .stat-line strong {
   color: var(--text);
-  font-weight: 600;
+  font-weight: var(--fw-strong);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1360,7 +1402,7 @@ label.field > span:first-child,
   padding: 14px 16px;
   background: color-mix(in srgb, var(--danger) 12%, var(--surface));
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-subhead);
   line-height: 1.5;
 }
 
@@ -1379,8 +1421,8 @@ label.field > span:first-child,
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
-  font-weight: 550;
+  font-size: var(--fs-subhead);
+  font-weight: var(--fw-label);
   box-shadow: var(--overlay-shadow);
   z-index: 30;
 }
@@ -1392,7 +1434,7 @@ label.field > span:first-child,
 .toast button {
   min-height: 36px;
   padding: 0 14px;
-  font-size: 14px;
+  font-size: var(--fs-subhead);
 }
 
 /* ---- motion ---------------------------------------------------------------- */
@@ -1419,8 +1461,8 @@ label.field > span:first-child,
   background: transparent;
   justify-content: flex-start;
   text-align: left;
-  font-size: 16px;
-  font-weight: 450;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
   min-height: 54px;
 }
 
@@ -1439,7 +1481,7 @@ label.field > span:first-child,
   justify-content: center;
   gap: 6px;
   margin-top: 32px;
-  font-size: 12px;
+  font-size: var(--fs-caption);
   color: var(--text-3);
   text-align: center;
 }
@@ -1453,18 +1495,18 @@ label.field > span:first-child,
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid var(--separator);
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
 
 .mini-stats strong {
-  font-weight: 600;
+  font-weight: var(--fw-strong);
 }
 
 .mini-label {
   flex-basis: 100%;
-  font-weight: 550;
+  font-weight: var(--fw-label);
   color: var(--text);
 }
 
@@ -1477,7 +1519,7 @@ label.field > span:first-child,
   gap: 4px 6px;
   min-width: 0;
   margin-top: 2px;
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   color: var(--text-2);
 }
 
@@ -1521,7 +1563,7 @@ label.field > span:first-child,
 }
 
 .pot-name {
-  font-weight: 600;
+  font-weight: var(--fw-strong);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1530,13 +1572,13 @@ label.field > span:first-child,
 
 .pot-figures {
   flex: none;
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   color: var(--text-2);
 }
 
 .pot-figures strong {
   color: var(--text);
-  font-weight: 600;
+  font-weight: var(--fw-strong);
 }
 
 .pot .goal-bar {
@@ -1545,14 +1587,14 @@ label.field > span:first-child,
 
 .pot-note {
   margin-top: 7px;
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   line-height: 1.45;
   color: var(--text-2);
 }
 
 .pot-note strong {
   color: var(--text);
-  font-weight: 600;
+  font-weight: var(--fw-strong);
 }
 
 .chip-warn {
