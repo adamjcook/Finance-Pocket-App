@@ -307,10 +307,6 @@ h2,
   background: var(--separator);
 }
 
-.list-row.with-avatar {
-  --row-inset: 68px;
-}
-
 .list-row.tappable {
   cursor: pointer;
 }
@@ -1042,30 +1038,19 @@ label.field > span:first-child,
   background: var(--partner-joint);
 }
 
-/* monogram avatar for an account, with the owner's colour as a badge */
-.avatar {
-  position: relative;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
+.owner-bar {
+  /* slim owner-colour bar at the row's left edge; the key above the list
+     says which colour is whose */
+  align-self: stretch;
   flex: none;
-  background: var(--surface-2);
-  color: var(--text-2);
-  font-size: 15px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
+  width: 4px;
+  min-height: 36px;
+  border-radius: 3px;
 }
 
-.owner-bar {
-  position: absolute;
-  right: -3px;
-  bottom: -3px;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  border: 2.5px solid var(--surface);
+/* separators start after the owner bar, in line with the text */
+.list-row.with-owner {
+  --row-inset: 32px;
 }
 
 .owner-bar-a {
