@@ -89,6 +89,9 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   // Net worth went up, so Home celebrates it — once.
   await expect(page.locator('.net-gain')).toHaveText('£1,500.00 since your last update');
   await expect(page.locator('.app-logo.celebrate')).toHaveCount(1);
+  // The confetti appears as the count lands, then cleans up after itself.
+  await expect(page.locator('canvas.confetti')).toHaveCount(1);
+  await expect(page.locator('canvas.confetti')).toHaveCount(0, { timeout: 5000 });
   await page.goto('.#/accounts');
   await expect(page.locator('.account-row', { hasText: 'Barclaycard' })).toContainText('£1,500.00');
 

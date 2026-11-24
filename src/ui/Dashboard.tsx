@@ -16,6 +16,7 @@ import { formatMoney, formatMoneyWhole } from '../logic/money';
 import { lastWorkingDay } from '../../worker/src/ukdates';
 import { takeCelebration, useLastCheckIn } from '../model/lastCheckIn';
 import { LogoMark } from './components/LogoMark';
+import { Confetti } from './components/Confetti';
 import { navigate } from '../router';
 import { CheckInCard, NewsLine, PaydayCard } from './components/HomeCards';
 import { GROWTH_KINDS, OWED_KINDS, type DashboardSectionKey } from '../model/types';
@@ -72,6 +73,7 @@ export function Dashboard() {
   const { checkIn, undone } = useLastCheckIn();
   // Arriving Home from an update that raised net worth: play the moment once.
   const [celebrating] = useState(() => takeCelebration());
+  const [confetti, setConfetti] = useState(celebrating);
   useEffect(() => {
     if (!celebrating) return;
     // One light tap as the count lands, alongside the logo's pulse.
@@ -424,6 +426,15 @@ export function Dashboard() {
             formatMoneyWhole(netWorth, currency)
           )}
         </div>
+        {confetti && checkIn && (
+          // Bursts from the figure as the count lands; more when there's a milestone.
+          <Confetti
+            originSelector=".net-worth"
+            delay={1000}
+            count={checkIn.milestones.length > 0 ? 64 : 40}
+            onDone={() => setConfetti(false)}
+          />
+        )}
         {celebrating && checkIn && (
           <div class="net-gain num">
             <Icon name="up" size={14} />

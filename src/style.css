@@ -1688,6 +1688,15 @@ label.field > span:first-child,
    circles draw together, the shared lens brightens. The check-in card rises
    in first and its milestone ticks pop one after another. Plays once. */
 
+.confetti {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 50;
+  pointer-events: none; /* never in the way of a tap */
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
