@@ -1,7 +1,8 @@
 import type { SyncedState, UUID } from '../model/types';
 import { GROWTH_KINDS, OWED_KINDS } from '../model/types';
 import { latestBalances } from '../model/repo';
-import { debtProgress, growthProgress, loanProgress } from './progress';
+import { debtProgress, growthProgress, loanProgress, netWorthMilestone, netWorthSeries } from './progress';
+import { formatMoneyWhole } from './money';
 
 /**
  * What one payday update changed, for the "here's how you did" card on Home.
@@ -15,6 +16,8 @@ export interface CheckIn {
   cardChange: number;
   loanChange: number;
   savingsChange: number;
+  /** Net worth after − before (savings up, debts down both count). */
+  netChange: number;
   /** Which of those totals this couple actually tracks (so we don't say "£0"). */
   has: { cards: boolean; loans: boolean; savings: boolean };
   /** Moments worth naming, most important first. */
@@ -46,6 +49,18 @@ export function summariseCheckIn(
     if (debtAfter.current < lowestBefore) milestones.push('Lowest card debt yet');
   }
 
+  // Net worth past a round number (or above zero) for the first time. It
+  // leads, after only "All card debt cleared" — that's the first goal.
+  const netAfter = savingsAfter.current - debtAfter.current - loansAfter.current;
+  const net = netWorthMilestone(netWorthSeries(before, today), netAfter);
+  const netText =
+    net === 'positive'
+      ? 'Net worth above zero for the first time'
+      : net !== null
+        ? `Net worth over ${formatMoneyWhole(net, after.settings.currency)} for the first time`
+        : null;
+  if (netText) milestones.splice(milestones[0] === 'All card debt cleared' ? 1 : 0, 0, netText);
+
   // Individual cards and loans reaching zero, and savings pots reaching their goal.
   const prev = latestBalances(before);
   const next = latestBalances(after);
@@ -69,6 +84,11 @@ export function summariseCheckIn(
     cardChange: debtAfter.current - debtBefore.current,
     loanChange: loansAfter.current - loansBefore.current,
     savingsChange: savingsAfter.current - savingsBefore.current,
+    netChange:
+      savingsAfter.current -
+      savingsBefore.current -
+      (debtAfter.current - debtBefore.current) -
+      (loansAfter.current - loansBefore.current),
     has: {
       cards: debtAfter.series.length > 0,
       loans: loansAfter.series.length > 0,

@@ -240,3 +240,52 @@ export function lastManualUpdate(state: SyncedState): string | null {
   }
   return last;
 }
+
+/**
+ * Net worth day by day: savings and investments, less card debt and loans
+ * (the same sum as Home's headline figure). Each part carries forward from
+ * its own first reading and counts as zero before it.
+ */
+export function netWorthSeries(state: SyncedState, today: string): SeriesPoint[] {
+  const parts: [SeriesPoint[], number][] = [
+    [kindTotals(state, GROWTH_KINDS, today).series, 1],
+    [kindTotals(state, DEBT_KINDS, today).series, -1],
+    [kindTotals(state, LOAN_KINDS, today).series, -1],
+  ];
+  const days = [...new Set(parts.flatMap(([s]) => s.map((p) => p.day)))].sort();
+  const index = parts.map(() => -1);
+  return days.map((day) => {
+    let value = 0;
+    parts.forEach(([series, sign], i) => {
+      while (index[i] + 1 < series.length && series[index[i] + 1].day <= day) index[i]++;
+      if (index[i] >= 0) value += sign * series[index[i]].value;
+    });
+    return { day, value };
+  });
+}
+
+/**
+ * The round numbers net worth can pass: every £1,000 up to £10,000, every
+ * £5,000 up to £50,000, then every £10,000 — so milestones stay occasional.
+ */
+export function netWorthLines(upTo: number): number[] {
+  const lines: number[] = [];
+  for (let t = 1_000_00; t <= upTo; t += t < 10_000_00 ? 1_000_00 : t < 50_000_00 ? 5_000_00 : 10_000_00) {
+    lines.push(t);
+  }
+  return lines;
+}
+
+/**
+ * The net-worth milestone reached by going from a history (`before`) to
+ * `now`: 'positive' the first time it rises above zero, otherwise the
+ * highest round number newly passed. Null if no new line was crossed, or
+ * there was no history to cross from.
+ */
+export function netWorthMilestone(before: SeriesPoint[], now: number): number | 'positive' | null {
+  if (before.length === 0) return null;
+  const highest = Math.max(...before.map((p) => p.value));
+  if (now > 0 && highest <= 0) return 'positive';
+  const passed = netWorthLines(now).filter((t) => t > highest);
+  return passed.length ? passed[passed.length - 1] : null;
+}

@@ -8,6 +8,7 @@ import type { CheckIn } from '../logic/checkin';
  */
 let current: CheckIn | null = null;
 let undone = false;
+let celebrationPending = false;
 const listeners = new Set<() => void>();
 
 function notify() {
@@ -17,7 +18,16 @@ function notify() {
 export function setLastCheckIn(checkIn: CheckIn | null): void {
   current = checkIn;
   undone = false;
+  // Celebrate an update that leaves you better off — once, on arriving Home.
+  celebrationPending = !!checkIn && checkIn.netChange > 0;
   notify();
+}
+
+/** True the first time it's asked after a net-worth-raising update; false after. */
+export function takeCelebration(): boolean {
+  const pending = celebrationPending;
+  celebrationPending = false;
+  return pending;
 }
 
 export function markCheckInUndone(): void {
