@@ -1489,6 +1489,12 @@ label.field > span:first-child,
   margin-bottom: 12px;
 }
 
+/* A card straight under the header gets room to breathe from the logo row,
+   matching the gap the net-worth figure has when no card is showing. */
+.dash-top + .home-card {
+  margin-top: 18px;
+}
+
 /* The end of the payday update: tinted with the growth colour so it reads as
    good news at a glance, in either theme. */
 .home-card.checkin {
