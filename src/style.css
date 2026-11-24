@@ -90,7 +90,13 @@ body {
   height: 100%;
 }
 
+::selection {
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+  color: var(--text);
+}
+
 body {
+  caret-color: var(--accent);
   background: var(--bg);
   color: var(--text);
   font-family: 'Figtree Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -1038,6 +1044,11 @@ label.field > span:first-child,
   cursor: pointer;
 }
 
+.account-main:focus-visible {
+  border-radius: var(--radius-sm);
+  outline-offset: 4px;
+}
+
 .account-name {
   font-weight: var(--fw-label);
   letter-spacing: -0.006em;
@@ -1315,10 +1326,18 @@ label.field > span:first-child,
   box-shadow: var(--card-shadow);
 }
 
+.qr-holder {
+  /* a grid item may otherwise refuse to shrink below the canvas's own size */
+  min-width: 0;
+}
+
+/* The qrcode library writes an inline 480px width on the canvas; the code must
+   fit the card (and keep its quiet zone) on any phone, so this has to win. */
 .qr-holder canvas {
-  width: 100%;
+  width: 100% !important;
   max-width: 380px;
-  height: auto;
+  height: auto !important;
+  aspect-ratio: 1;
   image-rendering: pixelated;
 }
 

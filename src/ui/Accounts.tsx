@@ -187,7 +187,18 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
               }
               return (
                 <div class={`list-row account-row ${a.archived ? 'archived' : ''}`} key={a.id}>
-                  <div class="account-main" onClick={() => navigate(`/accounts/${a.id}`)} role="button" tabIndex={0}>
+                  <div
+                    class="account-main"
+                    onClick={() => navigate(`/accounts/${a.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/accounts/${a.id}`);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
                     <div class="account-name">
                       <span class="name-text">{a.name}</span>
                     </div>
