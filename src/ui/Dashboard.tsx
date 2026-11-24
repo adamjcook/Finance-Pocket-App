@@ -11,12 +11,10 @@ import {
   todayISO,
 } from '../logic/progress';
 import { formatMoney } from '../logic/money';
-import { dashboardSummary } from '../logic/wisdom';
 import { GROWTH_KINDS, OWED_KINDS, type DashboardSectionKey } from '../model/types';
 import { latestBalances } from '../model/repo';
 import { Chart } from './components/Chart';
 import { ProgressRing } from './components/ProgressRing';
-import { TypedText } from './components/TypedText';
 import { Icon } from './components/Icon';
 
 const SECTION_META: Record<DashboardSectionKey, { heading: string }> = {
@@ -81,7 +79,7 @@ export function Dashboard() {
   const growth = growthProgress(state, today);
   const loans = loanProgress(state, today);
   // Archived loans still count in the history, but once every loan is archived
-  // (paid off / closed) the Loans card and summary line drop away.
+  // (paid off / closed) the Loans card drops away.
   const showLoans =
     loans.series.length > 0 && state.accounts.some((a) => a.kind === 'loan' && !a.archived);
   const netWorth = growth.current - debt.current - loans.current;
@@ -139,14 +137,6 @@ export function Dashboard() {
   }
   const t212Latest = t212Account ? device.t212?.latest : null;
   const signed = (minor: number) => `${minor >= 0 ? '+' : '−'}${formatMoney(Math.abs(minor), currency)}`;
-
-  const summary = dashboardSummary({
-    today,
-    currency,
-    debt: { baseline: debt.baseline, current: debt.current, pct: debt.pct },
-    growth: { delta30: growth.delta30, hasHistory: growth.series.length > 0 },
-    loans: { current: loans.current, hasLoans: showLoans },
-  });
 
   const reordering = dragKey !== null;
   const baseVisible = device.dashboardOrder.filter(
@@ -390,7 +380,6 @@ export function Dashboard() {
           {netWorth >= 0 ? '' : '-'}
           {formatMoney(Math.abs(netWorth), currency)}
         </div>
-        <TypedText class="wisdom" text={summary} />
       </section>
 
       {visible.map((key) => {
