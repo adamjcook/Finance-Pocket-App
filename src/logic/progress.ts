@@ -168,9 +168,17 @@ export function growthProgress(state: SyncedState, today: string): GrowthProgres
   return { current, delta30, series };
 }
 
-/** Combined outstanding loans (kept separate from the card-payoff goal). */
-export function loanTotals(state: SyncedState, today: string): KindTotals {
-  return kindTotals(state, LOAN_KINDS, today);
+/**
+ * Combined outstanding loans (kept separate from the card payoff), with
+ * progress measured like the cards': how much of the highest combined loan
+ * balance on record has been paid off.
+ */
+export function loanProgress(state: SyncedState, today: string): DebtProgress {
+  const { current, series, effective } = kindTotals(state, LOAN_KINDS, today);
+  const baseline = peakCombined(effective);
+  const paidOff = Math.max(0, baseline - current);
+  const pct = baseline > 0 ? Math.min(100, Math.max(0, (paidOff / baseline) * 100)) : 0;
+  return { current, baseline, paidOff, pct, series };
 }
 
 /** Average Gregorian month, in days. */

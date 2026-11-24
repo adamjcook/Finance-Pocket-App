@@ -4,7 +4,7 @@ import {
   debtProgress,
   effectiveSnapshots,
   growthProgress,
-  loanTotals,
+  loanProgress,
   monthlyToTarget,
   monthsUntil,
 } from '../src/logic/progress';
@@ -136,7 +136,7 @@ describe('growthProgress', () => {
 });
 
 describe('loans stay separate from the card goal', () => {
-  it('excludes loans from debtProgress and reports them via loanTotals', () => {
+  it('excludes loans from debtProgress and reports them via loanProgress', () => {
     const s = state({
       accounts: [
         account({ id: 'card-1', kind: 'credit_card' }),
@@ -148,8 +148,22 @@ describe('loans stay separate from the card goal', () => {
       ],
     });
     expect(debtProgress(s, '2026-01-01').current).toBe(1000_00);
-    expect(loanTotals(s, '2026-01-01').current).toBe(9000_00);
+    expect(loanProgress(s, '2026-01-01').current).toBe(9000_00);
     expect(growthProgress(s, '2026-01-01').current).toBe(0);
+  });
+
+  it('measures loan payoff against the highest combined loan balance', () => {
+    const s = state({
+      accounts: [account({ id: 'car', kind: 'loan' }), account({ id: 'student', kind: 'loan' })],
+      snapshots: [
+        snapshot({ accountId: 'car', balance: 8000_00, at: '2026-01-01T00:00:00.000Z' }),
+        snapshot({ accountId: 'student', balance: 4000_00, at: '2026-01-01T00:00:00.000Z' }),
+        snapshot({ accountId: 'car', balance: 6000_00, at: '2026-04-01T00:00:00.000Z' }),
+        snapshot({ accountId: 'student', balance: 3000_00, at: '2026-04-01T00:00:00.000Z' }),
+      ],
+    });
+    const p = loanProgress(s, '2026-04-01');
+    expect(p).toMatchObject({ current: 9000_00, baseline: 12000_00, paidOff: 3000_00, pct: 25 });
   });
 });
 

@@ -5,7 +5,7 @@ import {
   debtProgress,
   formatDay,
   growthProgress,
-  loanTotals,
+  loanProgress,
   monthlyToTarget,
   toDay,
   todayISO,
@@ -79,7 +79,7 @@ export function Dashboard() {
   const today = toDay(todayISO());
   const debt = debtProgress(state, today);
   const growth = growthProgress(state, today);
-  const loans = loanTotals(state, today);
+  const loans = loanProgress(state, today);
   // Archived loans still count in the history, but once every loan is archived
   // (paid off / closed) the Loans card and summary line drop away.
   const showLoans =
@@ -307,8 +307,16 @@ export function Dashboard() {
     if (key === 'loans') {
       return (
         <div class="dash-body">
-          <div class="big-number">{formatMoney(loans.current, currency)}</div>
-          <div class="figure-caption">still owed on loans</div>
+          <div class="debt-hero">
+            <ProgressRing pct={loans.pct} />
+            <div class="grow">
+              <div class="big-number">{formatMoney(loans.current, currency)}</div>
+              <div class="figure-caption">still owed on loans</div>
+              <div class="figure-caption positive num" style="margin-top:8px;font-weight:550">
+                {formatMoney(loans.paidOff, currency)} of {formatMoney(loans.baseline, currency)} paid off
+              </div>
+            </div>
+          </div>
           {loans.series.length > 1 && (
             <Chart series={loans.series} currency={currency} color="var(--debt)" />
           )}

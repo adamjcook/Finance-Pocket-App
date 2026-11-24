@@ -96,6 +96,9 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await addAccount(page, 'Car Loan', 'Loan', '9000');
   await page.goto('.#/');
   await expect(page.getByText('still owed on loans')).toBeVisible();
+  const loansCard = page.locator('.dash-section', { hasText: 'Loans' });
+  await expect(loansCard.getByRole('img', { name: '0% paid off' })).toBeVisible(); // ring, like the cards'
+  await expect(loansCard).toContainText('£0.00 of £9,000.00 paid off');
   await expect(page.getByText('£9,000.00').first()).toBeVisible();
   await expect(page.getByText('£1,500.00').first()).toBeVisible(); // card debt unchanged
 
