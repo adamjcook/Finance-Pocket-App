@@ -1,5 +1,5 @@
 import { useEffect } from 'preact/hooks';
-import { storeError, useApp } from './model/store';
+import { getStore, mutate, storeError, useApp } from './model/store';
 import { useRoute } from './router';
 import { DEFAULT_PARTNER_A_COLOR, DEFAULT_PARTNER_B_COLOR } from './model/types';
 import { Dashboard } from './ui/Dashboard';
@@ -13,6 +13,7 @@ import { Setup } from './ui/Setup';
 import { UpdateToast } from './ui/components/UpdateToast';
 import { Icon, type IconName } from './ui/components/Icon';
 import { pullReadings } from './integrations/t212';
+import { migrateSettingsGoals } from './model/repo';
 import { refreshReminders, registrationFacts } from './integrations/push';
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -71,6 +72,16 @@ export function App() {
   useEffect(() => {
     if (app?.device.push?.enabled) void refreshReminders();
   }, [reminderKey]);
+
+  // Goals moved from Settings to each account: carry over any old ones once.
+  const oldGoals = app
+    ? [app.state.settings.debtTargetDate, app.state.settings.loanTargetDate, app.state.settings.savingsTargetMinor, app.state.settings.savingsTargetDate].join('|')
+    : '';
+  useEffect(() => {
+    if (app && oldGoals.replace(/\|/g, '') !== '') {
+      void mutate((s) => migrateSettingsGoals(s, { deviceId: getStore().device.deviceId }));
+    }
+  }, [oldGoals]);
 
   if (!app) {
     const error = storeError();

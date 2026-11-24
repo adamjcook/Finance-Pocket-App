@@ -124,20 +124,6 @@ export function Settings() {
     </button>
   );
 
-  const dateRow = (label: string, value: string | null | undefined, onChange: (v: string | null) => void) => (
-    <label class="list-row setting-row">
-      <span class="setting-label">{label}</span>
-      <span class="setting-control">
-        <input
-          type="date"
-          value={value ?? ''}
-          onChange={(e) => onChange((e.target as HTMLInputElement).value || null)}
-        />
-        {value && clearButton(`Clear ${label.toLowerCase()}`, () => onChange(null))}
-      </span>
-    </label>
-  );
-
   return (
     <div>
       <header class="page-header">
@@ -202,32 +188,6 @@ export function Settings() {
         <p class="group-footer">
           Shared by both phones. The names label who owns each account, so keep them the same on
           both sides.
-        </p>
-      </section>
-
-      <section class="group">
-        <h2 class="group-label">Goals</h2>
-        <div class="list">
-          {dateRow('Clear the cards by', state.settings.debtTargetDate, (v) => saveField({ debtTargetDate: v }))}
-          {dateRow('Clear the loans by', state.settings.loanTargetDate, (v) => saveField({ loanTargetDate: v }))}
-          <label class="list-row setting-row">
-            <span class="setting-label">Savings target</span>
-            <span class="setting-control">
-              <MoneyInput
-                initial={state.settings.savingsTargetMinor ?? null}
-                symbol={currencySymbol(currency)}
-                placeholder="no target"
-                onChange={(minor) => saveField({ savingsTargetMinor: minor })}
-              />
-              {state.settings.savingsTargetMinor != null &&
-                clearButton('Clear savings target', () => saveField({ savingsTargetMinor: null }))}
-            </span>
-          </label>
-          {dateRow('Reach it by', state.settings.savingsTargetDate, (v) => saveField({ savingsTargetDate: v }))}
-        </div>
-        <p class="group-footer">
-          The dashboard works out roughly how much per month gets you there. Goals sync to your
-          partner's phone like everything else.
         </p>
       </section>
 

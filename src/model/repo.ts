@@ -208,3 +208,33 @@ export function aliasSeries(state: SyncedState, alias: Alias, today: string): Se
     .sort((a, b) => a.at.localeCompare(b.at) || a.createdAt.localeCompare(b.createdAt));
   return combinedDailySeries(virtual, today);
 }
+
+/**
+ * One-off move of the retired Settings goals onto accounts: "clear the cards
+ * by" / "clear the loans by" become each active card's / loan's own pay-off
+ * date (unless it already has one). The old combined savings target has no
+ * single pot to move to, so it's dropped — pots get their own goals instead.
+ * Returns `state` unchanged when there's nothing to migrate.
+ */
+export function migrateSettingsGoals(state: SyncedState, ctx: Ctx): SyncedState {
+  const { debtTargetDate, loanTargetDate, savingsTargetMinor, savingsTargetDate } = state.settings;
+  if (!debtTargetDate && !loanTargetDate && savingsTargetMinor == null && !savingsTargetDate) return state;
+  const meta = stamp(ctx);
+  const accounts = state.accounts.map((a) => {
+    if (a.archived || a.goalDate) return a;
+    const date = a.kind === 'credit_card' ? debtTargetDate : a.kind === 'loan' ? loanTargetDate : null;
+    return date ? { ...a, goalDate: date, ...meta } : a;
+  });
+  return {
+    ...state,
+    accounts,
+    settings: {
+      ...state.settings,
+      debtTargetDate: null,
+      loanTargetDate: null,
+      savingsTargetMinor: null,
+      savingsTargetDate: null,
+      ...meta,
+    },
+  };
+}

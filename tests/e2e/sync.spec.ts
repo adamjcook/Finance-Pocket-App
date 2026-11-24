@@ -99,18 +99,22 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await expect(page.getByText('£9,000.00').first()).toBeVisible();
   await expect(page.getByText('£1,500.00').first()).toBeVisible(); // card debt unchanged
 
-  // Goals: clear-by dates for cards and loans, amount + date for savings
-  await page.goto('.#/settings');
-  await page.locator('input[type="date"]').nth(0).fill('2027-06-01'); // cards
-  await page.locator('input[type="date"]').nth(1).fill('2027-11-01'); // loans
-  await page.getByPlaceholder('no target').fill('10000');
-  await page.locator('input[type="date"]').nth(2).fill('2027-06-01'); // savings
+  // Goals live on each account: a pay-off date for the card and the loan.
+  const year = new Date().getUTCFullYear() + 1;
+  for (const [name, date] of [['Barclaycard', `${year}-06-01`], ['Car Loan', `${year}-11-01`]]) {
+    await page.goto('.#/accounts');
+    await page.locator('.account-row', { hasText: name }).locator('.account-main').click();
+    await page.getByLabel('Pay off by').fill(date);
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
+  }
   await page.goto('.#/');
-  await expect(page.getByText(/needs about/).first()).toBeVisible();
-  await expect(page.getByText(/1 Jun 2027/).first()).toBeVisible();
-  await expect(page.getByText(/1 Nov 2027/).first()).toBeVisible(); // loan goal date
-  await expect(page.getByText(/% there/)).toBeVisible();
-  await expect(page.getByText(/to get there by/)).toBeVisible();
+  const goals = page.locator('.dash-section', { hasText: 'Goals' });
+  await expect(goals).toContainText(`Pay off by 1 Jun ${year}`);
+  await expect(goals).toContainText(`Pay off by 1 Nov ${year}`);
+  await expect(goals).toContainText('£1,500.00 left');
+  await expect(goals.getByRole('img', { name: 'Barclaycard: 50% paid off' })).toBeVisible();
+  await expect(goals).toContainText(/about £[\d,.]+\/month/);
 });
 
 test('second phone joins via setup and owners stay consistent (no flip)', async ({ browser }) => {
@@ -449,7 +453,7 @@ test('pot goals on Home, 0% deal and stale-balance pills, and the Reminders sect
   await page.goto('.#/accounts/new');
   await page.getByPlaceholder('e.g. Barclaycard, Marcus saver').fill('M&S Card');
   await page.locator('select').first().selectOption({ label: 'Credit card' });
-  await page.locator('input[type="date"]').fill(`${nextYear}-03-01`);
+  await page.getByLabel('0% deal ends').fill(`${nextYear}-03-01`);
   await page.getByPlaceholder('0.00').fill('800');
   await page.getByRole('button', { name: 'Add account' }).click();
   await expect(page.locator('.account-row', { hasText: 'M&S Card' })).toContainText(`0% until 1 Mar ${nextYear}`);

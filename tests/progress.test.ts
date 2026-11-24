@@ -8,7 +8,7 @@ import {
   monthlyToTarget,
   monthsUntil,
 } from '../src/logic/progress';
-import { aliasSeries, latestBalances, repointAlias, updateAccount } from '../src/model/repo';
+import { aliasSeries, latestBalances, migrateSettingsGoals, repointAlias, updateAccount } from '../src/model/repo';
 import { account, alias, settings, snapshot, state } from './helpers';
 import { parseMoney, minorToInput, formatMoney } from '../src/logic/money';
 
@@ -295,5 +295,29 @@ describe('archived accounts count up to the moment they were archived', () => {
     expect(renamed.accounts[0].archivedAt).toBe('2026-03-01T00:00:00.000Z');
     const restored = updateAccount(archived, { deviceId: 'd', now: '2026-05-01T00:00:00.000Z' }, 'acc', { archived: false });
     expect(restored.accounts[0].archivedAt).toBeNull();
+  });
+});
+
+describe('migrateSettingsGoals (goals moved from Settings to accounts)', () => {
+  it("copies the old clear-by dates onto each card and loan that doesn't have its own", () => {
+    const card = account({ id: 'c1', kind: 'credit_card' });
+    const own = account({ id: 'c2', kind: 'credit_card', goalDate: '2027-01-01' });
+    const loan = account({ id: 'l1', kind: 'loan' });
+    const saver = account({ id: 's1', kind: 'savings' });
+    const gone = account({ id: 'c3', kind: 'credit_card', archived: true });
+    const s0 = state({
+      accounts: [card, own, loan, saver, gone],
+      settings: settings({ debtTargetDate: '2027-06-01', loanTargetDate: '2027-11-01', savingsTargetMinor: 25000_00, savingsTargetDate: '2027-12-01' }),
+    });
+    const s1 = migrateSettingsGoals(s0, { deviceId: 'd', now: '2026-11-24T10:00:00.000Z' });
+    const goal = (id: string) => s1.accounts.find((a) => a.id === id)!.goalDate ?? null;
+    expect(goal('c1')).toBe('2027-06-01');
+    expect(goal('c2')).toBe('2027-01-01'); // its own date wins
+    expect(goal('l1')).toBe('2027-11-01');
+    expect(goal('s1')).toBeNull();
+    expect(goal('c3')).toBeNull(); // archived accounts untouched
+    expect(s1.settings).toMatchObject({ debtTargetDate: null, loanTargetDate: null, savingsTargetMinor: null, savingsTargetDate: null, updatedAt: '2026-11-24T10:00:00.000Z' });
+    // Nothing left to migrate: same state back.
+    expect(migrateSettingsGoals(s1, { deviceId: 'd' })).toBe(s1);
   });
 });

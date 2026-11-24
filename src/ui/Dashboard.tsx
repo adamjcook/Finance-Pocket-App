@@ -12,7 +12,7 @@ import {
 } from '../logic/progress';
 import { formatMoney } from '../logic/money';
 import { dashboardSummary } from '../logic/wisdom';
-import { GROWTH_KINDS, type DashboardSectionKey } from '../model/types';
+import { GROWTH_KINDS, OWED_KINDS, type DashboardSectionKey } from '../model/types';
 import { latestBalances } from '../model/repo';
 import { Chart } from './components/Chart';
 import { ProgressRing } from './components/ProgressRing';
@@ -86,18 +86,8 @@ export function Dashboard() {
     loans.series.length > 0 && state.accounts.some((a) => a.kind === 'loan' && !a.archived);
   const netWorth = growth.current - debt.current - loans.current;
 
-  const debtTargetDate = settings.debtTargetDate ?? null;
-  const debtMonthly = monthlyToTarget(debt.current, 0, 'down', debtTargetDate, today);
-  const loanTargetDate = settings.loanTargetDate ?? null;
-  const loanMonthly = monthlyToTarget(loans.current, 0, 'down', loanTargetDate, today);
-  const savingsTarget = settings.savingsTargetMinor ?? null;
-  const savingsTargetDate = settings.savingsTargetDate ?? null;
-  const savingsMonthly =
-    savingsTarget !== null
-      ? monthlyToTarget(growth.current, savingsTarget, 'up', savingsTargetDate, today)
-      : null;
-
-  // Savings/investment pots with their own goal (set on the account form).
+  // Per-account goals (set on each account's form): savings pots have a target
+  // to save up to; cards and loans have a date to pay them off by.
   const balances = latestBalances(state);
   const pots = state.accounts
     .filter((a) => !a.archived && GROWTH_KINDS.includes(a.kind) && (a.goalMinor ?? 0) > 0)
@@ -113,6 +103,23 @@ export function Dashboard() {
       };
     })
     .sort((x, y) => y.pct - x.pct);
+  const effective = effectiveSnapshots(state.snapshots, state.voids);
+  const payoffs = state.accounts
+    .filter((a) => !a.archived && OWED_KINDS.includes(a.kind) && a.goalDate)
+    .map((a) => {
+      const current = balances.get(a.id)?.balance ?? 0;
+      // Progress is measured from the most this account has owed.
+      const peak = effective.reduce((m, s) => (s.accountId === a.id ? Math.max(m, s.balance) : m), current);
+      return {
+        account: a,
+        current,
+        peak,
+        pct: peak > 0 ? Math.max(0, Math.min(100, ((peak - current) / peak) * 100)) : 100,
+        monthly: monthlyToTarget(current, 0, 'down', a.goalDate, today),
+      };
+    })
+    .sort((x, y) => x.account.goalDate!.localeCompare(y.account.goalDate!));
+  const hasGoals = pots.length + payoffs.length > 0;
 
   // Trading 212 link: the linked account's move on its latest day, and its
   // overall gain from the Worker's latest reading.
@@ -143,7 +150,7 @@ export function Dashboard() {
 
   const reordering = dragKey !== null;
   const baseVisible = device.dashboardOrder.filter(
-    (k) => (k !== 'loans' || showLoans) && (k !== 'goals' || pots.length > 0),
+    (k) => (k !== 'loans' || showLoans) && (k !== 'goals' || hasGoals),
   );
   // The rendered order stays fixed at the pre-drag order for the whole drag:
   // Chromium silently releases pointer capture when the captured element is
@@ -207,18 +214,6 @@ export function Dashboard() {
     return 0;
   };
 
-  const goalLine = (targetDate: string, current: number, monthly: number | null, doneLabel: string) =>
-    current === 0 ? (
-      <p class="goal done">{doneLabel} — goal done 🎉</p>
-    ) : monthly !== null ? (
-      <p class="goal">
-        Goal: cleared by <strong>{formatDay(targetDate)}</strong> — needs about{' '}
-        <strong class="num">{formatMoney(monthly, currency)}/month</strong>
-      </p>
-    ) : (
-      <p class="goal">Goal date {formatDay(targetDate)} has passed — set a new one in Settings.</p>
-    );
-
   const sectionBody = (key: DashboardSectionKey) => {
     if (key === 'debt') {
       return (
@@ -235,7 +230,6 @@ export function Dashboard() {
                   </div>
                 </div>
               </div>
-              {debtTargetDate && goalLine(debtTargetDate, debt.current, debtMonthly, 'Cards cleared')}
               <Chart series={debt.series} currency={currency} color="var(--debt)" />
             </>
           ) : (
@@ -282,6 +276,31 @@ export function Dashboard() {
               </div>
             </div>
           ))}
+          {payoffs.map((p) => (
+            <div class="pot" key={p.account.id}>
+              <div class="pot-head">
+                <span class="pot-name">{p.account.name}</span>
+                <span class="pot-figures num">
+                  <strong>{formatMoney(p.current, currency)}</strong> left
+                </span>
+              </div>
+              <div class="goal-bar" role="img" aria-label={`${p.account.name}: ${p.pct.toFixed(0)}% paid off`}>
+                <span style={`width:${p.pct}%`} />
+              </div>
+              <div class="pot-note">
+                {p.current <= 0 ? (
+                  <span class="positive">Paid off 🎉</span>
+                ) : p.monthly !== null ? (
+                  <>
+                    Pay off by {formatDay(p.account.goalDate!)} · about{' '}
+                    <strong class="num">{formatMoney(p.monthly, currency)}/month</strong>
+                  </>
+                ) : (
+                  <>Pay-off date {formatDay(p.account.goalDate!)} has passed — set a new one on the account</>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       );
     }
@@ -290,7 +309,6 @@ export function Dashboard() {
         <div class="dash-body">
           <div class="big-number">{formatMoney(loans.current, currency)}</div>
           <div class="figure-caption">still owed on loans</div>
-          {loanTargetDate && goalLine(loanTargetDate, loans.current, loanMonthly, 'Loans cleared')}
           {loans.series.length > 1 && (
             <Chart series={loans.series} currency={currency} color="var(--debt)" />
           )}
@@ -335,29 +353,6 @@ export function Dashboard() {
                 )}
               </div>
             )}
-            {savingsTarget !== null &&
-              (growth.current >= savingsTarget ? (
-                <p class="goal done">Target of {formatMoney(savingsTarget, currency)} reached 🎉</p>
-              ) : (
-                <div class="goal">
-                  <p>
-                    Target: <strong class="num">{formatMoney(savingsTarget, currency)}</strong> (
-                    {((growth.current / savingsTarget) * 100).toFixed(0)}% there)
-                    {savingsMonthly !== null && savingsTargetDate ? (
-                      <>
-                        {' '}
-                        — about <strong class="num">{formatMoney(savingsMonthly, currency)}/month</strong> to
-                        get there by {formatDay(savingsTargetDate)}
-                      </>
-                    ) : savingsTargetDate ? (
-                      <> — goal date {formatDay(savingsTargetDate)} has passed</>
-                    ) : null}
-                  </p>
-                  <div class="goal-bar">
-                    <span style={`width:${Math.max(0, Math.min(100, (growth.current / savingsTarget) * 100))}%`} />
-                  </div>
-                </div>
-              ))}
             <Chart series={growth.series} currency={currency} color="var(--accent)" />
           </>
         ) : (
