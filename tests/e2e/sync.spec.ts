@@ -84,10 +84,10 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   const checkIn = page.locator('.checkin');
   await expect(checkIn.getByRole('heading', { name: 'Nicely done, Adam & Sam' })).toBeVisible();
   await expect(checkIn).toContainText('Card debt');
-  await expect(checkIn).toContainText('down £1,500.00');
+  await expect(checkIn).toContainText('down £1,500');
   await expect(checkIn.getByRole('button', { name: 'Undo this update' })).toBeVisible();
   // Net worth went up, so Home celebrates it — once.
-  await expect(page.locator('.net-gain')).toHaveText('£1,500.00 since your last update');
+  await expect(page.locator('.net-gain')).toHaveText('£1,500 since the last update');
   await expect(page.locator('.app-logo.celebrate')).toHaveCount(1);
   // The confetti appears as the count lands, then cleans up after itself.
   await expect(page.locator('canvas.confetti')).toHaveCount(1);
@@ -108,7 +108,7 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await page.getByRole('button', { name: 'Update', exact: true }).click();
   await page.getByLabel('New balance for Marcus Saver').fill('1250');
   await page.getByRole('button', { name: /Save 1 update/ }).click();
-  await expect(page.locator('.checkin')).toContainText('up £250.00');
+  await expect(page.locator('.checkin')).toContainText('up £250');
   await page.goto('.#/accounts');
   await expect(page.locator('.account-row', { hasText: 'Marcus Saver' })).toContainText('£1,250.00');
   // The tab bar no longer has a separate Update tab.
@@ -585,9 +585,59 @@ test('payday update: mistypes are caught, drafts survive a reload, and a check-i
   await page.getByRole('button', { name: /Save 1 update/ }).click();
 
   const checkIn = page.locator('.checkin');
-  await expect(checkIn).toContainText('down £200.00');
+  await expect(checkIn).toContainText('down £200');
+  // The debt going down raised net worth: £1,800 owed → £1,600.
+  await expect(page.locator('.net-worth')).toContainText('−£1,600');
   await checkIn.getByRole('button', { name: 'Undo this update' }).click();
   await expect(checkIn.getByRole('heading', { name: 'Update undone' })).toBeVisible();
+  // Undo puts the headline back too: no stale figure or gain left on screen.
+  await expect(page.locator('.net-worth')).toContainText('−£1,800');
+  await expect(page.locator('.net-worth')).not.toContainText('−£1,600');
+  await expect(page.locator('.net-gain')).toHaveCount(0);
   await page.goto('.#/accounts');
   await expect(page.locator('.account-row', { hasText: 'Barclaycard' })).toContainText('£1,800.00');
+});
+
+test('the partner who did not do the update sees it too, after syncing', async ({ browser }) => {
+  const contextA = await browser.newContext();
+  const contextB = await browser.newContext();
+  const phoneA = await contextA.newPage();
+  const phoneB = await contextB.newPage();
+
+  // Adam's phone sets up (so it knows it's Adam's) and does a payday update.
+  await completeSetup(phoneA, 'Adam', 'Sam');
+  await addAccount(phoneA, 'Barclaycard', 'Credit card', '3000');
+  await phoneA.goto('.#/update');
+  await phoneA.getByLabel('New balance for Barclaycard').fill('2600');
+  await phoneA.getByRole('button', { name: /Save 1 update/ }).click();
+  await expect(phoneA.locator('.checkin')).toContainText('Since your last update');
+
+  // Sam's phone joins and syncs: same card, saying who did it, celebrating
+  // once (net worth went up), but with no Undo — that's Adam's to take back.
+  await phoneB.goto('.');
+  await expect(phoneB.getByRole('button', { name: "Join your partner's setup" })).toBeVisible();
+  const frames = await phoneA.evaluate(() => window.__syncTest.exportFrames());
+  await phoneB.evaluate((f) => window.__syncTest.importFrames(f), frames);
+  await phoneB.goto('.#/');
+  const card = phoneB.locator('.checkin');
+  await expect(card.getByRole('heading', { name: 'Nicely done, Adam & Sam' })).toBeVisible();
+  await expect(card).toContainText('Adam updated today');
+  await expect(card).toContainText('down £400');
+  await expect(card.getByRole('button', { name: 'Undo this update' })).toHaveCount(0);
+  await expect(phoneB.locator('.net-gain')).toHaveText('£400 since the last update');
+
+  // It survives the app being reopened, without celebrating again…
+  await phoneB.reload();
+  await expect(phoneB.locator('.checkin')).toContainText('Adam updated today');
+  await phoneB.waitForTimeout(2500);
+  await expect(phoneB.locator('.net-gain')).toHaveCount(0);
+  // …until this phone dismisses it.
+  await phoneB.locator('.checkin').getByRole('button', { name: 'Dismiss' }).click();
+  await expect(phoneB.locator('.checkin')).toHaveCount(0);
+  await phoneB.reload();
+  await expect(phoneB.locator('.dash-top')).toBeVisible();
+  await expect(phoneB.locator('.checkin')).toHaveCount(0);
+
+  await contextA.close();
+  await contextB.close();
 });

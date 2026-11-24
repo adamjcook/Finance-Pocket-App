@@ -8,8 +8,8 @@ import { MoneyInput } from './components/MoneyInput';
 import { navigate } from '../router';
 import { daysBetween, formatDay, STALE_AFTER_DAYS, toDay, todayISO } from '../logic/progress';
 import { Icon } from './components/Icon';
-import { looksLikeATypo, summariseCheckIn } from '../logic/checkin';
-import { clearDraft, loadDraft, saveDraft, setLastCheckIn } from '../model/lastCheckIn';
+import { looksLikeATypo } from '../logic/checkin';
+import { clearDraft, loadDraft, saveDraft } from '../model/updateDraft';
 
 /**
  * The accounts list, and — at #/update — the same list in update mode: every
@@ -78,18 +78,17 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
   // Save, then go Home to see how the two of you did (the check-in card).
   const saveAll = async () => {
     if (changed.length === 0 || invalid.size > 0) return;
-    const { device, state: before } = getStore();
+    const { device } = getStore();
     const at = new Date().toISOString();
     await mutate((s) =>
       addSnapshots(
         s,
         { deviceId: device.deviceId, now: at },
         changed.map((a) => ({ accountId: a.id, balance: drafts.get(a.id)!, at })),
+        device.me ?? null,
       ),
     );
-    const after = getStore().state;
-    const ids = after.snapshots.slice(before.snapshots.length).map((s) => s.id);
-    setLastCheckIn(summariseCheckIn(before, after, at, ids, toDay(todayISO())));
+    // Home works the check-in card out from the history just saved.
     clearDraft();
     navigate('/');
   };

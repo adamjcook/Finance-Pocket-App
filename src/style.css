@@ -1612,6 +1612,13 @@ label.field > span:first-child,
   background: var(--accent);
 }
 
+.checkin-perspective {
+  margin-top: 12px;
+  color: var(--text-2);
+  font-size: var(--fs-footnote);
+  text-wrap: pretty;
+}
+
 .checkin-undo {
   margin: 12px 0 -6px -14px;
 }

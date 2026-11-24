@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { looksLikeATypo, summariseCheckIn } from '../src/logic/checkin';
+import { checkInFor, latestUpdateBatch, looksLikeATypo, summariseCheckIn } from '../src/logic/checkin';
 import { netWorthLines, netWorthMilestone } from '../src/logic/progress';
-import { addSnapshots } from '../src/model/repo';
+import { addSnapshots, voidSnapshot } from '../src/model/repo';
 import { account, snapshot, state } from './helpers';
 
 const TODAY = '2026-11-28';
@@ -107,5 +107,50 @@ describe('net-worth milestones', () => {
 
   it('needs some history to cross from', () => {
     expect(netWorthMilestone([], 5300_00)).toBeNull();
+  });
+});
+
+describe('the latest update, from the shared history', () => {
+  it('finds the last batch saved together, says who did it, and summarises it', () => {
+    const s0 = base();
+    const s1 = addSnapshots(s0, { deviceId: 'phone-b', now: AT }, [
+      { accountId: 'card', balance: 2200_00, at: AT },
+      { accountId: 'pot', balance: 4300_00, at: AT },
+    ], 'B');
+    const batch = latestUpdateBatch(s1)!;
+    expect(batch).toMatchObject({ deviceId: 'phone-b', by: 'B', at: AT, voided: false });
+    expect(batch.ids).toHaveLength(2);
+    const c = checkInFor(s1, batch, TODAY);
+    expect(c.cardChange).toBe(-300_00);
+    expect(c.savingsChange).toBe(300_00);
+  });
+
+  it("doesn't count a new account's opening balance as an update", () => {
+    const opened = '2026-11-28T10:00:00.000Z';
+    const s = base();
+    const withNew = {
+      ...s,
+      accounts: [...s.accounts, account({ id: 'new', kind: 'savings', createdAt: opened })],
+      snapshots: [...s.snapshots, snapshot({ accountId: 'new', balance: 50_00, at: opened, createdAt: opened })],
+    };
+    // The sample history has no typed-in updates, so the only candidate
+    // would be the new account's opening balance — which doesn't count.
+    expect(latestUpdateBatch(withNew)).toBeNull();
+  });
+
+  it('ignores later automatic readings when summarising', () => {
+    const s1 = addSnapshots(base(), { deviceId: 'phone-a', now: AT }, [{ accountId: 'pot', balance: 4500_00, at: AT }]);
+    const later = '2026-11-28T21:00:00.000Z';
+    const s2 = { ...s1, snapshots: [...s1.snapshots, snapshot({ accountId: 'pot', balance: 9999_00, at: later, createdAt: later, deviceId: 't212' })] };
+    const batch = latestUpdateBatch(s2)!;
+    expect(batch.at).toBe(AT);
+    expect(checkInFor(s2, batch, TODAY).savingsChange).toBe(500_00);
+  });
+
+  it('knows when every balance in it has been undone', () => {
+    const s1 = addSnapshots(base(), { deviceId: 'phone-a', now: AT }, [{ accountId: 'pot', balance: 4500_00, at: AT }]);
+    const batch = latestUpdateBatch(s1)!;
+    const s2 = batch.ids.reduce((acc, id) => voidSnapshot(acc, { deviceId: 'phone-a' }, id), s1);
+    expect(latestUpdateBatch(s2)!.voided).toBe(true);
   });
 });

@@ -62,6 +62,12 @@ export interface Snapshot {
   at: ISOTime; // effective time (user can backdate)
   deviceId: string;
   createdAt: ISOTime;
+  /**
+   * Which partner typed it in (from the saving phone's "whose phone is
+   * this?"), so the other phone can say who did an update. Absent on older
+   * records, automatic readings and phones that haven't said whose they are.
+   */
+  by?: 'A' | 'B' | null;
 }
 
 /** Undo for a mistyped snapshot without breaking append-only semantics. */
@@ -180,6 +186,8 @@ export interface DeviceState {
   me?: 'A' | 'B' | null;
   /** What Home's news line has shown or been told to drop, on this phone. */
   news?: import('../logic/news').NewsMemory | null;
+  /** This phone's view of the latest payday update's card: celebrated yet, dismissed. */
+  checkIn?: { key: string; celebrated: boolean; dismissed: boolean } | null;
 }
 
 /** Everything that syncs between the two phones. */
