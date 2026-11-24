@@ -31,3 +31,28 @@ export function tickBucket(day: string, step: TickStep): string {
   d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
   return d.toISOString().slice(0, 10);
 }
+
+const DEV_TICK_KEY = 'finpair-dev-tick-ms';
+
+/**
+ * Tick length to use. The dev build's Haptics tester can override it on this
+ * phone (localStorage) to try lengths on a real device; production always
+ * uses TICK_MS.
+ */
+export function tickMs(): number {
+  if (import.meta.env.VITE_DEV_BUILD !== '1') return TICK_MS;
+  try {
+    const v = Number(localStorage.getItem(DEV_TICK_KEY));
+    return v > 0 && v <= 100 ? v : TICK_MS;
+  } catch {
+    return TICK_MS;
+  }
+}
+
+export function setDevTickMs(ms: number): void {
+  try {
+    localStorage.setItem(DEV_TICK_KEY, String(ms));
+  } catch {
+    // storage blocked: the default stays in use
+  }
+}

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
 import { formatDay, type SeriesPoint } from '../../logic/progress';
 import { formatMoney, formatMoneyCompact } from '../../logic/money';
-import { ACTIVATE_MS, MIN_TICK_GAP_MS, TICK_MS, tickBucket, tickStep } from '../../logic/chartTicks';
+import { ACTIVATE_MS, MIN_TICK_GAP_MS, tickBucket, tickMs, tickStep } from '../../logic/chartTicks';
 
 interface Props {
   series: SeriesPoint[];
@@ -70,7 +70,7 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
       const now = performance.now();
       if (!first && now - lastBuzz < MIN_TICK_GAP_MS) return;
       lastBuzz = now;
-      const ok = navigator.vibrate?.(first ? ACTIVATE_MS : TICK_MS) ?? false;
+      const ok = navigator.vibrate?.(first ? ACTIVATE_MS : tickMs()) ?? false;
       if (import.meta.env.VITE_DEV_BUILD === '1') {
         setHapticLog((l) => (first ? { sent: 1, ok: ok ? 1 : 0 } : { sent: l.sent + 1, ok: l.ok + (ok ? 1 : 0) }));
       }
