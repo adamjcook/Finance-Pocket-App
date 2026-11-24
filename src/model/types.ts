@@ -92,9 +92,8 @@ export interface Settings extends Meta {
   /** Optional date (YYYY-MM-DD) to reach the savings target by. */
   savingsTargetDate?: string | null;
   /**
-   * Partner identity colours (CSS hex) for the Accounts page's owner key and
-   * bars, chosen at setup. Added after v1 shipped — undefined reads as the
-   * default teal/amber.
+   * Retired: partner colours once chosen at setup for owner bars on the
+   * Accounts page. No longer shown or set; kept so older records still type.
    */
   partnerAColor?: string;
   partnerBColor?: string;
@@ -136,23 +135,6 @@ export interface T212DeviceStatus {
 
 /** Currencies offered at setup and in Settings (display-only; amounts aren't converted). */
 export const CURRENCIES = ['GBP', 'EUR', 'USD'];
-
-/**
- * Owner colours: blue and pink for the two partners, purple (their mix) for
- * joint accounts — kept clear of the app's green (growth/progress), orange
- * (money owed) and yellow. Each has a hand-picked shade for light mode.
- */
-export const DEFAULT_PARTNER_A_COLOR = '#6ea8fe';
-export const DEFAULT_PARTNER_B_COLOR = '#f28dc0';
-export const OWNER_COLOR_SHADES: Record<string, { dark: string; light: string }> = {
-  [DEFAULT_PARTNER_A_COLOR]: { dark: '#6ea8fe', light: '#2563eb' },
-  [DEFAULT_PARTNER_B_COLOR]: { dark: '#f28dc0', light: '#c2307a' },
-};
-/** Colours saved before the palette changed (the icon's teal and amber), mapped to their replacements. */
-export const LEGACY_PARTNER_COLORS: Record<string, string> = {
-  '#4fd1a5': DEFAULT_PARTNER_A_COLOR,
-  '#f2a65a': DEFAULT_PARTNER_B_COLOR,
-};
 
 export type Theme = 'dark' | 'light';
 
@@ -217,8 +199,6 @@ export const DEFAULT_SETTINGS: Settings = {
   loanTargetDate: null,
   savingsTargetMinor: null,
   savingsTargetDate: null,
-  partnerAColor: DEFAULT_PARTNER_A_COLOR,
-  partnerBColor: DEFAULT_PARTNER_B_COLOR,
   t212: null,
   updatedAt: new Date(0).toISOString(),
   updatedBy: '',

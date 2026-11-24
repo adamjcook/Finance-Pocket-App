@@ -9,10 +9,6 @@ import { navigate } from '../router';
 import { daysBetween, formatDay, STALE_AFTER_DAYS, toDay, todayISO } from '../logic/progress';
 import { Icon } from './components/Icon';
 
-function ownerLabel(owner: Account['owner'], a: string, b: string): string {
-  return owner === 'A' ? a : owner === 'B' ? b : 'Joint';
-}
-
 export function Accounts() {
   const app = useApp();
   const [showArchived, setShowArchived] = useState(false);
@@ -21,7 +17,6 @@ export function Accounts() {
 
   if (!app) return null;
   const { state } = app;
-  const { partnerAName, partnerBName } = state.settings;
   const currency = state.settings.currency;
   const symbol = currencySymbol(currency);
   const balances = latestBalances(state);
@@ -85,23 +80,6 @@ export function Accounts() {
         </div>
       )}
 
-      {visible.length > 0 && (
-        <div class="owner-key">
-          <span>
-            <span class="owner-dot owner-dot-a" />
-            {partnerAName}
-          </span>
-          <span>
-            <span class="owner-dot owner-dot-b" />
-            {partnerBName}
-          </span>
-          <span>
-            <span class="owner-dot owner-dot-joint" />
-            Joint
-          </span>
-        </div>
-      )}
-
       {groups.map(
         (g) =>
           g.accounts.length > 0 && (
@@ -115,12 +93,7 @@ export function Accounts() {
                   const alias = aliasForAccount(state, a.id);
                   const latest = balances.get(a.id);
                   return (
-                    <div class={`list-row account-row with-owner ${a.archived ? 'archived' : ''}`} key={a.id}>
-                      <span
-                        class={`owner-bar owner-bar-${a.owner === 'joint' ? 'joint' : a.owner.toLowerCase()}`}
-                        role="img"
-                        aria-label={ownerLabel(a.owner, partnerAName, partnerBName)}
-                      />
+                    <div class={`list-row account-row ${a.archived ? 'archived' : ''}`} key={a.id}>
                       <div
                         class="account-main"
                         onClick={() => navigate(`/accounts/${a.id}`)}
