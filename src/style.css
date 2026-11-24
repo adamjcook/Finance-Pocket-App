@@ -874,11 +874,27 @@ label.field > span:first-child,
   padding: 8px 18px 18px;
 }
 
+/* Headline figure with its 30-day change beside it. The figure never shrinks
+   below its own width; when a large balance leaves no room, the change drops
+   to its own line, still right-aligned, instead of colliding with it. */
 .figure-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
+}
+
+.figure-row > .grow {
+  flex: 1 1 min-content;
+}
+
+.figure-row .big-number {
+  white-space: nowrap;
+}
+
+.figure-row > :last-child {
+  margin-left: auto;
 }
 
 .big-number {
