@@ -109,8 +109,9 @@ function Screens() {
   if (!setupDone) screen = <Setup />;
   else if (route === '/') screen = <Dashboard />;
   else if (route === '/accounts') screen = <Accounts key="list" />;
-  else if (route === '/accounts/new') screen = <AccountForm id={null} />;
-  else if (route.startsWith('/accounts/')) screen = <AccountForm id={route.slice('/accounts/'.length)} />;
+  // Keyed by route so moving between accounts never carries one form's state into another.
+  else if (route === '/accounts/new') screen = <AccountForm key="new" id={null} />;
+  else if (route.startsWith('/accounts/')) screen = <AccountForm key={route} id={route.slice('/accounts/'.length)} />;
   else if (route === '/aliases') screen = <Aliases />;
   // Update mode of the Accounts page (also where the payday reminder lands).
   else if (route === '/update') screen = <Accounts key="update" updating />;

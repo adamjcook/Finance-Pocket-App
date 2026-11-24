@@ -369,6 +369,14 @@ h2,
   color: var(--text-3);
 }
 
+.row-chevron.open {
+  transform: rotate(90deg);
+}
+
+.row-chevron {
+  transition: transform 150ms ease-out;
+}
+
 /* ---- buttons ---------------------------------------------------------------- */
 
 button,

@@ -82,7 +82,7 @@ export function Sync() {
               loopRef.current?.setSpeed(slower);
             }}
           >
-            {(1000 / speed).toFixed(1)} codes/s
+            {speed >= 700 ? 'Slowest' : speed >= 550 ? 'Slower' : 'Normal speed'}
           </button>
           <button
             class="btn-big btn-primary"

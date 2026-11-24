@@ -233,7 +233,7 @@ test('alias survives switching banks', async ({ page }) => {
   await expect(page.getByText('currently: Old Bank Saver')).toBeVisible();
 
   // Switch banks: re-point the alias; the old account is archived automatically
-  await page.getByRole('button', { name: 'Re-point' }).click();
+  await page.getByRole('button', { name: 'Switch account' }).click();
   await page.getByRole('button', { name: /Shiny New Saver/ }).click();
   await expect(page.getByText('currently: Shiny New Saver')).toBeVisible();
   await expect(page.getByText('History: Old Bank Saver → Shiny New Saver')).toBeVisible();
@@ -398,6 +398,10 @@ test('Trading 212 link imports daily readings and shows the day and overall chan
   await addAccount(page, 'Stocks ISA', 'Investment', '9500');
 
   await page.goto('.#/settings');
+  // One-time setup lives behind Connections, which says it's not set up yet.
+  const connections = page.getByRole('button', { name: /Trading 212 and reminders/ });
+  await expect(connections).toContainText('Not set up');
+  await connections.click();
   await page.getByLabel('Trading 212 linked account').selectOption({ label: 'Stocks ISA' });
   await page.getByPlaceholder('Paste address').fill('https://t212.example');
   await page.getByPlaceholder('Paste address').press('Tab');
@@ -458,6 +462,7 @@ test('pot goals on Home, 0% deal and stale-balance pills, and the Reminders sect
 
   // Reminders need the Worker set up first.
   await page.goto('.#/settings');
+  await page.getByRole('button', { name: /Trading 212 and reminders/ }).click();
   const toggle = page.getByRole('switch', { name: 'Notifications on this phone' });
   await expect(toggle).toBeDisabled();
   await expect(page.getByText(/Reminders are sent by the same Worker/)).toBeVisible();
