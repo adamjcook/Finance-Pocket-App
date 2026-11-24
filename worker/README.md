@@ -19,4 +19,4 @@ Endpoints (all but `/` need `Authorization: Bearer <FINPAIR_TOKEN>`):
 - `POST /push/test` — `{ endpoint }`: send that phone a test notification
 
 Schedule (UTC crons, acting only on the matching UK hour): 9pm UK reading +
-weekly drop check; 9am UK reminders (1st of the month, 0% deals ending).
+weekly drop check; 9am UK reminders (payday = last working day of the month, 0% deals ending).

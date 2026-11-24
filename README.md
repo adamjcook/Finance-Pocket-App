@@ -151,7 +151,8 @@ instead, add a variable `T212_BASE_URL` = `https://demo.trading212.com`.
 Phone notifications, sent by the same `finpair-t212` Worker (the app can't
 run in the background, so it can't remind you itself):
 
-- **9am on the 1st:** time to update your balances.
+- **9am on payday** (the last working day of the month, skipping weekends and
+  UK bank holidays): time to update your balances.
 - **0% deals:** 30, 7 and 1 days before (and on the day) a card's 0% deal ends —
   set the date on the card (Accounts → the card → "0% deal ends").
 - **Trading 212 drops:** after the 9pm reading, if the linked account is down

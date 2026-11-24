@@ -138,21 +138,21 @@ describe('sendPush', () => {
 });
 
 describe('daily reminders (9am UK)', () => {
-  it('sends the monthly reminder on the 1st, once, and only to phones that want it', async () => {
+  it('sends the payday reminder on the last working day, once, and only to phones that want it', async () => {
     const e = env();
     const wants = await fakeBrowser('https://push.example/a');
     const doesnt = await fakeBrowser('https://push.example/b');
     await register(e, wants.subscription);
     await register(e, doesnt.subscription, { prefs: { monthly: false, promo: true, drop: true } });
     const push = fakePushService();
-    const first = new Date('2026-12-01T09:00:00Z'); // 9am GMT
-    expect(await dailyReminders(e, first, push.impl)).toBe(1);
+    const payday = new Date('2026-11-30T09:00:00Z'); // Monday 30 Nov, 9am GMT
+    expect(await dailyReminders(e, payday, push.impl)).toBe(1);
     expect(push.sent[0].url).toBe('https://push.example/a');
     expect(JSON.parse(await wants.decrypt(push.sent[0].body))).toMatchObject({ tag: 'monthly', url: '#/update' });
     // A second run the same day does nothing.
-    expect(await dailyReminders(e, first, push.impl)).toBe(0);
-    // Not the 1st: nothing.
-    expect(await dailyReminders(e, new Date('2026-12-02T09:00:00Z'), push.impl)).toBe(0);
+    expect(await dailyReminders(e, payday, push.impl)).toBe(0);
+    // The 1st is no longer payday: nothing.
+    expect(await dailyReminders(e, new Date('2026-12-01T09:00:00Z'), push.impl)).toBe(0);
   });
 
   it('warns 30, 7 and 1 days before a 0% deal ends, and on the day', () => {
@@ -169,7 +169,7 @@ describe('daily reminders (9am UK)', () => {
     const e = env();
     const browser = await fakeBrowser();
     await register(e, browser.subscription);
-    await dailyReminders(e, new Date('2026-12-01T09:00:00Z'), fakePushService(410).impl);
+    await dailyReminders(e, new Date('2026-11-30T09:00:00Z'), fakePushService(410).impl);
     expect([...e.DAYS.data.keys()].some((k) => k.startsWith('sub:'))).toBe(false);
   });
 });

@@ -316,7 +316,7 @@ export function Settings() {
           </div>
           {push?.enabled && (
             <>
-              {reminderRow('monthly', 'Update your balances', '9am on the 1st of each month')}
+              {reminderRow('monthly', 'Update your balances', '9am on payday — the last working day of each month')}
               {reminderRow('promo', '0% deals ending', '30, 7 and 1 days before — set the date on each card')}
               {linkReady(state.settings.t212) &&
                 reminderRow('drop', 'Trading 212 drops', 'When the linked account is down 5% or more on the week')}
