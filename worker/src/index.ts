@@ -231,7 +231,21 @@ export async function handleRequest(
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
   const url = new URL(request.url);
-  if (url.pathname === '/') return json({ service: 'finpair-t212', ok: true });
+  if (url.pathname === '/') {
+    // Which secrets this deployment can see (never their values) — the quick
+    // way to tell a secret saved under Build settings, or misnamed, from one
+    // the running Worker actually has.
+    const has = (v: string | undefined) => typeof v === 'string' && v.length > 0;
+    return json({
+      service: 'finpair-t212',
+      ok: true,
+      secrets: {
+        T212_API_KEY: has(env.T212_API_KEY),
+        T212_API_SECRET: has(env.T212_API_SECRET),
+        FINPAIR_TOKEN: has(env.FINPAIR_TOKEN),
+      },
+    });
+  }
 
   if (!env.FINPAIR_TOKEN) return json({ error: 'FINPAIR_TOKEN is not set on the Worker.' }, 500);
   const auth = request.headers.get('Authorization') ?? '';

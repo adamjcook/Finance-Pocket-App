@@ -149,6 +149,18 @@ describe('handleRequest', () => {
   const get = (path: string, headers: Record<string, string> = { Authorization: 'Bearer tok' }) =>
     new Request(`https://w${path}`, { headers });
 
+  it('health check reports which secrets are set, without revealing them', async () => {
+    const res = await handleRequest(new Request('https://w/'), env({ FINPAIR_TOKEN: '' }));
+    const body = await res.text();
+    expect(JSON.parse(body)).toEqual({
+      service: 'finpair-t212',
+      ok: true,
+      secrets: { T212_API_KEY: true, T212_API_SECRET: true, FINPAIR_TOKEN: false },
+    });
+    expect(body).not.toContain('secret"');
+    expect(body).not.toContain('"key"');
+  });
+
   it('needs the access token', async () => {
     const res = await handleRequest(get('/days', { Authorization: 'Bearer nope' }), env());
     expect(res.status).toBe(401);

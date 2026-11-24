@@ -9,6 +9,6 @@ Setup (Trading 212 key, deploy, secrets, linking the app): see
 
 Endpoints (all but `/` need `Authorization: Bearer <FINPAIR_TOKEN>`):
 
-- `GET /` — health check
+- `GET /` — health check; also shows which of the three secrets the running Worker can see (true/false, never values)
 - `GET /days?since=YYYY-MM-DD` — stored readings on or after that day, plus the last run's status
 - `POST /refresh` — take a reading now (provisional until 9pm)
