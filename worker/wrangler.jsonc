@@ -8,10 +8,11 @@
   "compatibility_date": "2026-11-01",
   "workers_dev": true,
   "preview_urls": false,
-  // 9pm UK time, every day. Crons are UTC, so this covers both GMT (21:xx UTC)
-  // and BST (20:xx UTC); the Worker ignores runs outside 9pm UK, and the
-  // later runs in the hour retry if the first one failed.
-  "triggers": { "crons": ["*/15 20,21 * * *"] },
+  // Crons are UTC, so each UK time is scheduled at both its GMT and BST hour;
+  // the Worker ignores runs that don't land on the right UK hour.
+  //   9pm UK: Trading 212 reading (every 15 min through the hour = retries)
+  //   9am UK: reminder notifications
+  "triggers": { "crons": ["*/15 20,21 * * *", "0 8,9 * * *"] },
   // One record per day plus a status record. No id: Wrangler creates the
   // namespace on first deploy.
   "kv_namespaces": [{ "binding": "DAYS" }],

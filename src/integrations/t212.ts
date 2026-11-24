@@ -62,20 +62,29 @@ function url(link: T212Link, path: string): string {
   return `${link.endpoint.trim().replace(/\/+$/, '')}${path}`;
 }
 
-async function call<T>(link: T212Link, path: string, init: RequestInit = {}): Promise<T> {
+/** Call the finpair-t212 Worker (also used for reminders — see push.ts). */
+export async function call<T>(link: T212Link, path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(url(link, path), {
       ...init,
-      headers: { Authorization: `Bearer ${link.token.trim()}` },
+      headers: {
+        Authorization: `Bearer ${link.token.trim()}`,
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      },
       cache: 'no-store',
     });
   } catch {
-    throw new Error("Couldn't reach the Trading 212 link — check the Worker address, or that you're online.");
+    throw new Error("Couldn't reach the Worker — check its address, or that you're online.");
   }
   const body = (await res.json().catch(() => ({}))) as T & { error?: string };
   if (!res.ok) throw new Error(body.error ?? `The Trading 212 link returned HTTP ${res.status}.`);
   return body;
+}
+
+/** Worker address and token are filled in (enough for reminders, which don't need an account). */
+export function workerReady(link: T212Link | null | undefined): link is T212Link {
+  return !!link && /^https?:\/\//.test(link.endpoint.trim()) && !!link.token.trim();
 }
 
 export function linkReady(link: T212Link | null | undefined): link is T212Link {

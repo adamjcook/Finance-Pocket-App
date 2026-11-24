@@ -23,6 +23,14 @@ export function formatDay(day: string): string {
   });
 }
 
+/** Whole days from `from` to `to` (both YYYY-MM-DD); negative if `to` is earlier. */
+export function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000);
+}
+
+/** Balances older than this get flagged as possibly out of date. */
+export const STALE_AFTER_DAYS = 31;
+
 function addDays(day: string, n: number): string {
   const d = new Date(day + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + n);

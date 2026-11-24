@@ -421,3 +421,52 @@ test('Trading 212 link imports daily readings and shows the day and overall chan
   await expect(page.locator('.mini-stats')).toContainText('+£120.50 today');
   await expect(page.locator('.mini-stats')).toContainText('+£1,120.50 (12.4%) overall');
 });
+
+test('pot goals on Home, 0% deal and stale-balance pills, and the Reminders section', async ({ page }) => {
+  await completeSetup(page, 'Adam', 'Sam');
+  await addAccount(page, 'Wedding Fund', 'Savings', '2000');
+
+  // Give the pot a goal from its edit screen.
+  await page.goto('.#/accounts');
+  await page.locator('.account-row', { hasText: 'Wedding Fund' }).locator('.account-main').click();
+  await expect(page.getByRole('heading', { name: 'Edit account' })).toBeVisible();
+  await page.getByPlaceholder('No goal').fill('10000');
+  const nextYear = new Date().getUTCFullYear() + 1;
+  await page.getByLabel('Reach the goal by').fill(`${nextYear}-06-01`);
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  // Saving returns to Accounts once stored — wait for that before moving on.
+  await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
+
+  await page.goto('.#/');
+  const goals = page.locator('.dash-section', { hasText: 'Goals' });
+  await expect(goals).toContainText('Wedding Fund');
+  await expect(goals).toContainText('£2,000.00 of £10,000.00');
+  await expect(goals).toContainText('£8,000.00 to go');
+  await expect(goals).toContainText(`to reach it by 1 Jun ${nextYear}`);
+  await expect(goals.getByRole('img', { name: 'Wedding Fund: 20% of goal' })).toBeVisible();
+
+  // A card with a 0% deal shows when it ends.
+  await page.goto('.#/accounts/new');
+  await page.getByPlaceholder('e.g. Barclaycard, Marcus saver').fill('M&S Card');
+  await page.locator('select').first().selectOption({ label: 'Credit card' });
+  await page.locator('input[type="date"]').fill(`${nextYear}-03-01`);
+  await page.getByPlaceholder('0.00').fill('800');
+  await page.getByRole('button', { name: 'Add account' }).click();
+  await expect(page.locator('.account-row', { hasText: 'M&S Card' })).toContainText(`0% until 1 Mar ${nextYear}`);
+
+  // Six weeks on, balances that haven't been updated are flagged.
+  await page.clock.install({ time: new Date(Date.now() + 42 * 86400000) });
+  await page.reload();
+  await expect(page.locator('.account-row', { hasText: 'Wedding Fund' })).toContainText('Updated 42 days ago');
+
+  // Reminders need the Worker set up first.
+  await page.goto('.#/settings');
+  const toggle = page.getByRole('switch', { name: 'Notifications on this phone' });
+  await expect(toggle).toBeDisabled();
+  await expect(page.getByText(/Reminders are sent by the same Worker/)).toBeVisible();
+  await page.getByPlaceholder('Paste address').fill('https://t212.example');
+  await page.getByPlaceholder('Paste address').press('Tab');
+  await page.getByPlaceholder('FINPAIR_TOKEN').fill('tok');
+  await page.getByPlaceholder('FINPAIR_TOKEN').press('Tab');
+  await expect(toggle).toBeEnabled();
+});

@@ -6,6 +6,7 @@ import type { Account } from '../model/types';
 import { currencySymbol, formatMoney } from '../logic/money';
 import { MoneyInput } from './components/MoneyInput';
 import { navigate } from '../router';
+import { daysBetween, STALE_AFTER_DAYS, toDay, todayISO } from '../logic/progress';
 import { Icon } from './components/Icon';
 
 /**
@@ -90,6 +91,8 @@ export function UpdateBalances() {
             {g.accounts.map((a) => {
               const i = order.indexOf(a.id);
               const current = balances.get(a.id)?.balance ?? null;
+              const latestAt = balances.get(a.id)?.at;
+              const age = latestAt ? daysBetween(toDay(latestAt), toDay(todayISO())) : null;
               const draft = drafts.get(a.id);
               const isChanged = draft !== undefined && draft !== null && draft !== current;
               return (
@@ -101,6 +104,7 @@ export function UpdateBalances() {
                       {current !== null
                         ? `${OWED_KINDS.includes(a.kind) ? 'Owed' : 'Was'} ${formatMoney(current, currency)}`
                         : ACCOUNT_KIND_LABELS[a.kind]}
+                      {age !== null && age > STALE_AFTER_DAYS && <span class="owed"> · {age} days ago</span>}
                     </div>
                   </div>
                   <MoneyInput

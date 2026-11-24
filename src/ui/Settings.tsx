@@ -3,8 +3,15 @@ import { useApp, mutate, getStore, patchDevice } from '../model/store';
 import { updateSettings, voidSnapshot } from '../model/repo';
 import { effectiveSnapshots, formatDay } from '../logic/progress';
 import { asSyncPayload, buildPayload } from '../sync/codec';
-import { CURRENCIES, GROWTH_KINDS, type T212Link } from '../model/types';
-import { linkReady, pullReadings, readingNow } from '../integrations/t212';
+import { CURRENCIES, DEFAULT_REMINDER_PREFS, GROWTH_KINDS, type ReminderPrefs, type T212Link } from '../model/types';
+import { linkReady, pullReadings, readingNow, workerReady } from '../integrations/t212';
+import {
+  disableReminders,
+  enableReminders,
+  pushSupported,
+  sendTestReminder,
+  setReminderPref,
+} from '../integrations/push';
 import { mergePayload } from '../sync/apply';
 import { currencySymbol, formatMoney } from '../logic/money';
 import { MoneyInput } from './components/MoneyInput';
@@ -15,6 +22,8 @@ export function Settings() {
   const [fixAccountId, setFixAccountId] = useState('');
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [t212Busy, setT212Busy] = useState<'check' | 'reading' | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushMsg, setPushMsg] = useState<{ text: string; error: boolean } | null>(null);
 
   if (!app) return null;
   const { state, device } = app;
@@ -70,6 +79,37 @@ export function Settings() {
   };
   const t212Status = device.t212;
   const t212Accounts = state.accounts.filter((a) => GROWTH_KINDS.includes(a.kind) && !a.archived);
+
+  const push = device.push;
+  const prefs = push?.prefs ?? DEFAULT_REMINDER_PREFS;
+  const runPush = async (action: () => Promise<void>, done?: string) => {
+    setPushBusy(true);
+    setPushMsg(null);
+    try {
+      await action();
+      if (done) setPushMsg({ text: done, error: false });
+    } catch (err) {
+      setPushMsg({ text: err instanceof Error ? err.message : String(err), error: true });
+    } finally {
+      setPushBusy(false);
+    }
+  };
+  const reminderRow = (key: keyof ReminderPrefs, title: string, sub: string) => (
+    <div class="list-row">
+      <div class="grow">
+        <div class="row-title">{title}</div>
+        <div class="row-sub" style="white-space:normal">{sub}</div>
+      </div>
+      <button
+        class="switch"
+        role="switch"
+        aria-checked={prefs[key]}
+        aria-label={title}
+        disabled={pushBusy}
+        onClick={() => void runPush(() => setReminderPref(key, !prefs[key]))}
+      />
+    </div>
+  );
 
   const fixSnapshots = fixAccountId
     ? effectiveSnapshots(state.snapshots, state.voids)
@@ -250,6 +290,55 @@ export function Settings() {
               : t212Status?.latest
                 ? `Last reading ${formatDay(t212Status.latest.day)}, ${new Date(t212Status.latest.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}: ${formatMoney(t212Status.latest.totalMinor, currency)}${t212Status.latest.final ? '' : ' (provisional — the 9pm reading replaces it)'}.`
                 : 'Linked. The first reading arrives at 9pm, or tap “Read now”.'}
+        </p>
+      </section>
+
+      <section class="group">
+        <h2 class="group-label">Reminders</h2>
+        <div class="list">
+          <div class="list-row">
+            <div class="grow">
+              <div class="row-title">Notifications on this phone</div>
+            </div>
+            <button
+              class="switch"
+              role="switch"
+              aria-checked={!!push?.enabled}
+              aria-label="Notifications on this phone"
+              disabled={pushBusy || !pushSupported() || !workerReady(state.settings.t212)}
+              onClick={() =>
+                void runPush(
+                  push?.enabled ? disableReminders : enableReminders,
+                  push?.enabled ? undefined : 'Reminders are on for this phone.',
+                )
+              }
+            />
+          </div>
+          {push?.enabled && (
+            <>
+              {reminderRow('monthly', 'Update your balances', '9am on payday — the last working day of each month')}
+              {reminderRow('promo', '0% deals ending', '30, 7 and 1 days before — set the date on each card')}
+              {linkReady(state.settings.t212) &&
+                reminderRow('drop', 'Trading 212 drops', 'When the linked account is down 5% or more on the week')}
+              <div class="list-row">
+                <button
+                  class="btn-sm grow"
+                  disabled={pushBusy}
+                  onClick={() => void runPush(sendTestReminder, 'Test sent — it should appear in a few seconds.')}
+                >
+                  Send a test notification
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+        <p class={`group-footer ${pushMsg?.error ? 'owed' : ''}`} role="status">
+          {pushMsg?.text ??
+            (!pushSupported()
+              ? "This browser can't show notifications. Install FinPair to your home screen in Chrome to use reminders."
+              : !workerReady(state.settings.t212)
+                ? 'Reminders are sent by the same Worker as the Trading 212 link — add its address and token above first.'
+                : 'Each phone chooses its own reminders. They come from your Worker, so they arrive even when FinPair is closed.')}
         </p>
       </section>
 

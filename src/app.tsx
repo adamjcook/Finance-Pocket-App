@@ -13,6 +13,7 @@ import { Setup } from './ui/Setup';
 import { UpdateToast } from './ui/components/UpdateToast';
 import { Icon, type IconName } from './ui/components/Icon';
 import { pullReadings } from './integrations/t212';
+import { refreshReminders, registrationFacts } from './integrations/push';
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
@@ -61,6 +62,15 @@ export function App() {
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [t212?.accountId, t212?.endpoint, t212?.token]);
+
+  // Reminders: keep the Worker's copy of this phone's registration current
+  // (0% end dates, the linked account's name) — resent only when it changes.
+  const reminderKey = app
+    ? JSON.stringify([app.device.push?.enabled, registrationFacts(app.state), t212?.endpoint, t212?.token])
+    : '';
+  useEffect(() => {
+    if (app?.device.push?.enabled) void refreshReminders();
+  }, [reminderKey]);
 
   if (!app) {
     const error = storeError();

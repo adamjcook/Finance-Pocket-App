@@ -6,6 +6,7 @@ import { ACCOUNT_KIND_LABELS, GROWTH_KINDS, OWED_KINDS } from '../model/types';
 import { currencySymbol, formatMoney } from '../logic/money';
 import { MoneyInput } from './components/MoneyInput';
 import { navigate } from '../router';
+import { daysBetween, formatDay, STALE_AFTER_DAYS, toDay, todayISO } from '../logic/progress';
 import { Icon } from './components/Icon';
 
 /** Up to two initials from the account name, for its list avatar. */
@@ -30,6 +31,7 @@ export function Accounts() {
   const currency = state.settings.currency;
   const symbol = currencySymbol(currency);
   const balances = latestBalances(state);
+  const today = toDay(todayISO());
 
   const commit = async (accountId: string) => {
     if (draft !== null) {
@@ -148,6 +150,25 @@ export function Accounts() {
                             </span>
                           )}
                           {a.archived && <span class="chip">Archived</span>}
+                          {(() => {
+                            if (a.archived || a.kind !== 'credit_card' || !a.promoEndsOn) return null;
+                            const left = daysBetween(today, a.promoEndsOn);
+                            if (left < 0) return null;
+                            return (
+                              <span class={`chip ${left <= 30 ? 'chip-warn' : ''}`} title="0% deal end date">
+                                0% until {formatDay(a.promoEndsOn)}
+                              </span>
+                            );
+                          })()}
+                          {(() => {
+                            if (a.archived || !latest || state.settings.t212?.accountId === a.id) return null;
+                            const age = daysBetween(toDay(latest.at), today);
+                            return age > STALE_AFTER_DAYS ? (
+                              <span class="chip chip-warn" title="Balance not updated for over a month">
+                                Updated {age} days ago
+                              </span>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                       {editing === a.id ? (
