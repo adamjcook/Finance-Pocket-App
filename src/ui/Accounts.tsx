@@ -136,6 +136,11 @@ export function Accounts() {
                       >
                         <div class="account-name">
                           <span class="name-text">{a.name}</span>
+                        </div>
+                        {/* Pills sit on the second line, after the bank, so they never
+                            squeeze the account name off the first. */}
+                        <div class="account-meta">
+                          <span class="meta-text">{a.institution || ACCOUNT_KIND_LABELS[a.kind]}</span>
                           {alias && <span class="chip chip-alias">{alias.name}</span>}
                           {state.settings.t212?.accountId === a.id && (
                             <span class="chip" title="Updated daily from Trading 212">
@@ -144,7 +149,6 @@ export function Accounts() {
                           )}
                           {a.archived && <span class="chip">Archived</span>}
                         </div>
-                        <div class="row-sub">{a.institution || ACCOUNT_KIND_LABELS[a.kind]}</div>
                       </div>
                       {editing === a.id ? (
                         <span class="inline-edit">
