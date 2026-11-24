@@ -25,6 +25,9 @@ const SLOP_PX = 10;
  */
 export function Chart({ series, currency, color, height = 110 }: Props) {
   const [picked, setPicked] = useState<number | null>(null);
+  // Dev build only: how many haptic ticks were requested / accepted by the
+  // browser, shown under the chart to diagnose ticks not being felt.
+  const [hapticLog, setHapticLog] = useState({ sent: 0, ok: 0 });
   const gradientId = `chart-fill-${useId()}`;
   const svgRef = useRef<SVGSVGElement>(null);
   const seriesRef = useRef(series);
@@ -67,7 +70,10 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
       const now = performance.now();
       if (!first && now - lastBuzz < MIN_TICK_GAP_MS) return;
       lastBuzz = now;
-      navigator.vibrate?.(first ? ACTIVATE_MS : TICK_MS);
+      const ok = navigator.vibrate?.(first ? ACTIVATE_MS : TICK_MS) ?? false;
+      if (import.meta.env.VITE_DEV_BUILD === '1') {
+        setHapticLog((l) => (first ? { sent: 1, ok: ok ? 1 : 0 } : { sent: l.sent + 1, ok: l.ok + (ok ? 1 : 0) }));
+      }
     };
 
     const reset = () => {
@@ -227,6 +233,11 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
           High {formatMoneyCompact(max, currency)}
         </text>
       </svg>
+      {import.meta.env.VITE_DEV_BUILD === '1' && hapticLog.sent > 0 && (
+        <p class="chart-empty" style="margin-top:4px">
+          Dev: ticks {hapticLog.sent} sent, {hapticLog.ok} accepted by the browser
+        </p>
+      )}
     </div>
   );
 }
