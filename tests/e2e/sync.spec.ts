@@ -477,3 +477,68 @@ test('pot goals on Home, 0% deal and stale-balance pills, and the Reminders sect
   await page.getByPlaceholder('FINPAIR_TOKEN').press('Tab');
   await expect(toggle).toBeEnabled();
 });
+
+test('charts: a swipe scrolls, a press-and-hold reads out a day with a vibration', async ({ browser }) => {
+  const context = await browser.newContext({ hasTouch: true, viewport: { width: 390, height: 600 } });
+  const page = await context.newPage();
+  // Record vibrations instead of (not) buzzing the headless browser.
+  await page.addInitScript(() => {
+    (window as unknown as { __buzz: number[] }).__buzz = [];
+    navigator.vibrate = ((p: unknown) => {
+      (window as unknown as { __buzz: unknown[] }).__buzz.push(p);
+      return true;
+    }) as Navigator['vibrate'];
+  });
+  // Two readings a few days apart, so the savings chart has a line to read.
+  // (setFixedTime pins the date but leaves timers — the hold delay — running.)
+  await page.clock.setFixedTime(new Date(Date.now() - 3 * 86400000));
+  await completeSetup(page, 'Adam', 'Sam');
+  await addAccount(page, 'Marcus Saver', 'Savings', '500');
+  await page.clock.setFixedTime(new Date());
+  await page.goto('.#/update');
+  await page.locator('.account-row', { hasText: 'Marcus Saver' }).getByPlaceholder('0.00').fill('900');
+  await page.getByRole('button', { name: /Save 1 update/ }).click();
+  await page.goto('.#/');
+
+  const svg = page.locator('.dash-section', { hasText: 'Savings & investments' }).locator('.chart svg');
+  const tooltip = page.locator('.dash-section', { hasText: 'Savings & investments' }).locator('.chart-tooltip');
+  await expect(svg).toBeVisible();
+  const box = (await svg.boundingBox())!;
+  const at = (fx: number) => ({ x: box.x + box.width * fx, y: box.y + box.height / 2 });
+
+  /** Fire a touch event at the chart; returns false if the page cancelled it. */
+  const touch = (type: string, p: { x: number; y: number } | null) =>
+    svg.evaluate(
+      (el, { type, p }) => {
+        const t = p ? [new Touch({ identifier: 1, target: el, clientX: p.x, clientY: p.y })] : [];
+        const changed = p ? t : [new Touch({ identifier: 1, target: el, clientX: 0, clientY: 0 })];
+        return el.dispatchEvent(
+          new TouchEvent(type, { touches: t, targetTouches: t, changedTouches: changed, bubbles: true, cancelable: true }),
+        );
+      },
+      { type, p },
+    );
+  const buzzes = () => page.evaluate(() => (window as unknown as { __buzz: unknown[] }).__buzz.length);
+
+  // A quick swipe: moves well past the slop before the hold time — no read-out, no buzz,
+  // and the move isn't cancelled (so the page scrolls).
+  await touch('touchstart', at(0.5));
+  expect(await touch('touchmove', { x: at(0.5).x, y: at(0.5).y - 40 })).toBe(true);
+  await page.waitForTimeout(400);
+  await touch('touchend', null);
+  await expect(tooltip).toHaveText(/^\s*$/);
+  expect(await buzzes()).toBe(0);
+
+  // Press and hold: after the hold time the day is read out and it buzzes once.
+  await touch('touchstart', at(0.1));
+  await page.waitForTimeout(400);
+  await expect(tooltip).toContainText('£500.00');
+  expect(await buzzes()).toBe(1);
+  // Sliding now moves along the line and keeps the page from scrolling.
+  expect(await touch('touchmove', at(0.98))).toBe(false);
+  await expect(tooltip).toContainText('£900.00');
+  // Lifting the finger clears it.
+  await touch('touchend', null);
+  await expect(tooltip).toHaveText(/^\s*$/);
+  await context.close();
+});

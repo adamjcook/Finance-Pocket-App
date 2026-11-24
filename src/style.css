@@ -987,9 +987,12 @@ label.field > span:first-child,
   width: 100%;
   height: auto;
   overflow: visible;
-  /* Own the drag entirely — otherwise the browser can treat a scrub as a
-     page scroll and cancel it mid-drag. */
-  touch-action: none;
+  /* Vertical swipes scroll the page as normal; a press-and-hold reads out
+     days instead (Chart.tsx), and then blocks scrolling itself. */
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .chart-empty {
