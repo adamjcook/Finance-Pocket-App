@@ -1467,6 +1467,121 @@ label.field > span:first-child,
   }
 }
 
+/* Welcome splash (src/ui/components/Splash.tsx). The circles start a little
+   apart and meet; their overlap, the "shared" lens, lights up as they touch.
+   The resting state is the finished mark, so with reduced motion (or no
+   animation support) it simply shows the logo. */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 0 32px 8vh; /* a little above centre, where the eye lands */
+  background: var(--bg);
+}
+
+.splash-mark {
+  width: 96px;
+  height: 96px;
+  transform-origin: center;
+}
+
+.splash-mark svg {
+  display: block;
+}
+
+.splash-greeting-slot {
+  min-height: 1.45em;
+  font-size: var(--fs-heading);
+}
+
+.splash-greeting {
+  font-weight: var(--fw-label);
+  color: var(--text-2);
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* During the hand-off the mark flies to the header; the greeting goes first. */
+.splash-handoff .splash-greeting {
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .splash-a,
+  .splash-b {
+    animation: splash-meet-a 640ms cubic-bezier(0.33, 1, 0.68, 1) both;
+  }
+
+  .splash-b {
+    animation-name: splash-meet-b;
+  }
+
+  .splash-lens {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: splash-lens 320ms cubic-bezier(0.16, 1, 0.3, 1) 380ms both;
+  }
+
+  .splash-greeting {
+    animation: splash-greet 420ms cubic-bezier(0.16, 1, 0.3, 1) 300ms both;
+  }
+
+  /* tapped: jump straight to the finished mark, then hand off */
+  .splash-skip .splash-a,
+  .splash-skip .splash-b,
+  .splash-skip .splash-lens,
+  .splash-skip .splash-greeting {
+    animation-duration: 1ms;
+    animation-delay: 0ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-greeting {
+    animation: splash-fade 300ms ease-out both;
+  }
+}
+
+@keyframes splash-meet-a {
+  from {
+    transform: translateX(-46px);
+    opacity: 0.4;
+  }
+}
+
+@keyframes splash-meet-b {
+  from {
+    transform: translateX(46px);
+    opacity: 0.4;
+  }
+}
+
+@keyframes splash-lens {
+  from {
+    opacity: 0;
+    transform: scaleY(0.6);
+  }
+}
+
+@keyframes splash-greet {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes splash-fade {
+  from {
+    opacity: 0;
+  }
+}
+
 
 /* ---- settings extras -------------------------------------------------------- */
 
