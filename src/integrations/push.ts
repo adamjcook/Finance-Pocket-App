@@ -63,7 +63,7 @@ async function currentSubscription(): Promise<PushSubscription | null> {
 }
 
 async function register(sub: PushSubscription, prefs: ReminderPrefs): Promise<void> {
-  const body = JSON.stringify({ subscription: sub.toJSON(), prefs, ...registrationFacts(getStore().state) });
+  const body = JSON.stringify({ subscription: sub.toJSON(), prefs, ...registrationFacts(getStore().state), channel: getStore().device.relay?.channel ?? null });
   await call(link(), '/push/subscribe', { method: 'POST', body });
   await patchDevice({ push: { enabled: true, prefs, sentHash: fingerprint(body) } });
 }
@@ -135,7 +135,7 @@ export async function refreshReminders(): Promise<void> {
       await patchDevice({ push: { ...push, enabled: false, sentHash: null } });
       return;
     }
-    const body = JSON.stringify({ subscription: sub.toJSON(), prefs: push.prefs, ...registrationFacts(getStore().state) });
+    const body = JSON.stringify({ subscription: sub.toJSON(), prefs: push.prefs, ...registrationFacts(getStore().state), channel: getStore().device.relay?.channel ?? null });
     if (fingerprint(body) !== push.sentHash) await register(sub, push.prefs);
   } catch {
     // offline or Worker unreachable — try again next time the app opens

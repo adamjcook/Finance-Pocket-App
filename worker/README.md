@@ -17,6 +17,10 @@ Endpoints (all but `/` need `Authorization: Bearer <FINPAIR_TOKEN>`):
 - `POST /push/subscribe` — register a phone for reminders: `{ subscription, prefs, promos, t212Name }`
 - `POST /push/unsubscribe` — `{ endpoint }`
 - `POST /push/test` — `{ endpoint }`: send that phone a test notification
+- `GET /relay?channel=…` — the encrypted copies for one linked pair of phones (the channel is a fingerprint of their shared key, never the key): `{ slots: [{ channel, deviceId, at, iv, data }] }`
+- `POST /relay` — `{ slot: { channel, deviceId, at, iv, data }, notify?: { title, body, exceptEndpoint } }`:
+  replace this phone's copy; with `notify`, also send the other phones (reminders on, "Partner updates"
+  not turned off) a notification. The copies are encrypted on the phones with a key the Worker never sees.
 
 Schedule (UTC crons, acting only on the matching UK hour): 9pm UK reading +
 weekly drop check; 9am UK reminders (payday = last working day of the month, 0% deals ending).

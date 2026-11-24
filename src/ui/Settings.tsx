@@ -105,10 +105,10 @@ export function Settings() {
       <button
         class="switch"
         role="switch"
-        aria-checked={prefs[key]}
+        aria-checked={prefs[key] !== false}
         aria-label={title}
         disabled={pushBusy}
-        onClick={() => void runPush(() => setReminderPref(key, !prefs[key]))}
+        onClick={() => void runPush(() => setReminderPref(key, prefs[key] === false))}
       />
     </div>
   );
@@ -417,6 +417,7 @@ export function Settings() {
             <>
               {reminderRow('monthly', 'Update your balances', '9am on payday — the last working day of each month')}
               {reminderRow('promo', '0% deals ending', '30, 7 and 1 days before — set the date on each card')}
+              {reminderRow('partner', 'Partner updates', 'When your partner saves a payday update (with automatic sync on)')}
               {linkReady(state.settings.t212) &&
                 reminderRow('drop', 'Trading 212 drops', 'When the linked account is down 5% or more on the week')}
               <div class="list-row">
@@ -447,7 +448,9 @@ export function Settings() {
       <p class="about">
         <Icon name="shield" size={16} />
         {workerReady(state.settings.t212)
-          ? 'Your data stays on your two phones. Only Sync, your backup files and your own Worker (Trading 212 and reminders) take anything off them'
+          ? device.relay?.key && device.relay.enabled !== false
+            ? 'Your data lives on your two phones. Off them go only your backup files, an encrypted copy your own Worker can’t read (automatic sync), and what it needs for Trading 212 and reminders'
+            : 'Your data stays on your two phones. Only Sync, your backup files and your own Worker (Trading 212 and reminders) take anything off them'
           : 'Your data never leaves your two phones except through Sync and the backup files you save'}{' '}
         · device {device.deviceId.slice(0, 8)}
       </p>

@@ -10,6 +10,7 @@ import { daysBetween, formatDay, STALE_AFTER_DAYS, toDay, todayISO } from '../lo
 import { Icon } from './components/Icon';
 import { looksLikeATypo } from '../logic/checkin';
 import { clearDraft, loadDraft, saveDraft } from '../model/updateDraft';
+import { pushNow } from '../sync/relay';
 
 /**
  * The accounts list, and — at #/update — the same list in update mode: every
@@ -103,6 +104,15 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
     );
     // Home works the check-in card out from the history just saved.
     clearDraft();
+    // With automatic sync on, send it straight away and tell the other phone.
+    const { settings } = getStore().state;
+    const me = device.me === 'A' ? settings.partnerAName : device.me === 'B' ? settings.partnerBName : null;
+    void pushNow({
+      title: `${me ?? 'Your partner'} just updated the balances`,
+      body: 'Open FinPair to see how you did.',
+    }).catch(() => {
+      // offline or Worker down: the next change or app open uploads it anyway
+    });
     navigate('/');
   };
 

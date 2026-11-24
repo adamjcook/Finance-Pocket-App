@@ -25,6 +25,7 @@ import {
   saveRegistration,
 } from './reminders';
 import { sendPush, vapidKeys } from './push';
+import { allSlots, isChannel, notifyPartner, parseSlot, saveSlot, type RelayNotice } from './relay';
 
 export interface KVListKey<M> {
   name: string;
@@ -295,6 +296,29 @@ export async function handleRequest(
     } catch (err) {
       return json({ error: err instanceof Error ? err.message : String(err) }, 502);
     }
+  }
+
+  // Automatic sync: each phone's encrypted copy (see relay.ts).
+  if (request.method === 'GET' && url.pathname === '/relay') {
+    const channel = url.searchParams.get('channel');
+    if (!isChannel(channel)) return json({ error: 'channel is missing or malformed.' }, 400);
+    return json({ slots: await allSlots(env.DAYS, channel) });
+  }
+  if (request.method === 'POST' && url.pathname === '/relay') {
+    const body = (await request.json().catch(() => null)) as { slot?: unknown; notify?: RelayNotice } | null;
+    let slot;
+    try {
+      slot = parseSlot(body?.slot);
+      await saveSlot(env.DAYS, slot);
+    } catch (err) {
+      return json({ error: err instanceof Error ? err.message : String(err) }, 400);
+    }
+    const notify = body?.notify;
+    const notified =
+      notify && typeof notify.title === 'string' && typeof notify.body === 'string'
+        ? await notifyPartner(env, slot.channel, notify, now(), fetchImpl)
+        : 0;
+    return json({ ok: true, notified });
   }
 
   if (url.pathname.startsWith('/push/')) {

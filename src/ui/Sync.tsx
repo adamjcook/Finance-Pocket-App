@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { useApp } from '../model/store';
+import { patchDevice, useApp } from '../model/store';
+import { syncNow } from '../sync/relay';
+import { workerReady } from '../integrations/t212';
 import { currentFrames, type ApplyResult } from '../sync/apply';
 import { QRLoop } from '../sync/send';
 import { ScanPanel } from './components/ScanPanel';
@@ -13,6 +15,7 @@ export function Sync() {
   const [frameInfo, setFrameInfo] = useState<[number, number]>([0, 0]);
   const [result, setResult] = useState<ApplyResult | null>(null);
   const [speed, setSpeed] = useState(400);
+  const [syncing, setSyncing] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const loopRef = useRef<QRLoop | null>(null);
@@ -134,12 +137,84 @@ export function Sync() {
     );
   }
 
+  // Automatic sync needs the Worker (Settings › Connections) and a key the
+  // phones swapped in a QR sync; then it's on unless switched off here.
+  const relay = device.relay ?? null;
+  const hasWorker = workerReady(app.state.settings.t212);
+  const canAuto = hasWorker && !!relay?.key;
+  const autoOn = canAuto && relay?.enabled !== false;
+  const ago = (iso: string) => {
+    const mins = Math.round((Date.now() - Date.parse(iso)) / 60000);
+    return mins < 1 ? 'just now' : mins < 60 ? `${mins} min ago` : new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  };
+  const autoStatus = !hasWorker
+    ? 'Needs your Worker: set it up under Settings › Connections.'
+    : !relay?.key
+      ? 'Sync once by QR code below to link the two phones.'
+      : !autoOn
+        ? 'Off on this phone.'
+        : relay.error
+          ? relay.error
+          : relay.checkedAt
+            ? `On · checked ${ago(relay.checkedAt)}`
+            : 'On · checks when FinPair opens';
+
   return (
     <div>
       <header class="page-header" style="display:block">
         <h1>Sync</h1>
-        <p class="lede">Sit together — one phone shows, the other scans. No internet involved.</p>
+        <p class="lede">
+          {autoOn
+            ? 'Your phones keep each other up to date through your Worker. Sync by QR code to link a new phone, or if they ever disagree.'
+            : 'Sit together — one phone shows, the other scans. No internet involved.'}
+        </p>
       </header>
+
+      <section class="group">
+        <h2 class="group-label">Automatic sync</h2>
+        <div class="list">
+          <div class="list-row">
+            <div class="grow">
+              <div class="row-title">Sync through your Worker</div>
+              <div class="row-sub" style="white-space:normal" role="status">
+                {autoStatus}
+              </div>
+            </div>
+            <button
+              class="switch"
+              role="switch"
+              aria-checked={autoOn}
+              aria-label="Sync through your Worker"
+              disabled={!canAuto}
+              onClick={() =>
+                void patchDevice({ relay: { ...relay!, enabled: !autoOn } }).then(() => {
+                  if (!autoOn) void syncNow();
+                })
+              }
+            />
+          </div>
+          {autoOn && (
+            <div class="list-row">
+              <button
+                class="btn-sm grow"
+                disabled={syncing}
+                onClick={() => {
+                  setSyncing(true);
+                  void syncNow().finally(() => setSyncing(false));
+                }}
+              >
+                {syncing ? 'Syncing…' : 'Sync now'}
+              </button>
+            </div>
+          )}
+        </div>
+        <p class="group-footer">
+          Everything is encrypted on this phone first. Your Worker keeps only a copy it can't read:
+          the key stays on your two phones, and travels between them only in the QR codes.
+        </p>
+      </section>
+
+      <h2 class="group-label qr-label">By QR code</h2>
       <div class="stack">
         <button class="action-tile primary" onClick={() => void startShow(null)}>
           <span class="tile-icon">

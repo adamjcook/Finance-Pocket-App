@@ -22,6 +22,14 @@ function notify() {
   for (const l of listeners) l();
 }
 
+/** Run `fn` after every change to the store (for background work like automatic sync). */
+export function subscribe(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
 async function init(): Promise<void> {
   try {
     const [state, device] = await Promise.all([loadState(), loadDevice()]);

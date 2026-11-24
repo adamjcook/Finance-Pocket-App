@@ -18,7 +18,7 @@ It gives the two of them one honest, shared picture of their money: how close th
 
 ## Positioning
 
-There's no server and no cloud account. All data lives on the two phones, and the phones sync by showing each other QR codes. The tool is built around how this couple actually banks: they switch banks for deals (aliases carry an account's history across the switch), they have 0% card deals with end dates, and they update everything around payday.
+There's no server and no cloud account. All data lives on the two phones. They link by showing each other QR codes once; after that, if the couple's own Worker is set up, they keep each other up to date through it automatically, end-to-end encrypted (the Worker holds only a copy it can't read). QR sync remains for linking and as the fallback. The tool is built around how this couple actually banks: they switch banks for deals (aliases carry an account's history across the switch), they have 0% card deals with end dates, and they update everything around payday.
 
 ## Operating Context
 
@@ -36,7 +36,7 @@ There's no server and no cloud account. All data lives on the two phones, and th
 - Aliases: a stable name such as "Main Savings" points at whichever real account currently plays that role. Re-pointing an alias archives the old account.
 - Sync is a full-state merge: last write wins per record, and histories are combined as append-only unions. Repeating a sync is safe.
 - JSON backup export and import.
-- Optional `finpair-t212` Cloudflare Worker: daily 9pm reading of one Trading 212 account, plus web-push reminders. It's the only thing that leaves the phones.
+- Optional `finpair-t212` Cloudflare Worker: daily 9pm reading of one Trading 212 account, web-push reminders (including "your partner just updated"), and automatic sync between the phones, end-to-end encrypted with a key that only ever travels phone to phone in the QR codes. It's the only thing that leaves the phones.
 - Dev build (`develop` branch, workers.dev) has a yellow "DEV BUILD" banner and mock data. Production is GitHub Pages from `main`.
 - Stack: Vite, TypeScript, Preact, IndexedDB (`idb`), `qrcode` and `jsqr` (or BarcodeDetector), `vite-plugin-pwa`. Font: Figtree Variable (chosen Nov 2026, replacing Inter).
 - Terminology in use: Home, Accounts, Update, Sync, Settings, Goals, alias, check code, "Show my data", "Scan partner's screen", "0% deal ends", "Whose is it?".

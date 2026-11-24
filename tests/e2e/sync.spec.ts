@@ -652,3 +652,77 @@ test('the partner who did not do the update sees it too, after syncing', async (
   await contextA.close();
   await contextB.close();
 });
+
+test('automatic sync: after one QR handshake, updates reach the other phone through the Worker', async ({ browser }) => {
+  // A fake Worker shared by both phones: one encrypted slot per phone, plus a
+  // record of any "your partner updated" notification it was asked to send.
+  const slots = new Map<string, { deviceId: string; at: string; iv: string; data: string }>();
+  const notices: { title: string }[] = [];
+  const fakeWorker = async (route: import('@playwright/test').Route) => {
+    const req = route.request();
+    const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
+    if (req.method() === 'POST' && req.url().endsWith('/relay')) {
+      const body = req.postDataJSON() as { slot: { deviceId: string; at: string; iv: string; data: string }; notify?: { title: string } };
+      slots.set(body.slot.deviceId, body.slot);
+      if (body.notify) notices.push(body.notify);
+      return route.fulfill({ headers, body: JSON.stringify({ ok: true, notified: body.notify ? 1 : 0 }) });
+    }
+    if (req.method() === 'GET' && /\/relay\?channel=[0-9a-f]{32}$/.test(req.url())) {
+      return route.fulfill({ headers, body: JSON.stringify({ slots: [...slots.values()] }) });
+    }
+    return route.fulfill({ headers, status: 404, body: '{"error":"Not found."}' });
+  };
+
+  const contextA = await browser.newContext();
+  const contextB = await browser.newContext();
+  await contextA.route('https://relay.example/**', fakeWorker);
+  await contextB.route('https://relay.example/**', fakeWorker);
+  const phoneA = await contextA.newPage();
+  const phoneB = await contextB.newPage();
+
+  // Adam sets up, adds a card and points FinPair at the Worker.
+  await completeSetup(phoneA, 'Adam', 'Sam');
+  await addAccount(phoneA, 'Barclaycard', 'Credit card', '3000');
+  await phoneA.goto('.#/settings');
+  await phoneA.getByRole('button', { name: /Trading 212 and reminders/ }).click();
+  await phoneA.getByPlaceholder('Paste address').fill('https://relay.example');
+  await phoneA.getByPlaceholder('Paste address').press('Tab');
+  await phoneA.getByPlaceholder('FINPAIR_TOKEN').fill('secret-token');
+  await phoneA.getByPlaceholder('FINPAIR_TOKEN').press('Tab');
+
+  // Before linking, the Sync tab says what's needed.
+  await phoneA.goto('.#/sync');
+  await expect(phoneA.getByText('Sync once by QR code below to link the two phones.')).toBeVisible();
+
+  // One QR sync each way: Sam's phone joins, and the phones swap the key.
+  await phoneB.goto('.');
+  await expect(phoneB.getByRole('button', { name: "Join your partner's setup" })).toBeVisible();
+  await phoneB.evaluate((f) => window.__syncTest.importFrames(f), await phoneA.evaluate(() => window.__syncTest.exportFrames()));
+  await phoneA.evaluate((f) => window.__syncTest.importFrames(f), await phoneB.evaluate(() => window.__syncTest.exportFrames()));
+  await phoneA.reload();
+  await expect(phoneA.getByRole('switch', { name: 'Sync through your Worker' })).toHaveAttribute('aria-checked', 'true');
+
+  // Adam does a payday update: it goes straight up, with a note for Sam.
+  await phoneA.goto('.#/update');
+  await phoneA.getByLabel('New balance for Barclaycard').fill('2600');
+  await phoneA.getByRole('button', { name: /Save 1 update/ }).click();
+  await expect.poll(() => notices.map((n) => n.title)).toContain('Adam just updated the balances');
+  // The Worker only ever holds ciphertext.
+  for (const slot of slots.values()) expect(slot.data).not.toMatch(/Barclaycard|2600|260000/);
+
+  // Sam just opens FinPair: no QR codes, and Home tells the story.
+  await phoneB.goto('.#/');
+  await phoneB.reload();
+  const card = phoneB.locator('.checkin');
+  await expect(card).toContainText('Adam updated today');
+  await expect(card).toContainText('down £400');
+  await expect(phoneB.locator('.dash-section', { hasText: 'Credit card debt' }).locator('.big-number')).toHaveText('£2,600');
+
+  // …and Sam's phone publishes its merged copy back, so the two agree.
+  await expect.poll(() => slots.size, { timeout: 10000 }).toBe(2);
+  await phoneB.goto('.#/sync');
+  await expect(phoneB.getByText(/On · checked/)).toBeVisible();
+
+  await contextA.close();
+  await contextB.close();
+});

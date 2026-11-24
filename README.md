@@ -119,7 +119,8 @@ entries on the linked account, so the savings chart shows each day's move.
 Home also shows that account's change on the day and its overall gain.
 
 Privacy trade-off: one number a day (plus the cost basis and gain) is stored in
-your own Cloudflare account. Nothing else about your finances leaves the phones.
+your own Cloudflare account. Nothing else about your finances leaves the phones,
+apart from automatic sync's encrypted copies (below), which the Worker can't read.
 
 **One-time setup**
 
@@ -165,6 +166,29 @@ Reminders → turn on "Notifications on this phone", allow notifications, and
 tap "Send a test notification". Each phone picks its own reminders. Messages
 are end-to-end encrypted to the phone; the Worker learns only the cards' names
 and 0% end dates and the linked account's name.
+
+## Automatic sync (optional)
+
+With the `finpair-t212` Worker set up (see "Trading 212 link"; the Trading 212
+account itself is optional for this), the phones keep each other up to date
+without QR codes:
+
+1. Sync once by QR code, each way, as usual. Besides the data, the codes carry
+   a secret key that only the two phones know. It's never put in backup files
+   and never sent to the Worker.
+2. From then on each phone uploads an **encrypted** copy of its data to the
+   Worker a few seconds after any change, and picks up the partner's copy when
+   FinPair opens or comes back on screen. It's the same merge as a QR sync, so
+   the order doesn't matter and nothing can be overwritten.
+3. Saving a payday update also sends the other phone a notification ("Adam
+   just updated the balances") if it has reminders on. Opening it shows the
+   check-in card, and the celebration if you're better off.
+
+The Worker stores only ciphertext it can't read. Sync tab → Automatic sync
+shows when it last checked, has **Sync now**, and can be switched off per
+phone. QR sync still works as before: it's how a new phone gets linked, and
+the fallback if anything ever disagrees. Each phone can turn off the "Partner
+updates" notification under Settings → Connections → Reminders.
 
 ## Development
 

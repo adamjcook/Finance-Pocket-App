@@ -1418,6 +1418,10 @@ label.field > span:first-child,
 
 /* The 6-character check code wherever it appears in a row: a code to
    compare character by character, so fixed-width and spaced out. */
+.qr-label {
+  margin-top: 26px;
+}
+
 .check-code {
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
   letter-spacing: 0.1em;
