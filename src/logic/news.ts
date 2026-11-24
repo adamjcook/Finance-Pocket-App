@@ -1,7 +1,7 @@
 import type { SyncedState } from '../model/types';
 import { latestBalances } from '../model/repo';
 import { formatMoneyWhole } from './money';
-import { daysBetween, debtProgress, formatDay, type SeriesPoint } from './progress';
+import { daysBetween, debtProgress, formatDay, netWorthLines, netWorthSeries, type SeriesPoint } from './progress';
 
 /**
  * The one line of news at the top of Home. It only appears when something
@@ -122,6 +122,23 @@ function candidates(state: SyncedState, today: string, memory: NewsMemory, curre
           text: `Card debt is under ${formatMoneyWhole(under, currency)} for the first time.`,
         });
       }
+    }
+  }
+
+  // Net worth past a round number, or above zero, for the first time. This
+  // reaches the partner who didn't do the update, once the phones sync.
+  const netSeries = netWorthSeries(state, today);
+  const recent = (i: number) => i > 0 && daysBetween(netSeries[i].day, today) <= SHOW_FOR_DAYS;
+  if (netSeries.length > 1) {
+    const netNow = netSeries[netSeries.length - 1].value;
+    const line = [...netWorthLines(netNow)].reverse().find((t) => recent(netSeries.findIndex((p) => p.value >= t)));
+    if (line !== undefined) {
+      urgent.push({ key: `net:${line}`, text: `Net worth is over ${formatMoneyWhole(line, currency)} for the first time.` });
+    } else if (netNow > 0 && recent(netSeries.findIndex((p) => p.value > 0))) {
+      urgent.push({
+        key: 'net:positive',
+        text: 'Net worth is above zero for the first time: what you own now outweighs what you owe.',
+      });
     }
   }
 

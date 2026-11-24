@@ -1,7 +1,8 @@
 import type { SyncedState, UUID } from '../model/types';
 import { GROWTH_KINDS, OWED_KINDS } from '../model/types';
 import { latestBalances } from '../model/repo';
-import { debtProgress, growthProgress, loanProgress } from './progress';
+import { debtProgress, growthProgress, loanProgress, netWorthMilestone, netWorthSeries } from './progress';
+import { formatMoneyWhole } from './money';
 
 /**
  * What one payday update changed, for the "here's how you did" card on Home.
@@ -47,6 +48,18 @@ export function summariseCheckIn(
     const lowestBefore = Math.min(...debtBefore.series.map((p) => p.value));
     if (debtAfter.current < lowestBefore) milestones.push('Lowest card debt yet');
   }
+
+  // Net worth past a round number (or above zero) for the first time. It
+  // leads, after only "All card debt cleared" — that's the first goal.
+  const netAfter = savingsAfter.current - debtAfter.current - loansAfter.current;
+  const net = netWorthMilestone(netWorthSeries(before, today), netAfter);
+  const netText =
+    net === 'positive'
+      ? 'Net worth above zero for the first time'
+      : net !== null
+        ? `Net worth over ${formatMoneyWhole(net, after.settings.currency)} for the first time`
+        : null;
+  if (netText) milestones.splice(milestones[0] === 'All card debt cleared' ? 1 : 0, 0, netText);
 
   // Individual cards and loans reaching zero, and savings pots reaching their goal.
   const prev = latestBalances(before);

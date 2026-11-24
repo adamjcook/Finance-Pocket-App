@@ -104,3 +104,34 @@ describe('pay-off forecast', () => {
     );
   });
 });
+
+describe('net-worth news', () => {
+  it('reaches both phones: over a round number for the first time, for a week', () => {
+    const s = state({
+      accounts: [account({ id: 'pot', name: 'Saver', kind: 'savings' })],
+      snapshots: [
+        snapshot({ accountId: 'pot', balance: 4600_00, at: at('2026-10-31'), createdAt: at('2026-10-31') }),
+        snapshot({ accountId: 'pot', balance: 5150_00, at: at('2026-11-22'), createdAt: at('2026-11-22') }),
+      ],
+    });
+    expect(homeNews(s, '2026-11-24', EMPTY_NEWS_MEMORY)?.text).toBe('Net worth is over £5,000 for the first time.');
+    expect(homeNews(s, '2026-12-01', EMPTY_NEWS_MEMORY)).toBeNull();
+  });
+
+  it('marks net worth turning positive', () => {
+    const s = state({
+      accounts: [
+        account({ id: 'card', kind: 'credit_card' }),
+        account({ id: 'pot', kind: 'savings' }),
+      ],
+      snapshots: [
+        snapshot({ accountId: 'card', balance: 900_00, at: at('2026-10-31'), createdAt: at('2026-10-31') }),
+        snapshot({ accountId: 'pot', balance: 600_00, at: at('2026-10-31'), createdAt: at('2026-10-31') }),
+        snapshot({ accountId: 'card', balance: 400_00, at: at('2026-11-22'), createdAt: at('2026-11-22') }),
+      ],
+    });
+    expect(homeNews(s, '2026-11-24', EMPTY_NEWS_MEMORY)?.text).toBe(
+      'Net worth is above zero for the first time: what you own now outweighs what you owe.',
+    );
+  });
+});
