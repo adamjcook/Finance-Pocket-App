@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { useApp, mutate, getStore } from '../model/store';
 import { addSnapshots, aliasForAccount, latestBalances } from '../model/repo';
 import type { Account } from '../model/types';
@@ -9,13 +9,11 @@ import { navigate } from '../router';
 import { daysBetween, formatDay, STALE_AFTER_DAYS, toDay, todayISO } from '../logic/progress';
 import { Icon } from './components/Icon';
 
-/** Account to put the cursor in when update mode opens (set by tapping a balance). */
-let focusOnOpen: string | null = null;
-
 /**
  * The accounts list, and — at #/update — the same list in update mode: every
  * balance becomes an input, and the ones that changed are saved together as
- * one batch of snapshots. Tapping a balance opens update mode on that account.
+ * one batch of snapshots. Balances on the list are read-only; the Update
+ * button is the one way in.
  */
 export function Accounts({ updating = false }: { updating?: boolean }) {
   const app = useApp();
@@ -25,16 +23,7 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
   const inputs = useRef(new Map<string, HTMLInputElement>());
 
   // The list and update mode are separate instances (keyed in app.tsx), so
-  // update mode always opens with no leftover edits. Put the cursor in the
-  // account whose balance was tapped, if any.
-  useLayoutEffect(() => {
-    if (updating && focusOnOpen) {
-      const el = inputs.current.get(focusOnOpen);
-      el?.focus();
-      el?.select();
-    }
-    focusOnOpen = null;
-  }, []);
+  // update mode always opens with no leftover edits.
 
   if (!app) return null;
   const { state } = app;
@@ -86,11 +75,6 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
     }, 700);
   };
 
-  const openUpdate = (focusId: string | null) => {
-    focusOnOpen = focusId;
-    navigate('/update');
-  };
-
   const pills = (a: Account) => {
     const latest = balances.get(a.id);
     const alias = aliasForAccount(state, a.id);
@@ -131,7 +115,7 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
           ) : (
             <>
               {visible.some((a) => !a.archived) && (
-                <button class="btn-sm" onClick={() => openUpdate(null)}>
+                <button class="btn-sm" onClick={() => navigate('/update')}>
                   <Icon name="update" size={16} />
                   Update
                 </button>
@@ -214,14 +198,9 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
                       {pills(a)}
                     </div>
                   </div>
-                  <button
-                    class={`balance-btn ${latest ? '' : 'unset'}`}
-                    disabled={a.archived}
-                    onClick={() => openUpdate(a.id)}
-                    title="Tap to update balances"
-                  >
-                    {latest ? formatMoney(latest.balance, currency) : 'Set balance'}
-                  </button>
+                  <span class={`balance ${latest ? '' : 'unset'}`}>
+                    {latest ? formatMoney(latest.balance, currency) : 'No balance yet'}
+                  </span>
                 </div>
               );
             })}

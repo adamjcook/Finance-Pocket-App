@@ -996,19 +996,15 @@ label.field > span:first-child,
   white-space: nowrap;
 }
 
-.balance-btn {
-  min-height: 36px;
-  padding: 0 10px;
-  margin-right: -10px;
-  border-radius: 10px;
-  background: transparent;
+.balance {
+  flex: none;
   font-size: 15.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.balance-btn.unset {
+.balance.unset {
   color: var(--text-3);
   font-weight: 500;
 }

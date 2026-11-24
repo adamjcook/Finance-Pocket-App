@@ -91,14 +91,13 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await expect(page.getByRole('img', { name: '50% paid off' })).toBeVisible(); // half of the £3,000 peak
   await expect(page.getByText('£1,500.00 of £3,000.00 paid off')).toBeVisible();
 
-  // Tapping a balance opens update mode with that account's input focused
+  // A second change through the Update button; balances on the list are plain text
   await page.goto('.#/accounts');
-  await page.locator('.account-row', { hasText: 'Marcus Saver' }).getByRole('button', { name: '£1,000.00' }).click();
-  const saverInput = page.getByLabel('New balance for Marcus Saver');
-  await expect(saverInput).toBeFocused();
-  await saverInput.fill('1250');
+  await expect(page.locator('.account-row', { hasText: 'Marcus Saver' }).getByRole('button', { name: '£1,000.00' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Update', exact: true }).click();
+  await page.getByLabel('New balance for Marcus Saver').fill('1250');
   await page.getByRole('button', { name: /Save 1 update/ }).click();
-  await expect(page.getByRole('button', { name: '£1,250.00' })).toBeVisible();
+  await expect(page.locator('.account-row', { hasText: 'Marcus Saver' })).toContainText('£1,250.00');
   // The tab bar no longer has a separate Update tab.
   await expect(page.locator('.tabbar .tab')).toHaveText(['Home', 'Accounts', 'Sync', 'Settings']);
 
@@ -390,7 +389,7 @@ test('Trading 212 link imports daily readings and shows the day and overall chan
   // The ISA's balance follows the latest reading, and it's marked as automatic.
   await page.goto('.#/accounts');
   const row = page.locator('.account-row', { hasText: 'Stocks ISA' });
-  await expect(row.getByRole('button', { name: '£10,120.50' })).toBeVisible();
+  await expect(row).toContainText('£10,120.50');
   await expect(row.getByText('Auto')).toBeVisible();
 
   // Home: the move on the day (+£120.50) and the overall gain (+£1,120.50, 12.4%).
