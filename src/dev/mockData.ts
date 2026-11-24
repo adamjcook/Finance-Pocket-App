@@ -1,5 +1,4 @@
 import type { SyncPayload } from '../model/types';
-import { DEFAULT_PARTNER_A_COLOR, DEFAULT_PARTNER_B_COLOR } from '../model/types';
 import { applyPayload } from '../sync/apply';
 
 /**
@@ -38,8 +37,6 @@ export function buildMockPayload(): SyncPayload {
       partnerBName: 'Sam',
       currency: 'GBP',
       debtBaselineMinor: null,
-      partnerAColor: DEFAULT_PARTNER_A_COLOR,
-      partnerBColor: DEFAULT_PARTNER_B_COLOR,
       ...meta(0),
     },
     accounts: [

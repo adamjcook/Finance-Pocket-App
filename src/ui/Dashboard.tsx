@@ -366,10 +366,6 @@ export function Dashboard() {
         <img src={`${import.meta.env.BASE_URL}${import.meta.env.VITE_ICON_DIR}/favicon.svg`} class="app-logo" alt="" />
         <h1>FinPair</h1>
         <p class="subtitle">
-          <span class="pair-dots" aria-hidden="true">
-            <span style="background:var(--partner-a-display)" />
-            <span style="background:var(--partner-b-display)" />
-          </span>
           {settings.partnerAName} &amp; {settings.partnerBName}
         </p>
       </header>

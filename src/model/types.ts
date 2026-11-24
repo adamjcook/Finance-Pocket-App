@@ -92,9 +92,8 @@ export interface Settings extends Meta {
   /** Optional date (YYYY-MM-DD) to reach the savings target by. */
   savingsTargetDate?: string | null;
   /**
-   * Partner identity colours (CSS hex) for the Accounts page's owner key and
-   * bars, chosen at setup. Added after v1 shipped — undefined reads as the
-   * default teal/amber.
+   * Retired: partner colours once chosen at setup for owner bars on the
+   * Accounts page. No longer shown or set; kept so older records still type.
    */
   partnerAColor?: string;
   partnerBColor?: string;
@@ -136,9 +135,6 @@ export interface T212DeviceStatus {
 
 /** Currencies offered at setup and in Settings (display-only; amounts aren't converted). */
 export const CURRENCIES = ['GBP', 'EUR', 'USD'];
-
-export const DEFAULT_PARTNER_A_COLOR = '#4fd1a5';
-export const DEFAULT_PARTNER_B_COLOR = '#f2a65a';
 
 export type Theme = 'dark' | 'light';
 
@@ -203,8 +199,6 @@ export const DEFAULT_SETTINGS: Settings = {
   loanTargetDate: null,
   savingsTargetMinor: null,
   savingsTargetDate: null,
-  partnerAColor: DEFAULT_PARTNER_A_COLOR,
-  partnerBColor: DEFAULT_PARTNER_B_COLOR,
   t212: null,
   updatedAt: new Date(0).toISOString(),
   updatedBy: '',

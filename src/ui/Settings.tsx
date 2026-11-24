@@ -151,20 +151,14 @@ export function Settings() {
         <h2 class="group-label">You two</h2>
         <div class="list">
           <label class="list-row setting-row">
-            <span class="setting-label row" style="gap:8px">
-              <span class="owner-dot owner-dot-a" />
-              Partner 1
-            </span>
+            <span class="setting-label">Partner 1</span>
             <input
               value={state.settings.partnerAName}
               onChange={(e) => saveField({ partnerAName: (e.target as HTMLInputElement).value })}
             />
           </label>
           <label class="list-row setting-row">
-            <span class="setting-label row" style="gap:8px">
-              <span class="owner-dot owner-dot-b" />
-              Partner 2
-            </span>
+            <span class="setting-label">Partner 2</span>
             <input
               value={state.settings.partnerBName}
               onChange={(e) => saveField({ partnerBName: (e.target as HTMLInputElement).value })}

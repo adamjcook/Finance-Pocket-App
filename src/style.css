@@ -1,8 +1,8 @@
 /* ==========================================================================
    FinPair design system
    Neutral graphite surfaces, one high-contrast primary action colour, and
-   the app icon's teal/amber reserved for data (growth vs. what's owed) and
-   for the two partners. Dark is the default; light is opt-in per phone.
+   the app icon's teal/amber reserved for data (growth vs. what's owed).
+   Dark is the default; light is opt-in per phone.
    ========================================================================== */
 
 :root {
@@ -24,16 +24,6 @@
   --debt: #f2a65a; /* money owed */
   --danger: #ff6b6b;
   --focus: color-mix(in srgb, var(--accent) 55%, transparent);
-
-  /* partner identity colours — the two circles of the app icon */
-  --partner-a: #4fd1a5;
-  --partner-b: #f2a65a;
-  /* the icon's overlap lens — where the two circles blend to one colour */
-  --partner-joint: #f7ef8a;
-  /* What actually gets painted for each partner — the raw colour on dark,
-     darkened on light (below) so a pastel doesn't wash out on white. */
-  --partner-a-display: var(--partner-a);
-  --partner-b-display: var(--partner-b);
 
   --card-shadow: none;
   --overlay-shadow: 0 12px 32px rgb(0 0 0 / 0.5);
@@ -59,9 +49,6 @@
   --accent: #0c8a68;
   --debt: #b85c0a;
   --danger: #d92d20;
-  --partner-joint: #c99a06;
-  --partner-a-display: color-mix(in srgb, var(--partner-a) 65%, black);
-  --partner-b-display: color-mix(in srgb, var(--partner-b) 65%, black);
   --card-shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
   --overlay-shadow: 0 12px 32px rgb(16 24 40 / 0.16);
   color-scheme: light;
@@ -305,10 +292,6 @@ h2,
   right: 0;
   height: 1px;
   background: var(--separator);
-}
-
-.list-row.with-avatar {
-  --row-inset: 68px;
 }
 
 .list-row.tappable {
@@ -756,28 +739,13 @@ label.field > span:first-child,
   font-size: 13px;
   font-weight: 550;
   color: var(--text-2);
-  padding: 5px 10px 5px 6px;
+  padding: 5px 12px;
   border-radius: 999px;
   background: var(--surface);
   box-shadow: var(--card-shadow);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-
-.pair-dots {
-  display: inline-flex;
-}
-
-.pair-dots span {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid var(--surface);
-}
-
-.pair-dots span + span {
-  margin-left: -5px;
 }
 
 .hero {
@@ -1003,83 +971,6 @@ label.field > span:first-child,
 
 /* ---- accounts --------------------------------------------------------------- */
 
-.owner-key {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: -4px 0 22px;
-}
-
-.owner-key > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px 4px 8px;
-  border-radius: 999px;
-  background: var(--surface);
-  box-shadow: var(--card-shadow);
-  font-size: 12.5px;
-  font-weight: 550;
-  color: var(--text-2);
-}
-
-.owner-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.owner-dot-a {
-  background: var(--partner-a-display);
-}
-
-.owner-dot-b {
-  background: var(--partner-b-display);
-}
-
-.owner-dot-joint {
-  background: var(--partner-joint);
-}
-
-/* monogram avatar for an account, with the owner's colour as a badge */
-.avatar {
-  position: relative;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  flex: none;
-  background: var(--surface-2);
-  color: var(--text-2);
-  font-size: 15px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-}
-
-.owner-bar {
-  position: absolute;
-  right: -3px;
-  bottom: -3px;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  border: 2.5px solid var(--surface);
-}
-
-.owner-bar-a {
-  background: var(--partner-a-display);
-}
-
-.owner-bar-b {
-  background: var(--partner-b-display);
-}
-
-.owner-bar-joint {
-  background: var(--partner-joint);
-}
-
 .account-row.archived {
   opacity: 0.5;
 }
@@ -1284,25 +1175,6 @@ label.field > span:first-child,
   background: transparent;
   color: var(--text-2);
   font-weight: 550;
-}
-
-.colour-choice {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  border-radius: 50%;
-  padding: 0;
-  flex: none;
-  box-shadow:
-    0 0 0 3px var(--surface),
-    0 0 0 5px transparent;
-  transition: box-shadow 120ms ease;
-}
-
-.colour-choice[aria-pressed='true'] {
-  box-shadow:
-    0 0 0 3px var(--surface),
-    0 0 0 5px var(--text);
 }
 
 /* ---- sync ---------------------------------------------------------------- */

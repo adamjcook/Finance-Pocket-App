@@ -139,16 +139,16 @@ test('second phone joins via setup and owners stay consistent (no flip)', async 
   const frames = await phoneA.evaluate(() => window.__syncTest.exportFrames());
   await phoneB.evaluate((f) => window.__syncTest.importFrames(f), frames);
 
-  // B now shows A's names, and each account keeps its true owner (shown as
-  // the accessible label on that row's colour bar, per the account-row redesign)
+  // B now shows A's names, and each account keeps its true owner (shown on
+  // the account's edit screen).
   await expect(phoneB.locator('.subtitle', { hasText: 'Adam & Sam' })).toBeVisible();
-  await phoneB.goto('.#/accounts');
-  await expect(
-    phoneB.locator('.account-row', { hasText: 'Adam Card' }).getByRole('img', { name: 'Adam' }),
-  ).toBeVisible();
-  await expect(
-    phoneB.locator('.account-row', { hasText: 'Sam Card' }).getByRole('img', { name: 'Sam' }),
-  ).toBeVisible();
+  for (const [card, owner] of [['Adam Card', 'Adam'], ['Sam Card', 'Sam']]) {
+    await phoneB.goto('.#/accounts');
+    await phoneB.locator('.account-row', { hasText: card }).locator('.account-main').click();
+    await expect(
+      phoneB.getByRole('group', { name: 'Whose is it?' }).getByRole('button', { name: owner }),
+    ).toHaveAttribute('aria-pressed', 'true');
+  }
 
   // And the reverse pass leaves both phones on the same check code
   const framesB = await phoneB.evaluate(() => window.__syncTest.exportFrames());
@@ -227,46 +227,6 @@ test('alias survives switching banks', async ({ page }) => {
   const newRow = page.locator('.account-row', { hasText: 'Shiny New Saver' });
   await expect(newRow.getByText('Main Savings')).toBeVisible();
   await expect(page.getByText('Old Bank Saver')).toBeHidden();
-});
-
-test('the setup colour choice applies on the accounts page, persists, and darkens in light mode', async ({ page }) => {
-  // Colours are no longer freely pickable — Setup offers only the app icon's
-  // two fixed colours, and whichever one you pick, your partner gets the other.
-  await page.goto('.');
-  await page.getByRole('button', { name: 'Set up on this phone first' }).click();
-  await page.getByPlaceholder('e.g. Adam').fill('Adam');
-  await page.getByPlaceholder('e.g. Sam').fill('Sam');
-  await page.getByRole('button', { name: 'Amber' }).click();
-  await page.getByRole('button', { name: 'Get started' }).click();
-  await expect(page.getByRole('heading', { name: 'New account' })).toBeVisible();
-
-  await addAccount(page, 'Barclaycard', 'Credit card', '1500', 'Adam');
-
-  // Adam (partner A) picked amber, so Sam (partner B) gets teal — swapped
-  // from the default A=teal/B=amber assignment.
-  await page.goto('.#/accounts');
-  await expect(page.locator('.owner-key .owner-dot-a')).toHaveCSS('background-color', 'rgb(242, 166, 90)');
-  await expect(page.locator('.owner-key .owner-dot-b')).toHaveCSS('background-color', 'rgb(79, 209, 165)');
-  const bar = page.locator('.account-row', { hasText: 'Barclaycard' }).locator('.owner-bar');
-  await expect(bar).toHaveCSS('background-color', 'rgb(242, 166, 90)');
-
-  // Persists across a reload (settings are stored, not just an in-memory var)
-  await page.reload();
-  await expect(bar).toHaveCSS('background-color', 'rgb(242, 166, 90)');
-
-  // In light mode the fixed colour gets darkened for contrast against a
-  // white card — same idea as --accent/--debt.
-  await page.goto('.#/settings');
-  await page.getByRole('button', { name: 'Light', exact: true }).click();
-  await page.goto('.#/accounts');
-  await expect(bar).not.toHaveCSS('background-color', 'rgb(242, 166, 90)');
-  const [r, g, b] = await bar.evaluate((el) =>
-    getComputedStyle(el)
-      .backgroundColor.match(/[\d.]+/g)!
-      .slice(0, 3)
-      .map(Number),
-  );
-  expect(r + g + b).toBeLessThan(242 + 166 + 90); // darker than the raw amber, not just different
 });
 
 test('light mode is opt-in, applies live, and persists across a reload', async ({ page }) => {
