@@ -1,7 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
 import { formatDay, type SeriesPoint } from '../../logic/progress';
 import { formatMoney, formatMoneyCompact } from '../../logic/money';
-import { ACTIVATE_MS, MIN_TICK_GAP_MS, tickBucket, tickMs, tickStep } from '../../logic/chartTicks';
 
 interface Props {
   series: SeriesPoint[];
@@ -18,20 +17,14 @@ const SLOP_PX = 10;
 
 /**
  * Minimal SVG area chart for a daily money series. Press and hold to read out
- * a day (a short vibration confirms it), then slide to move along the line,
- * with a light haptic tick per day, week or month crossed (chartTicks.ts).
+ * a day (a short vibration confirms it), then slide to move along the line.
  * A swipe that starts on the chart still scrolls the page; a mouse reads out
  * days immediately on click-and-drag.
  */
 export function Chart({ series, currency, color, height = 110 }: Props) {
   const [picked, setPicked] = useState<number | null>(null);
-  // Dev build only: how many haptic ticks were requested / accepted by the
-  // browser, shown under the chart to diagnose ticks not being felt.
-  const [hapticLog, setHapticLog] = useState({ sent: 0, ok: 0 });
   const gradientId = `chart-fill-${useId()}`;
   const svgRef = useRef<SVGSVGElement>(null);
-  const seriesRef = useRef(series);
-  seriesRef.current = series;
   const lengthRef = useRef(series.length);
   lengthRef.current = series.length;
   const hasChart = series.length >= 2;
@@ -42,9 +35,8 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
     const n = lengthRef.current;
     if (!svg || n < 2) return;
     const rect = svg.getBoundingClientRect();
-    const i = Math.max(0, Math.min(n - 1, Math.round(((clientX - rect.left) / rect.width) * (n - 1))));
-    setPicked(i);
-    return { i, pxPerDay: rect.width / (n - 1) };
+    const i = Math.round(((clientX - rect.left) / rect.width) * (n - 1));
+    setPicked(Math.max(0, Math.min(n - 1, i)));
   };
 
   // Touch: wait for a deliberate hold before taking over, so swipes scroll.
@@ -57,24 +49,6 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
     let start: { x: number; y: number } | null = null;
     let lastX = 0;
     let active = false;
-    // Haptic ticks while sliding: one per day/week/month crossed (whichever
-    // suits the chart's scale), and never faster than the motor can deliver.
-    let lastBucket: string | null = null;
-    let lastBuzz = 0;
-    const tick = (at: { i: number; pxPerDay: number } | undefined, first: boolean) => {
-      const day = at && seriesRef.current[at.i]?.day;
-      if (!at || !day) return;
-      const bucket = tickBucket(day, tickStep(at.pxPerDay));
-      if (!first && bucket === lastBucket) return;
-      lastBucket = bucket;
-      const now = performance.now();
-      if (!first && now - lastBuzz < MIN_TICK_GAP_MS) return;
-      lastBuzz = now;
-      const ok = navigator.vibrate?.(first ? ACTIVATE_MS : tickMs()) ?? false;
-      if (import.meta.env.VITE_DEV_BUILD === '1') {
-        setHapticLog((l) => (first ? { sent: 1, ok: ok ? 1 : 0 } : { sent: l.sent + 1, ok: l.ok + (ok ? 1 : 0) }));
-      }
-    };
 
     const reset = () => {
       clearTimeout(timer);
@@ -94,7 +68,8 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
       timer = setTimeout(() => {
         timer = undefined;
         active = true;
-        tick(pickAt(lastX), true);
+        navigator.vibrate?.(12);
+        pickAt(lastX);
       }, HOLD_MS);
     };
     const onMove = (e: TouchEvent) => {
@@ -102,7 +77,7 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
       if (!t) return;
       if (active) {
         e.preventDefault(); // reading out days: don't scroll the page
-        tick(pickAt(t.clientX), false);
+        pickAt(t.clientX);
         return;
       }
       if (start && Math.hypot(t.clientX - start.x, t.clientY - start.y) > SLOP_PX) {
@@ -233,11 +208,6 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
           High {formatMoneyCompact(max, currency)}
         </text>
       </svg>
-      {import.meta.env.VITE_DEV_BUILD === '1' && hapticLog.sent > 0 && (
-        <p class="chart-empty" style="margin-top:4px">
-          Dev: ticks {hapticLog.sent} sent, {hapticLog.ok} accepted by the browser
-        </p>
-      )}
     </div>
   );
 }

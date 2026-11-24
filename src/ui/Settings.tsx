@@ -16,7 +16,6 @@ import { mergePayload } from '../sync/apply';
 import { currencySymbol, formatMoney } from '../logic/money';
 import { MoneyInput } from './components/MoneyInput';
 import { Icon } from './components/Icon';
-import { HapticsTester } from '../dev/HapticsTester';
 
 export function Settings() {
   const app = useApp();
@@ -383,8 +382,6 @@ export function Settings() {
             "Your data lives only on your two phones. Every now and then, save a backup file somewhere safe — it's the same format the sync uses."}
         </p>
       </section>
-
-      {import.meta.env.VITE_DEV_BUILD === '1' && <HapticsTester />}
 
       <p class="about">
         <Icon name="shield" size={16} />
