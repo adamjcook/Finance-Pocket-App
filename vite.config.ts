@@ -2,6 +2,23 @@ import { defineConfig } from 'vitest/config';
 import { loadEnv } from 'vite';
 import preact from '@preact/preset-vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { readFileSync } from 'node:fs';
+import type { Plugin } from 'vite';
+
+/**
+ * Emits push-sw.js (reminder notification handling) next to the generated
+ * service worker, with this build's icon folder filled in.
+ */
+function pushServiceWorker(iconDir: string): Plugin {
+  return {
+    name: 'finpair-push-sw',
+    apply: 'build',
+    generateBundle() {
+      const source = readFileSync(new URL('./src/sw/push-sw.js', import.meta.url), 'utf8');
+      this.emitFile({ type: 'asset', fileName: 'push-sw.js', source: source.replaceAll('__ICON_DIR__', iconDir) });
+    },
+  };
+}
 
 // Plain `npm run build` (mode 'production') builds the real app. Mode
 // 'dev-pages' (see .env.dev-pages) builds the mock-data copy that a
@@ -18,6 +35,7 @@ export default defineConfig(({ mode }) => {
     base,
     plugins: [
       preact(),
+      pushServiceWorker(iconDir),
       VitePWA({
         registerType: 'prompt',
         includeAssets: [`${iconDir}/favicon.svg`],
@@ -41,6 +59,7 @@ export default defineConfig(({ mode }) => {
           // Both icon sets ship in public/; only precache the one this build uses.
           globIgnores: [isDevBuild ? 'icons/**' : 'icons-dev/**'],
           cleanupOutdatedCaches: true,
+          importScripts: ['push-sw.js'],
           ...(isDevBuild ? { cacheId: 'finpair-dev' } : {}),
         },
       }),

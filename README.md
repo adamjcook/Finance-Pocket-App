@@ -18,6 +18,8 @@ offline. The two phones stay in sync by literally showing each other QR codes.
 - *Aliases for bank-switchers*: create an alias like "Main Savings" and point it at whichever
   real account currently plays that role. When you switch banks, add the new account and
   re-point the alias — its history and chart carry straight on, and the old account is archived.
+- *Goals for each pot*: give a savings pot (say, the wedding fund) its own target and
+  date; Home shows progress and the monthly amount to get there.
 - *Mistake-proof*: balances are an append-only history; a mistyped entry can be undone from
   Settings without losing anything.
 
@@ -143,6 +145,24 @@ your own Cloudflare account. Nothing else about your finances leaves the phones.
 The Worker only answers browser requests from the two FinPair sites listed in
 `ALLOWED_ORIGINS` (and localhost). To use Trading 212's paper-trading account
 instead, add a variable `T212_BASE_URL` = `https://demo.trading212.com`.
+
+## Reminders (optional)
+
+Phone notifications, sent by the same `finpair-t212` Worker (the app can't
+run in the background, so it can't remind you itself):
+
+- **9am on the 1st:** time to update your balances.
+- **0% deals:** 30, 7 and 1 days before (and on the day) a card's 0% deal ends —
+  set the date on the card (Accounts → the card → "0% deal ends").
+- **Trading 212 drops:** after the 9pm reading, if the linked account is down
+  5% or more on the week (at most one alert a week).
+
+No extra setup beyond the Trading 212 Worker: it creates its own push signing
+keys on first use. On each phone, open the *installed* app → Settings →
+Reminders → turn on "Notifications on this phone", allow notifications, and
+tap "Send a test notification". Each phone picks its own reminders. Messages
+are end-to-end encrypted to the phone; the Worker learns only the cards' names
+and 0% end dates and the linked account's name.
 
 ## Development
 

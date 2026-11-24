@@ -11,7 +11,20 @@
  *   T212_API_KEY, T212_API_SECRET — a Trading 212 key with the "account" scope only
  *   FINPAIR_TOKEN — shared with the app; required on every app request
  * Vars (wrangler.jsonc): ALLOWED_ORIGINS, optional T212_BASE_URL (demo/live)
+ *
+ * It also sends the app's reminder notifications (see reminders.ts / push.ts).
  */
+
+import {
+  dailyReminders,
+  deleteRegistration,
+  dropCheck,
+  getRegistration,
+  isReminderHour,
+  parseRegistration,
+  saveRegistration,
+} from './reminders';
+import { sendPush, vapidKeys } from './push';
 
 export interface KVListKey<M> {
   name: string;
@@ -22,6 +35,7 @@ export interface KVListKey<M> {
 export interface KV {
   get(key: string): Promise<string | null>;
   put(key: string, value: string, options?: { metadata?: unknown }): Promise<void>;
+  delete(key: string): Promise<void>;
   list<M = unknown>(options: {
     prefix: string;
     cursor?: string;
@@ -37,6 +51,8 @@ export interface Env {
   ALLOWED_ORIGINS?: string;
   /** Defaults to the live (real-money) environment. */
   T212_BASE_URL?: string;
+  /** Contact for push services (VAPID "sub"): a mailto: or https: URL. Optional. */
+  VAPID_SUBJECT?: string;
 }
 
 /** One day's reading. Amounts are minor units (pence) in `currency`. */
@@ -160,18 +176,29 @@ async function getStatus(env: Env): Promise<Status | null> {
 }
 
 /**
- * Cron handler. Cloudflare crons run in UTC, so wrangler.jsonc schedules
- * every 15 minutes across both 20:00 and 21:00 UTC; only the runs that land
- * in 9pm UK time do anything (whichever of GMT/BST is in force), and once a
- * final reading exists for the day the rest are no-ops — the extra runs are
- * automatic retries if Trading 212 was briefly unavailable.
+ * Cron handler. Cloudflare crons run in UTC, so wrangler.jsonc schedules runs
+ * across both possible UTC hours for each UK time (GMT/BST) and the handler
+ * only acts on the ones that land on the right UK hour:
+ *   - 9pm UK: the day's Trading 212 reading. Runs every 15 minutes through
+ *     the hour; once a final reading exists the rest are no-ops, so the later
+ *     ones are automatic retries. A new reading then gets the weekly drop check.
+ *   - 9am UK: reminder notifications (monthly update, 0% deals ending).
  */
-export async function onSchedule(env: Env, now: Date, fetchImpl: typeof fetch = fetch): Promise<'skipped' | 'taken'> {
+export async function onSchedule(
+  env: Env,
+  now: Date,
+  fetchImpl: typeof fetch = fetch,
+): Promise<'skipped' | 'taken' | 'reminded'> {
+  if (isReminderHour(now)) {
+    await dailyReminders(env, now, fetchImpl);
+    return 'reminded';
+  }
   const { day, hour } = ukTime(now);
   if (hour !== READING_HOUR) return 'skipped';
   const existing = await env.DAYS.get(DAY_PREFIX + day);
   if (existing && (JSON.parse(existing) as Reading).final) return 'skipped';
   await takeReading(env, now, fetchImpl);
+  await dropCheck(env, now, fetchImpl);
   return 'taken';
 }
 
@@ -209,7 +236,7 @@ function corsHeaders(env: Env, request: Request): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
   };
@@ -267,6 +294,44 @@ export async function handleRequest(
       return json({ reading: await takeReading(env, now(), fetchImpl) });
     } catch (err) {
       return json({ error: err instanceof Error ? err.message : String(err) }, 502);
+    }
+  }
+
+  if (url.pathname.startsWith('/push/')) {
+    const body = request.method === 'POST' ? await request.json().catch(() => null) : null;
+    const endpoint = (body as { endpoint?: unknown } | null)?.endpoint;
+
+    // The public key phones subscribe with (created on first use).
+    if (request.method === 'GET' && url.pathname === '/push/key') {
+      return json({ publicKey: (await vapidKeys(env.DAYS)).publicKey });
+    }
+    if (request.method === 'POST' && url.pathname === '/push/subscribe') {
+      try {
+        await saveRegistration(env.DAYS, parseRegistration(body, now()));
+      } catch (err) {
+        return json({ error: err instanceof Error ? err.message : String(err) }, 400);
+      }
+      return json({ ok: true });
+    }
+    if (request.method === 'POST' && url.pathname === '/push/unsubscribe') {
+      if (typeof endpoint === 'string') await deleteRegistration(env.DAYS, endpoint);
+      return json({ ok: true });
+    }
+    if (request.method === 'POST' && url.pathname === '/push/test') {
+      const reg = typeof endpoint === 'string' ? await getRegistration(env.DAYS, endpoint) : null;
+      if (!reg) return json({ error: 'This phone isn’t registered for reminders yet.' }, 404);
+      const result = await sendPush(
+        env.DAYS,
+        reg.subscription,
+        { title: 'FinPair reminders are on', body: 'This is what a reminder looks like.', tag: 'test', url: '#/settings' },
+        now(),
+        fetchImpl,
+        env.VAPID_SUBJECT,
+      );
+      if (result === 'gone') await deleteRegistration(env.DAYS, reg.subscription.endpoint);
+      return result === 'sent'
+        ? json({ ok: true })
+        : json({ error: result === 'gone' ? 'The phone’s subscription has expired — turn reminders off and on again.' : 'The push service refused the message.' }, 502);
     }
   }
 

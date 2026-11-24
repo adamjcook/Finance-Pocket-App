@@ -12,7 +12,8 @@ import {
 } from '../logic/progress';
 import { formatMoney } from '../logic/money';
 import { dashboardSummary } from '../logic/wisdom';
-import type { DashboardSectionKey } from '../model/types';
+import { GROWTH_KINDS, type DashboardSectionKey } from '../model/types';
+import { latestBalances } from '../model/repo';
 import { Chart } from './components/Chart';
 import { ProgressRing } from './components/ProgressRing';
 import { TypedText } from './components/TypedText';
@@ -22,6 +23,7 @@ const SECTION_META: Record<DashboardSectionKey, { heading: string }> = {
   growth: { heading: 'Savings & investments' },
   debt: { heading: 'Credit card debt' },
   loans: { heading: 'Loans' },
+  goals: { heading: 'Goals' },
 };
 
 interface Drag {
@@ -95,6 +97,23 @@ export function Dashboard() {
       ? monthlyToTarget(growth.current, savingsTarget, 'up', savingsTargetDate, today)
       : null;
 
+  // Savings/investment pots with their own goal (set on the account form).
+  const balances = latestBalances(state);
+  const pots = state.accounts
+    .filter((a) => !a.archived && GROWTH_KINDS.includes(a.kind) && (a.goalMinor ?? 0) > 0)
+    .map((a) => {
+      const current = balances.get(a.id)?.balance ?? 0;
+      const goal = a.goalMinor!;
+      return {
+        account: a,
+        current,
+        goal,
+        pct: Math.max(0, Math.min(100, (current / goal) * 100)),
+        monthly: monthlyToTarget(current, goal, 'up', a.goalDate ?? null, today),
+      };
+    })
+    .sort((x, y) => y.pct - x.pct);
+
   // Trading 212 link: the linked account's move on its latest day, and its
   // overall gain from the Worker's latest reading.
   const t212Link = settings.t212;
@@ -123,7 +142,9 @@ export function Dashboard() {
   });
 
   const reordering = dragKey !== null;
-  const baseVisible = device.dashboardOrder.filter((k) => k !== 'loans' || showLoans);
+  const baseVisible = device.dashboardOrder.filter(
+    (k) => (k !== 'loans' || showLoans) && (k !== 'goals' || pots.length > 0),
+  );
   // The rendered order stays fixed at the pre-drag order for the whole drag:
   // Chromium silently releases pointer capture when the captured element is
   // moved in the DOM (which is exactly what reordering a keyed list node
@@ -223,6 +244,44 @@ export function Dashboard() {
               payoff together.
             </p>
           )}
+        </div>
+      );
+    }
+    if (key === 'goals') {
+      return (
+        <div class="dash-body pots">
+          {pots.map((p) => (
+            <div class="pot" key={p.account.id}>
+              <div class="pot-head">
+                <span class="pot-name">{p.account.name}</span>
+                <span class="pot-figures num">
+                  <strong>{formatMoney(p.current, currency)}</strong> of {formatMoney(p.goal, currency)}
+                </span>
+              </div>
+              <div class="goal-bar" role="img" aria-label={`${p.account.name}: ${p.pct.toFixed(0)}% of goal`}>
+                <span style={`width:${p.pct}%`} />
+              </div>
+              <div class="pot-note">
+                {p.current >= p.goal ? (
+                  <span class="positive">Goal reached 🎉</span>
+                ) : (
+                  <>
+                    {formatMoney(p.goal - p.current, currency)} to go
+                    {p.account.goalDate &&
+                      (p.monthly !== null ? (
+                        <>
+                          {' '}
+                          · about <strong class="num">{formatMoney(p.monthly, currency)}/month</strong> to
+                          reach it by {formatDay(p.account.goalDate)}
+                        </>
+                      ) : (
+                        <> · goal date {formatDay(p.account.goalDate)} has passed</>
+                      ))}
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       );
     }

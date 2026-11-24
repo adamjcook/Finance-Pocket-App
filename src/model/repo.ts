@@ -32,6 +32,9 @@ export interface NewAccount {
   kind: AccountKind;
   owner: Owner;
   openingBalance: number | null; // minor units; creates the first snapshot
+  goalMinor?: number | null;
+  goalDate?: string | null;
+  promoEndsOn?: string | null;
 }
 
 export function addAccount(state: SyncedState, ctx: Ctx, input: NewAccount): { state: SyncedState; account: Account } {
@@ -43,6 +46,9 @@ export function addAccount(state: SyncedState, ctx: Ctx, input: NewAccount): { s
     kind: input.kind,
     owner: input.owner,
     archived: false,
+    goalMinor: input.goalMinor ?? null,
+    goalDate: input.goalDate ?? null,
+    promoEndsOn: input.promoEndsOn ?? null,
     createdAt: meta.updatedAt,
     ...meta,
   };

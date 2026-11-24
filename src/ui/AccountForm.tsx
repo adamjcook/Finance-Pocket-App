@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import { useApp, mutate, getStore } from '../model/store';
 import { addAccount, updateAccount } from '../model/repo';
 import type { AccountKind, Owner } from '../model/types';
-import { ACCOUNT_KIND_LABELS, OWED_KINDS } from '../model/types';
+import { ACCOUNT_KIND_LABELS, GROWTH_KINDS, OWED_KINDS } from '../model/types';
 import { MoneyInput } from './components/MoneyInput';
 import { currencySymbol } from '../logic/money';
 import { navigate } from '../router';
@@ -21,6 +21,9 @@ export function AccountForm({ id }: Props) {
   const [kind, setKind] = useState<AccountKind>(existing?.kind ?? 'credit_card');
   const [owner, setOwner] = useState<Owner>(existing?.owner ?? 'joint');
   const [opening, setOpening] = useState<number | null>(null);
+  const [goalMinor, setGoalMinor] = useState<number | null>(existing?.goalMinor ?? null);
+  const [goalDate, setGoalDate] = useState(existing?.goalDate ?? '');
+  const [promoEndsOn, setPromoEndsOn] = useState(existing?.promoEndsOn ?? '');
 
   if (!app) return null;
   if (id && !existing) return <p class="empty">Account not found.</p>;
@@ -30,9 +33,22 @@ export function AccountForm({ id }: Props) {
     if (!name.trim()) return;
     const { device } = getStore();
     const ctx = { deviceId: device.deviceId };
+    // Only keep the extras that apply to this kind of account.
+    const isPot = GROWTH_KINDS.includes(kind);
+    const extras = {
+      goalMinor: isPot ? goalMinor : null,
+      goalDate: isPot && goalMinor !== null ? goalDate || null : null,
+      promoEndsOn: kind === 'credit_card' ? promoEndsOn || null : null,
+    };
     if (existing) {
       await mutate((s) =>
-        updateAccount(s, ctx, existing.id, { name: name.trim(), institution: institution.trim(), kind, owner }),
+        updateAccount(s, ctx, existing.id, {
+          name: name.trim(),
+          institution: institution.trim(),
+          kind,
+          owner,
+          ...extras,
+        }),
       );
     } else {
       await mutate((s) => addAccount(s, ctx, {
@@ -41,6 +57,7 @@ export function AccountForm({ id }: Props) {
         kind,
         owner,
         openingBalance: opening,
+        ...extras,
       }).state);
     }
     navigate('/accounts');
@@ -113,6 +130,40 @@ export function AccountForm({ id }: Props) {
             ))}
           </div>
         </div>
+        {GROWTH_KINDS.includes(kind) && (
+          <div class="field">
+            <span class="field-label">Goal for this pot</span>
+            <div class="row" style="gap:8px">
+              <MoneyInput
+                initial={goalMinor}
+                symbol={currencySymbol(state.settings.currency)}
+                placeholder="No goal"
+                ariaLabel="Goal amount"
+                onChange={setGoalMinor}
+                wide
+              />
+              <input
+                type="date"
+                aria-label="Reach the goal by"
+                value={goalDate}
+                disabled={goalMinor === null}
+                onInput={(e) => setGoalDate((e.target as HTMLInputElement).value)}
+              />
+            </div>
+            <p class="field-hint">Optional. Add a date and Home works out the monthly amount.</p>
+          </div>
+        )}
+        {kind === 'credit_card' && (
+          <label class="field">
+            <span>0% deal ends</span>
+            <input
+              type="date"
+              value={promoEndsOn}
+              onInput={(e) => setPromoEndsOn((e.target as HTMLInputElement).value)}
+            />
+            <p class="field-hint">Optional. You can get a reminder 30, 7 and 1 days before.</p>
+          </label>
+        )}
         {!existing && (
           <label class="field">
             <span>{OWED_KINDS.includes(kind) ? 'Amount owed today' : 'Balance today'}</span>

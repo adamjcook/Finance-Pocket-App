@@ -48,9 +48,13 @@ export function buildMockPayload(): SyncPayload {
     },
     accounts: [
       account('mock-cc-1', 'Barclaycard', 'Barclays', 'credit_card', 'A'),
-      account('mock-cc-2', 'Amex Gold', 'American Express', 'credit_card', 'B'),
+      { ...account('mock-cc-2', 'Amex Gold', 'American Express', 'credit_card', 'B'), promoEndsOn: day(-20).slice(0, 10) },
       account('mock-ln-1', 'Car Loan', 'Santander', 'loan', 'joint'),
-      account('mock-sv-1', 'Marcus Saver', 'Goldman Sachs', 'savings', 'joint'),
+      {
+        ...account('mock-sv-1', 'Wedding Fund', 'Marcus', 'savings', 'joint'),
+        goalMinor: 15000_00,
+        goalDate: day(-300).slice(0, 10),
+      },
       account('mock-iv-1', 'Vanguard ISA', 'Vanguard', 'investment', 'joint'),
     ],
     aliases: [],
@@ -64,7 +68,7 @@ export function buildMockPayload(): SyncPayload {
       snapshot('mock-sv-1', 5200_00, 180), snapshot('mock-iv-1', 8100_00, 180),
       snapshot('mock-sv-1', 6400_00, 120), snapshot('mock-iv-1', 8900_00, 120),
       snapshot('mock-sv-1', 7900_00, 60), snapshot('mock-iv-1', 9800_00, 60),
-      snapshot('mock-sv-1', 8750_00, 14), snapshot('mock-iv-1', 10900_00, 14),
+      snapshot('mock-sv-1', 8750_00, 14), snapshot('mock-iv-1', 10900_00, 40), // left stale on purpose
     ],
     voids: [],
   };

@@ -24,6 +24,16 @@ export interface Account extends Meta {
    */
   archivedAt?: ISOTime | null;
   createdAt: ISOTime;
+  /**
+   * Fields added after v1 shipped — records from older app versions lack
+   * them, so read sites treat undefined as null.
+   */
+  /** Savings/investment pot goal in minor units; null = no goal. */
+  goalMinor?: number | null;
+  /** Optional date (YYYY-MM-DD) to reach the pot goal by. */
+  goalDate?: string | null;
+  /** Credit cards: date (YYYY-MM-DD) the 0% deal ends; null = none. */
+  promoEndsOn?: string | null;
 }
 
 export interface AliasEpoch {
@@ -128,8 +138,25 @@ export const DEFAULT_PARTNER_B_COLOR = '#f2a65a';
 
 export type Theme = 'dark' | 'light';
 
-export type DashboardSectionKey = 'growth' | 'debt' | 'loans';
-export const DEFAULT_DASHBOARD_ORDER: DashboardSectionKey[] = ['growth', 'debt', 'loans'];
+export type DashboardSectionKey = 'growth' | 'goals' | 'debt' | 'loans';
+export const DEFAULT_DASHBOARD_ORDER: DashboardSectionKey[] = ['growth', 'goals', 'debt', 'loans'];
+
+/** Which reminders this phone wants (Settings → Reminders). */
+export interface ReminderPrefs {
+  monthly: boolean; // 1st of the month: update balances
+  promo: boolean; // a card's 0% deal is ending
+  drop: boolean; // the Trading 212 account fell 5%+ in a week
+}
+
+export const DEFAULT_REMINDER_PREFS: ReminderPrefs = { monthly: true, promo: true, drop: true };
+
+/** This phone's push-notification registration with the Worker. */
+export interface PushDeviceState {
+  enabled: boolean;
+  prefs: ReminderPrefs;
+  /** Fingerprint of what was last sent to the Worker, to resend only on change. */
+  sentHash: string | null;
+}
 
 /** Local-only device identity, sync bookkeeping, and display prefs. NEVER synced. */
 export interface DeviceState {
@@ -143,6 +170,8 @@ export interface DeviceState {
   dashboardOrder: DashboardSectionKey[];
   /** Last Trading 212 check on this phone (added later — absent until the first one). */
   t212?: T212DeviceStatus | null;
+  /** Reminder notifications on this phone (added later — absent until turned on). */
+  push?: PushDeviceState | null;
 }
 
 /** Everything that syncs between the two phones. */
