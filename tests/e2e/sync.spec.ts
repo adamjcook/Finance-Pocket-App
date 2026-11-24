@@ -402,8 +402,8 @@ test('Trading 212 link imports daily readings and shows the day and overall chan
 
   await page.goto('.#/settings');
   await page.getByLabel('Trading 212 linked account').selectOption({ label: 'Stocks ISA' });
-  await page.getByPlaceholder('https://…workers.dev').fill('https://t212.example');
-  await page.getByPlaceholder('https://…workers.dev').press('Tab');
+  await page.getByPlaceholder('Paste address').fill('https://t212.example');
+  await page.getByPlaceholder('Paste address').press('Tab');
   await page.getByPlaceholder('FINPAIR_TOKEN').fill('secret-token');
   await page.getByPlaceholder('FINPAIR_TOKEN').press('Tab');
   await page.getByRole('button', { name: 'Check now' }).click();

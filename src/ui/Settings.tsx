@@ -216,7 +216,7 @@ export function Settings() {
               inputMode="url"
               autoComplete="off"
               spellcheck={false}
-              placeholder="https://…workers.dev"
+              placeholder="Paste address"
               value={link.endpoint}
               onChange={(e) => saveLink({ endpoint: (e.target as HTMLInputElement).value.trim() })}
             />

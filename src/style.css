@@ -595,7 +595,15 @@ label.field > span:first-child,
 }
 
 .setting-row select {
+  /* A select is as wide as its longest option; let it shrink to the space
+     beside the label instead, cutting long account names off with "…". */
   width: auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   padding-right: 28px;
   background-position: right 6px center;
   text-align: right;
