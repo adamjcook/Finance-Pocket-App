@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 
 let shownThisLaunch = false;
 
-const ENTER_MS = 950; // circles meet by ~640ms, greeting settled by ~720ms
+const ENTER_MS = 850; // circles meet by ~640ms, greeting settled by ~720ms
 const EXIT_MS = 380;
 const EASE_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
 
@@ -60,6 +60,7 @@ export function Splash({ ready, names }: Props) {
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const target = document.querySelector<HTMLElement>('.app-logo, .welcome-logo');
     const anims: Animation[] = [];
+    el.classList.add('splash-handoff');
 
     if (target && !reduce) {
       // FLIP the mark onto the logo of the screen underneath (Home's header, or
@@ -75,9 +76,17 @@ export function Splash({ ready, names }: Props) {
         [{ transform: 'none' }, { transform: `translate(${dx}px, ${dy}px) scale(${s})` }],
         { duration: EXIT_MS + 80, easing: EASE_OUT, fill: 'forwards' },
       );
-      fly.finished.then(() => (target.style.visibility = ''), () => (target.style.visibility = ''));
+      const land = () => {
+        target.style.visibility = '';
+        // The first-run logo carries a drop shadow the flown mark doesn't:
+        // let it settle in rather than pop.
+        const shadow = getComputedStyle(target).boxShadow;
+        if (shadow && shadow !== 'none') {
+          target.animate([{ boxShadow: 'none' }, { boxShadow: shadow }], { duration: 200, easing: 'ease-out' });
+        }
+      };
+      fly.finished.then(land, land);
       anims.push(fly);
-      el.classList.add('splash-handoff');
     }
     // Fade the backdrop, not the whole overlay: the flying mark must stay
     // solid until it sits exactly on the real logo, which then takes over.

@@ -765,7 +765,7 @@ label.field > span:first-child,
 .app-logo {
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: 22.66%; /* the icon's own corner (rx 116/512) */
   flex: none;
 }
 
@@ -1169,7 +1169,7 @@ label.field > span:first-child,
 .welcome-logo {
   width: 72px;
   height: 72px;
-  border-radius: 20px;
+  border-radius: 22.66%; /* the icon's own corner (rx 116/512), so the splash lands cleanly */
   margin-bottom: 26px;
   box-shadow: var(--overlay-shadow);
 }
@@ -1506,7 +1506,8 @@ label.field > span:first-child,
   text-wrap: balance;
 }
 
-/* During the hand-off the mark flies to the header; the greeting goes first. */
+/* On leaving, the greeting fades first (on every exit path). Its entrance
+   animations fill backwards only, so this transition is free to run. */
 .splash-handoff .splash-greeting {
   opacity: 0;
   transition: opacity 120ms ease-out;
@@ -1529,7 +1530,7 @@ label.field > span:first-child,
   }
 
   .splash-greeting {
-    animation: splash-greet 420ms cubic-bezier(0.16, 1, 0.3, 1) 300ms both;
+    animation: splash-greet 420ms cubic-bezier(0.16, 1, 0.3, 1) 300ms backwards;
   }
 
   /* tapped: jump straight to the finished mark, then hand off */
@@ -1544,7 +1545,7 @@ label.field > span:first-child,
 
 @media (prefers-reduced-motion: reduce) {
   .splash-greeting {
-    animation: splash-fade 300ms ease-out both;
+    animation: splash-fade 300ms ease-out backwards;
   }
 }
 
