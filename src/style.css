@@ -33,7 +33,7 @@
   --gutter: 20px;
   --tabbar-h: 58px;
 
-  /* Type roles. One family (Inter Variable); each role is a size the eye can
+  /* Type roles. One family (Figtree Variable); each role is a size the eye can
      tell apart from its neighbours, named for its job rather than its value.
      Pixels on purpose: the app is phone-only and the layout is tuned to them. */
   --fs-display: 44px; /* net worth, first-run wordmark */
@@ -93,11 +93,10 @@ body {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Figtree Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: var(--fs-body);
   font-weight: var(--fw-body);
   line-height: 1.45;
-  font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;

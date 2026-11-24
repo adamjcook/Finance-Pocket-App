@@ -38,7 +38,7 @@ There's no server and no cloud account. All data lives on the two phones, and th
 - JSON backup export and import.
 - Optional `finpair-t212` Cloudflare Worker: daily 9pm reading of one Trading 212 account, plus web-push reminders. It's the only thing that leaves the phones.
 - Dev build (`develop` branch, workers.dev) has a yellow "DEV BUILD" banner and mock data. Production is GitHub Pages from `main`.
-- Stack: Vite, TypeScript, Preact, IndexedDB (`idb`), `qrcode` and `jsqr` (or BarcodeDetector), `vite-plugin-pwa`. Font: Inter Variable.
+- Stack: Vite, TypeScript, Preact, IndexedDB (`idb`), `qrcode` and `jsqr` (or BarcodeDetector), `vite-plugin-pwa`. Font: Figtree Variable (chosen Nov 2026, replacing Inter).
 - Terminology in use: Home, Accounts, Update, Sync, Settings, Goals, alias, check code, "Show my data", "Scan partner's screen", "0% deal ends", "Whose is it?".
 
 ## Brand Commitments
