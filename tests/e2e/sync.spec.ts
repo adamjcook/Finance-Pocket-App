@@ -71,26 +71,35 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await expect(page.getByText('£3,000.00').first()).toBeVisible();
   await expect(page.getByText('£1,000.00').first()).toBeVisible();
 
-  // Pay down the card via the rapid update flow
-  await page.goto('.#/update');
+  // Pay down the card via the Accounts page's update mode
+  await page.goto('.#/accounts');
+  await page.getByRole('button', { name: 'Update', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Update' })).toBeVisible();
   const cardInput = page
     .locator('.account-row', { hasText: 'Barclaycard' })
     .getByPlaceholder('0.00');
   await cardInput.fill('1500');
   await page.getByRole('button', { name: /Save 1 update/ }).click();
+  // Saving returns to the list, showing the new balance.
+  await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
+  await expect(page.locator('.account-row', { hasText: 'Barclaycard' })).toContainText('£1,500.00');
 
+  await page.goto('.#/');
   await expect(page.getByRole('heading', { name: 'FinPair' })).toBeVisible();
   await expect(page.locator('.subtitle', { hasText: 'Adam & Sam' })).toBeVisible();
   await expect(page.getByText('£1,500.00').first()).toBeVisible();
   await expect(page.getByRole('img', { name: '50% paid off' })).toBeVisible(); // half of the £3,000 peak
   await expect(page.getByText('£1,500.00 of £3,000.00 paid off')).toBeVisible();
 
-  // Inline balance edit from the accounts list
+  // A second change through the Update button; balances on the list are plain text
   await page.goto('.#/accounts');
-  await page.locator('.account-row', { hasText: 'Marcus Saver' }).getByRole('button', { name: '£1,000.00' }).click();
-  await page.locator('.account-row', { hasText: 'Marcus Saver' }).locator('input').fill('1250');
-  await page.locator('.account-row', { hasText: 'Marcus Saver' }).getByRole('button', { name: 'Save balance' }).click();
-  await expect(page.getByRole('button', { name: '£1,250.00' })).toBeVisible();
+  await expect(page.locator('.account-row', { hasText: 'Marcus Saver' }).getByRole('button', { name: '£1,000.00' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Update', exact: true }).click();
+  await page.getByLabel('New balance for Marcus Saver').fill('1250');
+  await page.getByRole('button', { name: /Save 1 update/ }).click();
+  await expect(page.locator('.account-row', { hasText: 'Marcus Saver' })).toContainText('£1,250.00');
+  // The tab bar no longer has a separate Update tab.
+  await expect(page.locator('.tabbar .tab')).toHaveText(['Home', 'Accounts', 'Sync', 'Settings']);
 
   // A loan gets its own dashboard card and stays out of the card-payoff goal
   await addAccount(page, 'Car Loan', 'Loan', '9000');
@@ -380,7 +389,7 @@ test('Trading 212 link imports daily readings and shows the day and overall chan
   // The ISA's balance follows the latest reading, and it's marked as automatic.
   await page.goto('.#/accounts');
   const row = page.locator('.account-row', { hasText: 'Stocks ISA' });
-  await expect(row.getByRole('button', { name: '£10,120.50' })).toBeVisible();
+  await expect(row).toContainText('£10,120.50');
   await expect(row.getByText('Auto')).toBeVisible();
 
   // Home: the move on the day (+£120.50) and the overall gain (+£1,120.50, 12.4%).

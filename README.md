@@ -13,8 +13,8 @@ offline. The two phones stay in sync by literally showing each other QR codes.
 
 **Built for how you actually bank**
 
-- *Fast balance updates*: one screen lists every account with its current figure — type the
-  new ones, hit save. Or tap any balance in the accounts list to edit it inline.
+- *Fast balance updates*: on the Accounts page, tap **Update** and every
+  account becomes an input — type the new figures for what's changed, hit save.
 - *Aliases for bank-switchers*: create an alias like "Main Savings" and point it at whichever
   real account currently plays that role. When you switch banks, add the new account and
   re-point the alias — its history and chart carry straight on, and the old account is archived.
