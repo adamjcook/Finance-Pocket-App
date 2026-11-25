@@ -210,6 +210,11 @@ export interface RelayDeviceState {
   pushedHash?: string | null;
   /** The partner copy last merged, per phone (its upload time). */
   seen?: Record<string, string>;
+  /**
+   * Fingerprint (check code) of the partner's latest copy, so Home can say
+   * whether the two phones hold the same data without asking the other one.
+   */
+  partnerHash?: string | null;
   /** Last time the partner's copy was checked, and any problem doing so. */
   checkedAt?: string | null;
   error?: string | null;

@@ -20,7 +20,7 @@ import { whenSplashGone } from './components/Splash';
 import { LogoMark } from './components/LogoMark';
 import { Confetti } from './components/Confetti';
 import { navigate } from '../router';
-import { CheckInCard, NewsLine, PaydayCard } from './components/HomeCards';
+import { CheckInCard, NewsLine, PaydayCard, SyncLine } from './components/HomeCards';
 import { GROWTH_KINDS, OWED_KINDS, type DashboardSectionKey } from '../model/types';
 import { latestBalances } from '../model/repo';
 import { Chart } from './components/Chart';
@@ -192,6 +192,7 @@ export function Dashboard() {
 
   const reordering = dragKey !== null || editing;
   const names = `${settings.partnerAName} & ${settings.partnerBName}`;
+  const changeWindow = checkIn ? 'since the last update' : 'last 30 days';
   // For a check-in that went the wrong way: one line of what's still true.
   const perspective =
     debt.pct >= 1
@@ -330,7 +331,7 @@ export function Dashboard() {
                   <div class="figure-caption positive num" style="margin-top:8px;font-weight:550">
                     {formatMoneyWhole(debt.paidOff, currency)} of {formatMoneyWhole(debt.baseline, currency)} paid off
                   </div>
-                  {debt.delta30 !== 0 && <DebtChange change={debt.delta30} currency={currency} />}
+                  <Change change={checkIn ? checkIn.cardChange : debt.delta30} goodWhen="down" window={changeWindow} currency={currency} />
                 </div>
               </div>
               <Chart series={debt.series} currency={currency} color="var(--debt)" />
@@ -396,7 +397,7 @@ export function Dashboard() {
               <div class="figure-caption positive num" style="margin-top:8px;font-weight:550">
                 {formatMoneyWhole(loans.paidOff, currency)} of {formatMoneyWhole(loans.baseline, currency)} paid off
               </div>
-              {loans.delta30 !== 0 && <DebtChange change={loans.delta30} currency={currency} />}
+              <Change change={checkIn ? checkIn.loanChange : loans.delta30} goodWhen="down" window={changeWindow} currency={currency} />
             </div>
           </div>
           {loans.series.length > 1 && (
@@ -406,7 +407,6 @@ export function Dashboard() {
         </div>
       );
     }
-    const up = growth.delta30 >= 0;
     return (
       <div class="dash-body">
         {growth.series.length > 0 ? (
@@ -416,15 +416,13 @@ export function Dashboard() {
                 <div class="big-number">{formatMoneyWhole(growth.current, currency)}</div>
                 <div class="figure-caption">combined savings &amp; investments</div>
               </div>
-              {growth.delta30 !== 0 && (
-                <div>
-                  <span class={`delta ${up ? 'delta-up' : 'delta-down'}`}>
-                    <Icon name={up ? 'up' : 'down'} />
-                    {formatMoneyWhole(Math.abs(growth.delta30), currency)}
-                  </span>
-                  <div class="delta-note">last 30 days</div>
-                </div>
-              )}
+              <Change
+                change={checkIn ? checkIn.savingsChange : growth.delta30}
+                goodWhen="up"
+                window={changeWindow}
+                currency={currency}
+                stacked
+              />
             </div>
             {t212Account && (t212Day || t212Latest) && (
               <div class="mini-stats">
@@ -507,6 +505,7 @@ export function Dashboard() {
           </div>
         )}
         {lastUpdate && <div class="hero-note">Balances as of {formatDay(lastUpdate)}</div>}
+        {hasAccounts && <SyncLine state={state} device={device} />}
       </section>
 
       {!hasAccounts && (
@@ -593,16 +592,45 @@ export function Dashboard() {
   );
 }
 
-/** A debt total's 30-day move: going down is good news, so it gets the teal. */
-function DebtChange({ change, currency }: { change: number; currency: string }) {
-  const down = change < 0;
-  return (
+/**
+ * A total's recent move. Teal only for good news (debt down, savings up);
+ * a move the wrong way is stated plainly in neutral grey, never dressed up.
+ * The window is "since the last update" while a check-in is showing, so the
+ * cards can't contradict the card above them; otherwise the last 30 days.
+ */
+function Change({
+  change,
+  goodWhen,
+  window,
+  currency,
+  stacked = false,
+}: {
+  change: number;
+  goodWhen: 'up' | 'down';
+  window: string;
+  currency: string;
+  /** Pill above its note (beside a figure) rather than in a row with it. */
+  stacked?: boolean;
+}) {
+  if (change === 0) return null;
+  const up = change > 0;
+  const good = goodWhen === 'up' ? up : !up;
+  const pill = (
+    <span class={`delta ${good ? 'delta-up' : 'delta-flat'}`}>
+      <Icon name={up ? 'up' : 'down'} />
+      <span class="visually-hidden">{up ? 'up ' : 'down '}</span>
+      {formatMoneyWhole(Math.abs(change), currency)}
+    </span>
+  );
+  return stacked ? (
+    <div>
+      {pill}
+      <div class="delta-note">{window}</div>
+    </div>
+  ) : (
     <div class="debt-change">
-      <span class={`delta ${down ? 'delta-up' : 'delta-flat'}`}>
-        <Icon name={down ? 'down' : 'up'} />
-        {formatMoneyWhole(Math.abs(change), currency)}
-      </span>
-      <span class="delta-note">last 30 days</span>
+      {pill}
+      <span class="delta-note">{window}</span>
     </div>
   );
 }

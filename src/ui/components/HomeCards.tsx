@@ -1,4 +1,6 @@
-import { useEffect } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
+import { stateHash } from '../../logic/merge';
+import { workerReady } from '../../integrations/t212';
 import type { CheckIn } from '../../logic/checkin';
 import type { DeviceState, SyncedState } from '../../model/types';
 import {
@@ -192,5 +194,73 @@ export function NewsLine({ state, device, today, hidden }: { state: SyncedState;
         <Icon name="x" size={18} />
       </button>
     </section>
+  );
+}
+
+/**
+ * One quiet line under net worth saying whether the two phones agree — the
+ * "one honest picture" made visible. It only claims what this phone can know:
+ * the partner's last copy matching, this phone's changes sent but not yet
+ * picked up, or not sent at all.
+ */
+export function SyncLine({ state, device }: { state: SyncedState; device: DeviceState }) {
+  const [hash, setHash] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    void stateHash(state).then((h) => live && setHash(h));
+    return () => {
+      live = false;
+    };
+  }, [state]);
+  if (!hash) return null;
+
+  const { partnerAName, partnerBName } = state.settings;
+  const partner = device.me === 'A' ? partnerBName : device.me === 'B' ? partnerAName : null;
+  const theirPhone = partner ? `${partner}’s phone` : 'your partner’s phone';
+  const relay = device.relay;
+  const auto = !!relay?.key && relay.enabled !== false && workerReady(state.settings.t212);
+  const when = (iso: string) => {
+    const mins = Math.round((Date.now() - Date.parse(iso)) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
+    const day = iso.slice(0, 10);
+    return day === new Date().toISOString().slice(0, 10)
+      ? `today at ${new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+      : `on ${formatDay(day)}`;
+  };
+
+  let text: string;
+  let agreed = false;
+  if (auto) {
+    if (relay!.partnerHash === hash) {
+      agreed = true;
+      text = `Same on ${theirPhone}${relay!.checkedAt ? ` · checked ${when(relay!.checkedAt)}` : ''}`;
+    } else if (relay!.error) {
+      text = `Couldn’t check ${theirPhone}`;
+    } else if (relay!.pushedHash === hash) {
+      text = `Sent to ${theirPhone}: it updates next time FinPair opens there`;
+    } else {
+      text = `Not on ${theirPhone} yet`;
+    }
+  } else if (device.lastSyncAt) {
+    agreed = device.lastSyncStateHash === hash;
+    text = agreed
+      ? `Same as ${theirPhone} · synced ${when(device.lastSyncAt)}`
+      : `Changed since you last synced with ${theirPhone.replace('’s phone', '')}`;
+  } else {
+    text = `Not synced with ${theirPhone} yet`;
+  }
+
+  return agreed ? (
+    <p class="sync-line agreed">
+      <Icon name="check" size={14} />
+      {text}
+    </p>
+  ) : (
+    <a class="sync-line" href="#/sync">
+      <Icon name="sync" size={14} />
+      {text}
+      <span class="sync-line-action">Sync</span>
+    </a>
   );
 }

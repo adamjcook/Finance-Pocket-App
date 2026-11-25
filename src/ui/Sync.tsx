@@ -159,17 +159,10 @@ export function Sync() {
             ? `On · checked ${ago(relay.checkedAt)}`
             : 'On · checks when FinPair opens';
 
-  return (
-    <div>
-      <header class="page-header" style="display:block">
-        <h1>Sync</h1>
-        <p class="lede">
-          {autoOn
-            ? 'Your phones keep each other up to date through your Worker. Sync by QR code to link a new phone, or if they ever disagree.'
-            : 'Sit together — one phone shows, the other scans. No internet involved.'}
-        </p>
-      </header>
-
+  // Until there's a Worker, automatic sync can't be switched on, so the way
+  // that works today (QR) comes first and this sits below it as a pointer.
+  const autoSection = (
+    <>
       <section class="group">
         <h2 class="group-label">Automatic sync</h2>
         <div class="list">
@@ -213,8 +206,23 @@ export function Sync() {
           the key stays on your two phones, and travels between them only in the QR codes.
         </p>
       </section>
+    </>
+  );
 
-      <h2 class="group-label qr-label">By QR code</h2>
+  return (
+    <div>
+      <header class="page-header" style="display:block">
+        <h1>Sync</h1>
+        <p class="lede">
+          {autoOn
+            ? 'Your phones keep each other up to date through your Worker. Sync by QR code to link a new phone, or if they ever disagree.'
+            : 'Sit together — one phone shows, the other scans. No internet involved.'}
+        </p>
+      </header>
+
+      {hasWorker && autoSection}
+
+      <h2 class={`group-label ${hasWorker ? 'qr-label' : ''}`}>By QR code</h2>
       <div class="stack">
         <button class="action-tile primary" onClick={() => void startShow(null)}>
           <span class="tile-icon">
@@ -237,6 +245,8 @@ export function Sync() {
           <Icon name="chevron" size={18} class="row-chevron" />
         </button>
       </div>
+
+      {!hasWorker && autoSection}
 
       <section class="group" style="margin-top:28px">
         <h2 class="group-label">How it works</h2>
