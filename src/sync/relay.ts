@@ -123,14 +123,17 @@ export async function pullNow(): Promise<boolean> {
     const { slots } = await call<{ slots: Slot[] }>(state.settings.t212!, `/relay?channel=${channel}`);
     let merged = false;
     const seen = { ...(relay.seen ?? {}) };
+    let partnerHash = relay.partnerHash ?? null;
     for (const slot of slots) {
       if (slot.deviceId === device.deviceId || seen[slot.deviceId] === slot.at) continue;
-      await applyPayload(await decryptPayload(relay.key, slot.iv, slot.data));
+      const payload = await decryptPayload(relay.key, slot.iv, slot.data);
+      partnerHash = await stateHash(payload);
+      await applyPayload(payload);
       seen[slot.deviceId] = slot.at;
       merged = true;
     }
     await patchDevice({
-      relay: { ...getStore().device.relay!, seen, checkedAt: new Date().toISOString(), error: null },
+      relay: { ...getStore().device.relay!, seen, partnerHash, checkedAt: new Date().toISOString(), error: null },
     });
     return merged;
   } catch (err) {

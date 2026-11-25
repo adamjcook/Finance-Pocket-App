@@ -183,6 +183,10 @@ test('second phone joins via setup and owners stay consistent (no flip)', async 
   const hashB = await phoneB.evaluate(() => window.__syncTest.stateHash());
   expect(hashA).toBe(hashB);
 
+  // Home says the phones agree, as of that sync.
+  await phoneA.goto('.#/');
+  await expect(phoneA.locator('.sync-line')).toContainText('Same as Sam’s phone · synced just now');
+
   // Settings names the two of you from each phone's own side. A set up, so
   // it already knows it's Adam's; B (joined through the test hook rather than
   // the scanner) asks once, then says "You" for Sam.
@@ -718,11 +722,37 @@ test('automatic sync: after one QR handshake, updates reach the other phone thro
   await expect(card).toContainText('down £400');
   await expect(phoneB.locator('.dash-section', { hasText: 'Credit card debt' }).locator('.big-number')).toHaveText('£2,600');
 
-  // …and Sam's phone publishes its merged copy back, so the two agree.
+  // …and Sam's phone publishes its merged copy back, so the two agree —
+  // which Adam's Home then says, once it has seen Sam's copy.
   await expect.poll(() => slots.size, { timeout: 10000 }).toBe(2);
+  await phoneA.goto('.#/');
+  await phoneA.reload();
+  await expect(phoneA.locator('.sync-line')).toContainText('Same on Sam’s phone', { timeout: 10000 });
   await phoneB.goto('.#/sync');
   await expect(phoneB.getByText(/On · checked/)).toBeVisible();
 
   await contextA.close();
   await contextB.close();
+});
+
+test('a month that went the wrong way: the cards agree with the check-in, in plain grey', async ({ page }) => {
+  await completeSetup(page, 'Adam', 'Sam');
+  await addAccount(page, 'Barclaycard', 'Credit card', '1000');
+  await addAccount(page, 'Marcus Saver', 'Savings', '500');
+  await page.goto('.#/update');
+  await page.getByLabel('New balance for Barclaycard').fill('1300');
+  await page.getByRole('button', { name: /Save 1 update/ }).click();
+
+  await expect(page.locator('.checkin')).toContainText('up £300');
+  // The debt card reports the same move over the same window — not a
+  // 30-day figure that could say something different — and not in teal.
+  const cards = page.locator('.dash-section', { hasText: 'Credit card debt' });
+  await expect(cards.locator('.debt-change')).toContainText('£300');
+  await expect(cards.locator('.debt-change')).toContainText('since the last update');
+  await expect(cards.locator('.delta')).toHaveClass(/delta-flat/);
+  // Savings didn't move in this update, so no chip at all.
+  await expect(page.locator('.dash-section', { hasText: 'Savings & investments' }).locator('.delta')).toHaveCount(0);
+  // Not synced yet: Home says so, with a way to fix it.
+  await expect(page.locator('.sync-line')).toContainText('Not synced with');
+  await expect(page.locator('.sync-line')).toHaveAttribute('href', '#/sync');
 });

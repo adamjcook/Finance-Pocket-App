@@ -1634,6 +1634,30 @@ label.field > span:first-child,
   margin: 12px 0 -6px -14px;
 }
 
+/* Whether the two phones agree: quiet when they do, a way to fix it when not. */
+.sync-line {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+  min-height: 32px;
+  font-size: var(--fs-footnote);
+  color: var(--text-2);
+  text-decoration: none;
+}
+
+.sync-line.agreed .icon {
+  color: var(--accent);
+}
+
+.sync-line-action {
+  color: var(--text);
+  font-weight: var(--fw-strong);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .hero-note {
   margin-top: 6px;
   font-size: var(--fs-footnote);
