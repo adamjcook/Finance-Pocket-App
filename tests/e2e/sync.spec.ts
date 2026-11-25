@@ -84,10 +84,10 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   const checkIn = page.locator('.checkin');
   await expect(checkIn.getByRole('heading', { name: 'Nicely done, Adam & Sam' })).toBeVisible();
   await expect(checkIn).toContainText('Card debt');
-  await expect(checkIn).toContainText('down £1,500.00');
+  await expect(checkIn).toContainText('down £1,500');
   await expect(checkIn.getByRole('button', { name: 'Undo this update' })).toBeVisible();
   // Net worth went up, so Home celebrates it — once.
-  await expect(page.locator('.net-gain')).toHaveText('£1,500.00 since your last update');
+  await expect(page.locator('.net-gain')).toHaveText('£1,500 since the last update');
   await expect(page.locator('.app-logo.celebrate')).toHaveCount(1);
   // The confetti appears as the count lands, then cleans up after itself.
   await expect(page.locator('canvas.confetti')).toHaveCount(1);
@@ -98,9 +98,10 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await page.goto('.#/');
   await expect(page.getByRole('heading', { name: 'FinPair' })).toBeVisible();
   await expect(page.locator('.subtitle', { hasText: 'Adam & Sam' })).toBeVisible();
-  await expect(page.getByText('£1,500.00').first()).toBeVisible();
+  // Home shows whole pounds throughout.
+  await expect(page.locator('.big-number', { hasText: '£1,500' })).toBeVisible();
   await expect(page.getByRole('img', { name: '50% paid off' })).toBeVisible(); // half of the £3,000 peak
-  await expect(page.getByText('£1,500.00 of £3,000.00 paid off')).toBeVisible();
+  await expect(page.getByText('£1,500 of £3,000 paid off')).toBeVisible();
 
   // A second change through the Update button; balances on the list are plain text
   await page.goto('.#/accounts');
@@ -108,7 +109,7 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await page.getByRole('button', { name: 'Update', exact: true }).click();
   await page.getByLabel('New balance for Marcus Saver').fill('1250');
   await page.getByRole('button', { name: /Save 1 update/ }).click();
-  await expect(page.locator('.checkin')).toContainText('up £250.00');
+  await expect(page.locator('.checkin')).toContainText('up £250');
   await page.goto('.#/accounts');
   await expect(page.locator('.account-row', { hasText: 'Marcus Saver' })).toContainText('£1,250.00');
   // The tab bar no longer has a separate Update tab.
@@ -120,9 +121,9 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await expect(page.getByText('still owed on loans')).toBeVisible();
   const loansCard = page.locator('.dash-section', { hasText: 'Loans' });
   await expect(loansCard.getByRole('img', { name: '0% paid off' })).toBeVisible(); // ring, like the cards'
-  await expect(loansCard).toContainText('£0.00 of £9,000.00 paid off');
-  await expect(page.getByText('£9,000.00').first()).toBeVisible();
-  await expect(page.getByText('£1,500.00').first()).toBeVisible(); // card debt unchanged
+  await expect(loansCard).toContainText('£0 of £9,000 paid off');
+  await expect(loansCard.locator('.big-number')).toHaveText('£9,000');
+  await expect(page.locator('.dash-section', { hasText: 'Credit card debt' }).locator('.big-number')).toHaveText('£1,500'); // unchanged
 
   // Goals live on each account: a pay-off date for the card and the loan.
   const year = new Date().getUTCFullYear() + 1;
@@ -133,13 +134,16 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
     await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
   }
+  // Each pay-off goal shows inside its own card, not in a separate Goals card.
   await page.goto('.#/');
-  const goals = page.locator('.dash-section', { hasText: 'Goals' });
-  await expect(goals).toContainText(`Pay off by 1 Jun ${year}`);
-  await expect(goals).toContainText(`Pay off by 1 Nov ${year}`);
-  await expect(goals).toContainText('£1,500.00 left');
-  await expect(goals.getByRole('img', { name: 'Barclaycard: 50% paid off' })).toBeVisible();
-  await expect(goals).toContainText(/about £[\d,.]+\/month/);
+  const cards = page.locator('.dash-section', { hasText: 'Credit card debt' });
+  const loans = page.locator('.dash-section', { hasText: 'still owed on loans' });
+  await expect(cards).toContainText(`Pay off by 1 Jun ${year}`);
+  await expect(cards).toContainText('£1,500 left');
+  await expect(cards.getByRole('img', { name: 'Barclaycard: 50% paid off' })).toBeVisible();
+  await expect(cards).toContainText(/about £[\d,]+\/month/);
+  await expect(loans).toContainText(`Pay off by 1 Nov ${year}`);
+  await expect(page.locator('.dash-section', { hasText: 'Savings goals' })).toHaveCount(0);
 });
 
 test('second phone joins via setup and owners stay consistent (no flip)', async ({ browser }) => {
@@ -225,7 +229,7 @@ test('two phones converge through a full QR-frame sync round trip', async ({ bro
   for (const phone of [phoneA, phoneB]) {
     await phone.goto('.#/');
     await phone.reload();
-    await expect(phone.getByText('£5,000.00').first()).toBeVisible();
+    await expect(phone.locator('.dash-section', { hasText: 'Credit card debt' }).locator('.big-number')).toHaveText('£5,000');
     await expect(phone.getByText('left to clear')).toBeVisible();
   }
 
@@ -437,8 +441,8 @@ test('Trading 212 link imports daily readings and shows the day and overall chan
 
   // Home: the move on the day (+£120.50) and the overall gain (+£1,120.50, 12.4%).
   await page.goto('.#/');
-  await expect(page.locator('.mini-stats')).toContainText('+£120.50 today');
-  await expect(page.locator('.mini-stats')).toContainText('+£1,120.50 (12.4%) overall');
+  await expect(page.locator('.mini-stats')).toContainText('+£121 today');
+  await expect(page.locator('.mini-stats')).toContainText('+£1,121 (12.4%) overall');
 });
 
 test('pot goals on Home, 0% deal and stale-balance pills, and the Reminders section', async ({ page }) => {
@@ -457,10 +461,10 @@ test('pot goals on Home, 0% deal and stale-balance pills, and the Reminders sect
   await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
 
   await page.goto('.#/');
-  const goals = page.locator('.dash-section', { hasText: 'Goals' });
+  const goals = page.locator('.dash-section', { hasText: 'Savings goals' });
   await expect(goals).toContainText('Wedding Fund');
-  await expect(goals).toContainText('£2,000.00 of £10,000.00');
-  await expect(goals).toContainText('£8,000.00 to go');
+  await expect(goals).toContainText('£2,000 of £10,000');
+  await expect(goals).toContainText('£8,000 to go');
   await expect(goals).toContainText(`to reach it by 1 Jun ${nextYear}`);
   await expect(goals.getByRole('img', { name: 'Wedding Fund: 20% of goal' })).toBeVisible();
 
@@ -570,13 +574,20 @@ test('payday update: mistypes are caught, drafts survive a reload, and a check-i
 
   // A malformed amount says so in words and blocks saving.
   await input.fill('12a');
-  await expect(page.getByText('Not a valid amount')).toBeVisible();
+  await expect(page.getByText(/Not a valid amount\. Use numbers only/)).toBeVisible();
   await expect(input).toHaveAttribute('aria-invalid', 'true');
   await expect(page.getByRole('button', { name: 'Fix the amount in red first' })).toBeDisabled();
 
   // An extra zero gets a gentle double-check, but can still be saved.
   await input.fill('18000');
   await expect(page.locator('.row-warn')).toHaveText('£18,000.00? It was £1,800.00');
+  // …and pressing Save first asks for a second look, listing just that row.
+  const save = page.locator('.sticky-action > .btn-primary');
+  await expect(save).toHaveText('Save 1 update · 1 to double-check');
+  await save.click();
+  await expect(page.getByRole('alert')).toContainText('Double-check before saving');
+  await expect(page.getByRole('alert')).toContainText('Barclaycard£18,000.00 · was £1,800.00');
+  await expect(save).toHaveText('Save anyway');
 
   // A sensible figure survives the app being reloaded mid-update.
   await input.fill('1600');
@@ -585,9 +596,133 @@ test('payday update: mistypes are caught, drafts survive a reload, and a check-i
   await page.getByRole('button', { name: /Save 1 update/ }).click();
 
   const checkIn = page.locator('.checkin');
-  await expect(checkIn).toContainText('down £200.00');
+  await expect(checkIn).toContainText('down £200');
+  // The debt going down raised net worth: £1,800 owed → £1,600.
+  await expect(page.locator('.net-worth')).toContainText('−£1,600');
   await checkIn.getByRole('button', { name: 'Undo this update' }).click();
   await expect(checkIn.getByRole('heading', { name: 'Update undone' })).toBeVisible();
+  // Undo puts the headline back too: no stale figure or gain left on screen.
+  await expect(page.locator('.net-worth')).toContainText('−£1,800');
+  await expect(page.locator('.net-worth')).not.toContainText('−£1,600');
+  await expect(page.locator('.net-gain')).toHaveCount(0);
   await page.goto('.#/accounts');
   await expect(page.locator('.account-row', { hasText: 'Barclaycard' })).toContainText('£1,800.00');
+});
+
+test('the partner who did not do the update sees it too, after syncing', async ({ browser }) => {
+  const contextA = await browser.newContext();
+  const contextB = await browser.newContext();
+  const phoneA = await contextA.newPage();
+  const phoneB = await contextB.newPage();
+
+  // Adam's phone sets up (so it knows it's Adam's) and does a payday update.
+  await completeSetup(phoneA, 'Adam', 'Sam');
+  await addAccount(phoneA, 'Barclaycard', 'Credit card', '3000');
+  await phoneA.goto('.#/update');
+  await phoneA.getByLabel('New balance for Barclaycard').fill('2600');
+  await phoneA.getByRole('button', { name: /Save 1 update/ }).click();
+  await expect(phoneA.locator('.checkin')).toContainText('Since your last update');
+
+  // Sam's phone joins and syncs: same card, saying who did it, celebrating
+  // once (net worth went up), but with no Undo — that's Adam's to take back.
+  await phoneB.goto('.');
+  await expect(phoneB.getByRole('button', { name: "Join your partner's setup" })).toBeVisible();
+  const frames = await phoneA.evaluate(() => window.__syncTest.exportFrames());
+  await phoneB.evaluate((f) => window.__syncTest.importFrames(f), frames);
+  await phoneB.goto('.#/');
+  const card = phoneB.locator('.checkin');
+  await expect(card.getByRole('heading', { name: 'Nicely done, Adam & Sam' })).toBeVisible();
+  await expect(card).toContainText('Adam updated today');
+  await expect(card).toContainText('down £400');
+  await expect(card.getByRole('button', { name: 'Undo this update' })).toHaveCount(0);
+  await expect(phoneB.locator('.net-gain')).toHaveText('£400 since the last update');
+
+  // It survives the app being reopened, without celebrating again…
+  await phoneB.reload();
+  await expect(phoneB.locator('.checkin')).toContainText('Adam updated today');
+  await phoneB.waitForTimeout(2500);
+  await expect(phoneB.locator('.net-gain')).toHaveCount(0);
+  // …until this phone dismisses it.
+  await phoneB.locator('.checkin').getByRole('button', { name: 'Dismiss' }).click();
+  await expect(phoneB.locator('.checkin')).toHaveCount(0);
+  await phoneB.reload();
+  await expect(phoneB.locator('.dash-top')).toBeVisible();
+  await expect(phoneB.locator('.checkin')).toHaveCount(0);
+
+  await contextA.close();
+  await contextB.close();
+});
+
+test('automatic sync: after one QR handshake, updates reach the other phone through the Worker', async ({ browser }) => {
+  // A fake Worker shared by both phones: one encrypted slot per phone, plus a
+  // record of any "your partner updated" notification it was asked to send.
+  const slots = new Map<string, { deviceId: string; at: string; iv: string; data: string }>();
+  const notices: { title: string }[] = [];
+  const fakeWorker = async (route: import('@playwright/test').Route) => {
+    const req = route.request();
+    const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
+    if (req.method() === 'POST' && req.url().endsWith('/relay')) {
+      const body = req.postDataJSON() as { slot: { deviceId: string; at: string; iv: string; data: string }; notify?: { title: string } };
+      slots.set(body.slot.deviceId, body.slot);
+      if (body.notify) notices.push(body.notify);
+      return route.fulfill({ headers, body: JSON.stringify({ ok: true, notified: body.notify ? 1 : 0 }) });
+    }
+    if (req.method() === 'GET' && /\/relay\?channel=[0-9a-f]{32}$/.test(req.url())) {
+      return route.fulfill({ headers, body: JSON.stringify({ slots: [...slots.values()] }) });
+    }
+    return route.fulfill({ headers, status: 404, body: '{"error":"Not found."}' });
+  };
+
+  const contextA = await browser.newContext();
+  const contextB = await browser.newContext();
+  await contextA.route('https://relay.example/**', fakeWorker);
+  await contextB.route('https://relay.example/**', fakeWorker);
+  const phoneA = await contextA.newPage();
+  const phoneB = await contextB.newPage();
+
+  // Adam sets up, adds a card and points FinPair at the Worker.
+  await completeSetup(phoneA, 'Adam', 'Sam');
+  await addAccount(phoneA, 'Barclaycard', 'Credit card', '3000');
+  await phoneA.goto('.#/settings');
+  await phoneA.getByRole('button', { name: /Trading 212 and reminders/ }).click();
+  await phoneA.getByPlaceholder('Paste address').fill('https://relay.example');
+  await phoneA.getByPlaceholder('Paste address').press('Tab');
+  await phoneA.getByPlaceholder('FINPAIR_TOKEN').fill('secret-token');
+  await phoneA.getByPlaceholder('FINPAIR_TOKEN').press('Tab');
+
+  // Before linking, the Sync tab says what's needed.
+  await phoneA.goto('.#/sync');
+  await expect(phoneA.getByText('Sync once by QR code below to link the two phones.')).toBeVisible();
+
+  // One QR sync each way: Sam's phone joins, and the phones swap the key.
+  await phoneB.goto('.');
+  await expect(phoneB.getByRole('button', { name: "Join your partner's setup" })).toBeVisible();
+  await phoneB.evaluate((f) => window.__syncTest.importFrames(f), await phoneA.evaluate(() => window.__syncTest.exportFrames()));
+  await phoneA.evaluate((f) => window.__syncTest.importFrames(f), await phoneB.evaluate(() => window.__syncTest.exportFrames()));
+  await phoneA.reload();
+  await expect(phoneA.getByRole('switch', { name: 'Sync through your Worker' })).toHaveAttribute('aria-checked', 'true');
+
+  // Adam does a payday update: it goes straight up, with a note for Sam.
+  await phoneA.goto('.#/update');
+  await phoneA.getByLabel('New balance for Barclaycard').fill('2600');
+  await phoneA.getByRole('button', { name: /Save 1 update/ }).click();
+  await expect.poll(() => notices.map((n) => n.title)).toContain('Adam just updated the balances');
+  // The Worker only ever holds ciphertext.
+  for (const slot of slots.values()) expect(slot.data).not.toMatch(/Barclaycard|2600|260000/);
+
+  // Sam just opens FinPair: no QR codes, and Home tells the story.
+  await phoneB.goto('.#/');
+  await phoneB.reload();
+  const card = phoneB.locator('.checkin');
+  await expect(card).toContainText('Adam updated today');
+  await expect(card).toContainText('down £400');
+  await expect(phoneB.locator('.dash-section', { hasText: 'Credit card debt' }).locator('.big-number')).toHaveText('£2,600');
+
+  // …and Sam's phone publishes its merged copy back, so the two agree.
+  await expect.poll(() => slots.size, { timeout: 10000 }).toBe(2);
+  await phoneB.goto('.#/sync');
+  await expect(phoneB.getByText(/On · checked/)).toBeVisible();
+
+  await contextA.close();
+  await contextB.close();
 });

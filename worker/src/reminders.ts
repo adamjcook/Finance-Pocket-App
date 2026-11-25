@@ -17,6 +17,8 @@ export interface ReminderPrefs {
   monthly: boolean;
   promo: boolean;
   drop: boolean;
+  /** "Your partner just updated the balances" (automatic sync). Absent on older registrations = on. */
+  partner?: boolean;
 }
 
 export interface Promo {
@@ -29,6 +31,8 @@ export interface Registration {
   prefs: ReminderPrefs;
   promos: Promo[];
   t212Name: string | null;
+  /** The phone's automatic-sync pair (see relay.ts); partner notices stay within it. */
+  channel?: string | null;
   updatedAt: string;
 }
 
@@ -62,12 +66,18 @@ export function parseRegistration(body: unknown, now: Date): Registration {
   const promos = Array.isArray(b?.promos) ? b!.promos : [];
   return {
     subscription: { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } },
-    prefs: { monthly: p?.monthly !== false, promo: p?.promo !== false, drop: p?.drop !== false },
+    prefs: {
+      monthly: p?.monthly !== false,
+      promo: p?.promo !== false,
+      drop: p?.drop !== false,
+      partner: p?.partner !== false,
+    },
     promos: promos
       .filter((x): x is Promo => !!x && typeof x.name === 'string' && isDay(x.endsOn))
       .slice(0, 50)
       .map((x) => ({ name: x.name.slice(0, 80), endsOn: x.endsOn })),
     t212Name: typeof b?.t212Name === 'string' ? b.t212Name.slice(0, 80) : null,
+    channel: typeof b?.channel === 'string' && /^[0-9a-f]{16,64}$/.test(b.channel) ? b.channel : null,
     updatedAt: now.toISOString(),
   };
 }

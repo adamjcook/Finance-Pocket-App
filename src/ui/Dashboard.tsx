@@ -3,6 +3,7 @@ import { useApp, patchDevice } from '../model/store';
 import {
   effectiveSnapshots,
   debtProgress,
+  daysBetween,
   formatDay,
   growthProgress,
   lastManualUpdate,
@@ -12,9 +13,10 @@ import {
   toDay,
   todayISO,
 } from '../logic/progress';
-import { formatMoney, formatMoneyWhole } from '../logic/money';
+import { formatMoneyWhole } from '../logic/money';
 import { lastWorkingDay } from '../../worker/src/ukdates';
-import { takeCelebration, useLastCheckIn } from '../model/lastCheckIn';
+import { checkInFor, latestUpdateBatch } from '../logic/checkin';
+import { whenSplashGone } from './components/Splash';
 import { LogoMark } from './components/LogoMark';
 import { Confetti } from './components/Confetti';
 import { navigate } from '../router';
@@ -29,7 +31,7 @@ const SECTION_META: Record<DashboardSectionKey, { heading: string }> = {
   growth: { heading: 'Savings & investments' },
   debt: { heading: 'Credit card debt' },
   loans: { heading: 'Loans' },
-  goals: { heading: 'Goals' },
+  goals: { heading: 'Savings goals' },
 };
 
 interface Drag {
@@ -70,16 +72,45 @@ export function Dashboard() {
   // Reordering lives behind "Reorder cards" so the grips aren't on every card
   // all the time; it's done once in a while, not every visit.
   const [editing, setEditing] = useState(false);
-  const { checkIn, undone } = useLastCheckIn();
-  // Arriving Home from an update that raised net worth: play the moment once.
-  const [celebrating] = useState(() => takeCelebration());
-  const [confetti, setConfetti] = useState(celebrating);
+
+  // The latest payday update, from the shared history — so the partner who
+  // didn't do it sees the same card after syncing. Each phone keeps its own
+  // note of whether it has celebrated and whether it has dismissed it.
+  const [celebrating, setCelebrating] = useState(false);
+  const [confetti, setConfetti] = useState(false);
+  const day0 = toDay(todayISO());
+  const batch = app ? latestUpdateBatch(app.state) : null;
+  const memo = app && batch && app.device.checkIn?.key === batch.key ? app.device.checkIn : null;
+  const mine = !!app && !!batch && batch.deviceId === app.device.deviceId;
+  const showCheckIn =
+    !!batch && daysBetween(toDay(batch.at), day0) <= 10 && !memo?.dismissed && (!batch.voided || mine);
+  const checkIn = app && showCheckIn && !batch!.voided ? checkInFor(app.state, batch!, day0) : null;
+  const undone = showCheckIn && !!batch?.voided;
+  const shouldCelebrate = !!checkIn && checkIn.netChange > 0 && !memo?.celebrated;
+
+  // A better-off update plays its moment once per phone: on the saving phone
+  // on arriving Home, on the other the first time Home opens after syncing —
+  // after the welcome splash, so it isn't hidden behind it.
   useEffect(() => {
-    if (!celebrating) return;
-    // One light tap as the count lands, alongside the logo's pulse.
-    const t = setTimeout(() => navigator.vibrate?.(15), 1050);
-    return () => clearTimeout(t);
-  }, []);
+    if (!shouldCelebrate || !batch) return;
+    let live = true;
+    let buzz = 0;
+    whenSplashGone(() => {
+      if (!live) return;
+      setCelebrating(true);
+      setConfetti(true);
+      void patchDevice({ checkIn: { key: batch.key, celebrated: true, dismissed: false } });
+      // One light tap as the count lands, alongside the logo's pulse.
+      buzz = window.setTimeout(() => navigator.vibrate?.(15), 1050);
+    });
+    return () => {
+      live = false;
+      clearTimeout(buzz);
+    };
+  }, [batch?.key, shouldCelebrate]);
+  const dismissCheckIn = () => {
+    if (batch) void patchDevice({ checkIn: { key: batch.key, celebrated: memo?.celebrated ?? true, dismissed: true } });
+  };
 
   // All cards collapse to their heading row for the duration of any drag —
   // measure that row's real height once it's rendered, rather than assuming
@@ -138,7 +169,7 @@ export function Dashboard() {
       };
     })
     .sort((x, y) => x.account.goalDate!.localeCompare(y.account.goalDate!));
-  const hasGoals = pots.length + payoffs.length > 0;
+  const hasGoals = pots.length > 0; // pay-off goals live in the debt and loan cards
 
   // Trading 212 link: the linked account's move on its latest day, and its
   // overall gain from the Worker's latest reading.
@@ -157,10 +188,19 @@ export function Dashboard() {
     }
   }
   const t212Latest = t212Account ? device.t212?.latest : null;
-  const signed = (minor: number) => `${minor >= 0 ? '+' : '−'}${formatMoney(Math.abs(minor), currency)}`;
+  const signed = (minor: number) => `${minor >= 0 ? '+' : '−'}${formatMoneyWhole(Math.abs(minor), currency)}`;
 
   const reordering = dragKey !== null || editing;
   const names = `${settings.partnerAName} & ${settings.partnerBName}`;
+  // For a check-in that went the wrong way: one line of what's still true.
+  const perspective =
+    debt.pct >= 1
+      ? `Still ${Math.round(debt.pct)}% of your card debt cleared overall. One month doesn't undo that.`
+      : loans.pct >= 1
+        ? `Still ${Math.round(loans.pct)}% of your loans paid off overall. One month doesn't undo that.`
+        : growth.current > 0
+          ? `Your savings still stand at ${formatMoneyWhole(growth.current, currency)}.`
+          : null;
   const hasAccounts = state.accounts.some((a) => !a.archived);
   const lastUpdate = lastManualUpdate(state);
   const payday = latestPayday(today, lastWorkingDay);
@@ -238,6 +278,44 @@ export function Dashboard() {
     return 0;
   };
 
+  // Each card's or loan's own pay-off goal, shown inside its card rather
+  // than repeated in a separate Goals card.
+  const payoffList = (kind: 'credit_card' | 'loan') => {
+    const list = payoffs.filter((p) => p.account.kind === kind);
+    if (list.length === 0) return null;
+    return (
+      <div class="pots payoffs">
+        {list.map((p) => (
+            <div class="pot" key={p.account.id}>
+              <div class="pot-head">
+                <span class="pot-name">{p.account.name}</span>
+                <span class="pot-figures num">
+                  <strong>{formatMoneyWhole(p.current, currency)}</strong> left
+                </span>
+              </div>
+              <div class="goal-bar" role="img" aria-label={`${p.account.name}: ${p.pct.toFixed(0)}% paid off`}>
+                <span style={`width:${p.pct}%`} />
+              </div>
+              <div class="pot-note">
+                {p.current <= 0 ? (
+                  <span class="positive done-note">
+                    <Icon name="check" size={14} /> Paid off
+                  </span>
+                ) : p.monthly !== null ? (
+                  <>
+                    Pay off by {formatDay(p.account.goalDate!)} · about{' '}
+                    <strong class="num">{formatMoneyWhole(p.monthly, currency)}/month</strong>
+                  </>
+                ) : (
+                  <>Pay-off date {formatDay(p.account.goalDate!)} has passed — set a new one on the account</>
+                )}
+              </div>
+            </div>
+          ))}
+      </div>
+    );
+  };
+
   const sectionBody = (key: DashboardSectionKey) => {
     if (key === 'debt') {
       return (
@@ -250,12 +328,13 @@ export function Dashboard() {
                   <div class="big-number">{formatMoneyWhole(debt.current, currency)}</div>
                   <div class="figure-caption">left to clear</div>
                   <div class="figure-caption positive num" style="margin-top:8px;font-weight:550">
-                    {formatMoney(debt.paidOff, currency)} of {formatMoney(debt.baseline, currency)} paid off
+                    {formatMoneyWhole(debt.paidOff, currency)} of {formatMoneyWhole(debt.baseline, currency)} paid off
                   </div>
                   {debt.delta30 !== 0 && <DebtChange change={debt.delta30} currency={currency} />}
                 </div>
               </div>
               <Chart series={debt.series} currency={currency} color="var(--debt)" />
+              {payoffList('credit_card')}
             </>
           ) : (
             <p class="empty-note">
@@ -269,13 +348,12 @@ export function Dashboard() {
     if (key === 'goals') {
       return (
         <div class="dash-body pots">
-          {pots.length > 0 && payoffs.length > 0 && <h3 class="pots-label">Saving up</h3>}
           {pots.map((p) => (
             <div class="pot" key={p.account.id}>
               <div class="pot-head">
                 <span class="pot-name">{p.account.name}</span>
                 <span class="pot-figures num">
-                  <strong>{formatMoney(p.current, currency)}</strong> of {formatMoney(p.goal, currency)}
+                  <strong>{formatMoneyWhole(p.current, currency)}</strong> of {formatMoneyWhole(p.goal, currency)}
                 </span>
               </div>
               <div class="goal-bar" role="img" aria-label={`${p.account.name}: ${p.pct.toFixed(0)}% of goal`}>
@@ -283,47 +361,23 @@ export function Dashboard() {
               </div>
               <div class="pot-note">
                 {p.current >= p.goal ? (
-                  <span class="positive">Goal reached 🎉</span>
+                  <span class="positive done-note">
+                    <Icon name="check" size={14} /> Goal reached
+                  </span>
                 ) : (
                   <>
-                    {formatMoney(p.goal - p.current, currency)} to go
+                    {formatMoneyWhole(p.goal - p.current, currency)} to go
                     {p.account.goalDate &&
                       (p.monthly !== null ? (
                         <>
                           {' '}
-                          · about <strong class="num">{formatMoney(p.monthly, currency)}/month</strong> to
+                          · about <strong class="num">{formatMoneyWhole(p.monthly, currency)}/month</strong> to
                           reach it by {formatDay(p.account.goalDate)}
                         </>
                       ) : (
                         <> · goal date {formatDay(p.account.goalDate)} has passed</>
                       ))}
                   </>
-                )}
-              </div>
-            </div>
-          ))}
-          {pots.length > 0 && payoffs.length > 0 && <h3 class="pots-label">Paying off</h3>}
-          {payoffs.map((p) => (
-            <div class="pot" key={p.account.id}>
-              <div class="pot-head">
-                <span class="pot-name">{p.account.name}</span>
-                <span class="pot-figures num">
-                  <strong>{formatMoney(p.current, currency)}</strong> left
-                </span>
-              </div>
-              <div class="goal-bar" role="img" aria-label={`${p.account.name}: ${p.pct.toFixed(0)}% paid off`}>
-                <span style={`width:${p.pct}%`} />
-              </div>
-              <div class="pot-note">
-                {p.current <= 0 ? (
-                  <span class="positive">Paid off 🎉</span>
-                ) : p.monthly !== null ? (
-                  <>
-                    Pay off by {formatDay(p.account.goalDate!)} · about{' '}
-                    <strong class="num">{formatMoney(p.monthly, currency)}/month</strong>
-                  </>
-                ) : (
-                  <>Pay-off date {formatDay(p.account.goalDate!)} has passed — set a new one on the account</>
                 )}
               </div>
             </div>
@@ -340,7 +394,7 @@ export function Dashboard() {
               <div class="big-number">{formatMoneyWhole(loans.current, currency)}</div>
               <div class="figure-caption">still owed on loans</div>
               <div class="figure-caption positive num" style="margin-top:8px;font-weight:550">
-                {formatMoney(loans.paidOff, currency)} of {formatMoney(loans.baseline, currency)} paid off
+                {formatMoneyWhole(loans.paidOff, currency)} of {formatMoneyWhole(loans.baseline, currency)} paid off
               </div>
               {loans.delta30 !== 0 && <DebtChange change={loans.delta30} currency={currency} />}
             </div>
@@ -348,6 +402,7 @@ export function Dashboard() {
           {loans.series.length > 1 && (
             <Chart series={loans.series} currency={currency} color="var(--debt)" />
           )}
+          {payoffList('loan')}
         </div>
       );
     }
@@ -365,7 +420,7 @@ export function Dashboard() {
                 <div>
                   <span class={`delta ${up ? 'delta-up' : 'delta-down'}`}>
                     <Icon name={up ? 'up' : 'down'} />
-                    {formatMoney(Math.abs(growth.delta30), currency)}
+                    {formatMoneyWhole(Math.abs(growth.delta30), currency)}
                   </span>
                   <div class="delta-note">last 30 days</div>
                 </div>
@@ -410,12 +465,22 @@ export function Dashboard() {
         </p>
       </header>
 
-      {checkIn ? (
-        <CheckInCard checkIn={checkIn} undone={undone} names={names} currency={currency} celebrate={celebrating} />
+      {showCheckIn && batch ? (
+        <CheckInCard
+          checkIn={checkIn}
+          undone={undone}
+          names={names}
+          subtitle={checkInSubtitle(batch, mine, today, settings)}
+          perspective={perspective}
+          currency={currency}
+          canUndo={mine}
+          celebrate={celebrating}
+          onDismiss={dismissCheckIn}
+        />
       ) : (
         paydayDue && <PaydayCard payday={payday} today={today} lastUpdate={lastUpdate} />
       )}
-      <NewsLine state={state} device={device} today={today} hidden={!!checkIn || paydayDue} />
+      <NewsLine state={state} device={device} today={today} hidden={showCheckIn || paydayDue} />
 
       <section class="hero">
         <div class="hero-label">Net worth</div>
@@ -438,7 +503,7 @@ export function Dashboard() {
         {celebrating && checkIn && (
           <div class="net-gain num">
             <Icon name="up" size={14} />
-            {formatMoney(checkIn.netChange, currency)} since your last update
+            {formatMoneyWhole(checkIn.netChange, currency)} since the last update
           </div>
         )}
         {lastUpdate && <div class="hero-note">Balances as of {formatDay(lastUpdate)}</div>}
@@ -535,7 +600,7 @@ function DebtChange({ change, currency }: { change: number; currency: string }) 
     <div class="debt-change">
       <span class={`delta ${down ? 'delta-up' : 'delta-flat'}`}>
         <Icon name={down ? 'down' : 'up'} />
-        {formatMoney(Math.abs(change), currency)}
+        {formatMoneyWhole(Math.abs(change), currency)}
       </span>
       <span class="delta-note">last 30 days</span>
     </div>
@@ -549,6 +614,7 @@ function DebtChange({ change, currency }: { change: number; currency: string }) 
 function CountUp({ from, to, currency }: { from: number; to: number; currency: string }) {
   const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const [value, setValue] = useState(reduce ? to : from);
+  const [done, setDone] = useState(reduce);
   useEffect(() => {
     if (reduce) return;
     const delay = 150;
@@ -560,6 +626,7 @@ function CountUp({ from, to, currency }: { from: number; to: number; currency: s
       const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t); // ease-out expo
       setValue(Math.round(from + (to - from) * eased));
       if (t < 1) raf = requestAnimationFrame(tick);
+      else setDone(true);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
@@ -567,8 +634,23 @@ function CountUp({ from, to, currency }: { from: number; to: number; currency: s
   return (
     <>
       {/* Screen readers get the final figure, not every frame of the count. */}
-      <span aria-hidden="true">{formatMoneyWhole(value, currency)}</span>
+      {/* Once landed it always shows the live figure, so nothing can go stale. */}
+      <span aria-hidden="true">{formatMoneyWhole(done ? to : value, currency)}</span>
       <span class="visually-hidden">{formatMoneyWhole(to, currency)}</span>
     </>
   );
+}
+
+/** Who did the update and when, from this phone's point of view. */
+function checkInSubtitle(
+  batch: { at: string; by: 'A' | 'B' | null },
+  mine: boolean,
+  today: string,
+  settings: { partnerAName: string; partnerBName: string },
+): string {
+  const day = toDay(batch.at);
+  const when = day === today ? 'today' : `on ${formatDay(day)}`;
+  if (mine) return day === today ? 'Since your last update' : `Your update ${when}`;
+  const who = batch.by === 'A' ? settings.partnerAName : batch.by === 'B' ? settings.partnerBName : null;
+  return who ? `${who} updated ${when}` : `Updated ${when}`;
 }

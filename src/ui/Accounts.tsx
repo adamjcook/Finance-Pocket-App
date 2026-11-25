@@ -8,8 +8,9 @@ import { MoneyInput } from './components/MoneyInput';
 import { navigate } from '../router';
 import { daysBetween, formatDay, STALE_AFTER_DAYS, toDay, todayISO } from '../logic/progress';
 import { Icon } from './components/Icon';
-import { looksLikeATypo, summariseCheckIn } from '../logic/checkin';
-import { clearDraft, loadDraft, saveDraft, setLastCheckIn } from '../model/lastCheckIn';
+import { looksLikeATypo } from '../logic/checkin';
+import { clearDraft, loadDraft, saveDraft } from '../model/updateDraft';
+import { pushNow } from '../sync/relay';
 
 /**
  * The accounts list, and — at #/update — the same list in update mode: every
@@ -23,6 +24,9 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
   // Update mode picks up where it left off if the app was closed mid-update.
   const [drafts, setDrafts] = useState<Map<string, number | null>>(() => (updating ? loadDraft() : new Map()));
   const [invalid, setInvalid] = useState<Set<string>>(new Set());
+  // Set when Save is pressed with an amount that looks like a slip; a second
+  // press of "Save anyway" goes ahead.
+  const [confirming, setConfirming] = useState(false);
   const inputs = useRef(new Map<string, HTMLInputElement>());
 
   // The list and update mode are separate instances (keyed in app.tsx), so
@@ -42,7 +46,9 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
   // via the heading below — balances themselves stay in the ordinary text
   // colour rather than repeating that with debt/growth colour too.
   const groups: { title: string; accounts: Account[] }[] = [
-    { title: 'Debt', accounts: visible.filter((a) => OWED_KINDS.includes(a.kind)) },
+    // The same split as Home, so "card debt" means the same total everywhere.
+    { title: 'Credit cards', accounts: visible.filter((a) => a.kind === 'credit_card') },
+    { title: 'Loans', accounts: visible.filter((a) => a.kind === 'loan') },
     { title: 'Savings & investments', accounts: visible.filter((a) => GROWTH_KINDS.includes(a.kind)) },
     {
       title: 'Everything else',
@@ -60,7 +66,11 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
     return draft !== undefined && draft !== null && draft !== (balances.get(a.id)?.balance ?? null);
   });
 
+  // Changed balances that look like a slipped decimal or an extra zero.
+  const typos = changed.filter((a) => looksLikeATypo(balances.get(a.id)?.balance ?? null, drafts.get(a.id) ?? null));
+
   const setDraft = (id: string, minor: number | null, isInvalid: boolean) => {
+    setConfirming(false);
     setDrafts((prev) => {
       const next = new Map(prev).set(id, minor);
       saveDraft(next);
@@ -78,19 +88,31 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
   // Save, then go Home to see how the two of you did (the check-in card).
   const saveAll = async () => {
     if (changed.length === 0 || invalid.size > 0) return;
-    const { device, state: before } = getStore();
+    if (typos.length > 0 && !confirming) {
+      setConfirming(true);
+      return;
+    }
+    const { device } = getStore();
     const at = new Date().toISOString();
     await mutate((s) =>
       addSnapshots(
         s,
         { deviceId: device.deviceId, now: at },
         changed.map((a) => ({ accountId: a.id, balance: drafts.get(a.id)!, at })),
+        device.me ?? null,
       ),
     );
-    const after = getStore().state;
-    const ids = after.snapshots.slice(before.snapshots.length).map((s) => s.id);
-    setLastCheckIn(summariseCheckIn(before, after, at, ids, toDay(todayISO())));
+    // Home works the check-in card out from the history just saved.
     clearDraft();
+    // With automatic sync on, send it straight away and tell the other phone.
+    const { settings } = getStore().state;
+    const me = device.me === 'A' ? settings.partnerAName : device.me === 'B' ? settings.partnerBName : null;
+    void pushNow({
+      title: `${me ?? 'Your partner'} just updated the balances`,
+      body: 'Open FinPair to see how you did.',
+    }).catch(() => {
+      // offline or Worker down: the next change or app open uploads it anyway
+    });
     navigate('/');
   };
 
@@ -186,18 +208,18 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
                 const draft = drafts.get(a.id);
                 const isChanged = draft !== undefined && draft !== null && draft !== current;
                 const isInvalid = invalid.has(a.id);
-                const typo = isChanged && looksLikeATypo(current, draft);
+                const typo = isChanged && typos.includes(a);
                 const noteId = `note-${a.id}`;
                 return (
                   <div
-                    class={`list-row account-row update-row ${isChanged ? 'changed' : ''} ${isInvalid ? 'is-invalid' : ''}`}
+                    class={`list-row account-row update-row ${isChanged ? 'changed' : ''} ${isInvalid ? 'is-invalid' : ''} ${typo ? 'typo' : ''}`}
                     key={a.id}
                   >
                     <div class="grow">
                       <div class="row-title">{a.name}</div>
                       {isInvalid ? (
                         <div class="row-sub row-error" id={noteId}>
-                          Not a valid amount
+                          Not a valid amount. Use numbers only, like 8200 or 8200.50
                         </div>
                       ) : typo ? (
                         <div class="row-sub row-warn num" id={noteId}>
@@ -207,7 +229,7 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
                         <div class="row-sub num">
                           {t212Id === a.id && 'Auto daily · '}
                           {current !== null
-                            ? `${OWED_KINDS.includes(a.kind) ? 'Owed' : 'Was'} ${formatMoney(current, currency)}`
+                            ? `Was ${formatMoney(current, currency)}`
                             : ACCOUNT_KIND_LABELS[a.kind]}
                         </div>
                       )}
@@ -264,6 +286,31 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
       {updating ? (
         visible.length > 0 && (
           <div class="sticky-action">
+            {confirming && typos.length > 0 && (
+              <div class="double-check" role="alert">
+                <p class="double-check-title">Double-check before saving</p>
+                <ul>
+                  {typos.map((a) => (
+                    <li key={a.id}>
+                      <button
+                        type="button"
+                        class="double-check-row"
+                        onClick={() => {
+                          setConfirming(false);
+                          inputs.current.get(a.id)?.focus();
+                        }}
+                      >
+                        <span>{a.name}</span>
+                        <span class="num">
+                          {formatMoney(drafts.get(a.id)!, currency)}
+                          <span class="faint"> · was {formatMoney(balances.get(a.id)!.balance, currency)}</span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <button
               class="btn-primary btn-big"
               disabled={changed.length === 0 || invalid.size > 0}
@@ -273,7 +320,11 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
                 ? `Fix the amount${invalid.size === 1 ? '' : 's'} in red first`
                 : changed.length === 0
                   ? 'Nothing changed yet'
-                  : `Save ${changed.length} update${changed.length === 1 ? '' : 's'}`}
+                  : confirming && typos.length > 0
+                    ? 'Save anyway'
+                    : `Save ${changed.length} update${changed.length === 1 ? '' : 's'}${
+                        typos.length > 0 ? ` · ${typos.length} to double-check` : ''
+                      }`}
             </button>
           </div>
         )

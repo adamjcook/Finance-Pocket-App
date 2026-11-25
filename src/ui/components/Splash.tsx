@@ -12,6 +12,22 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 
 let shownThisLaunch = false;
 
+/**
+ * Call `fn` once the splash has gone (straight away if it already has), so
+ * anything worth seeing on Home — like a celebration — doesn't play hidden
+ * behind it.
+ */
+let splashGone = false;
+const waiting: (() => void)[] = [];
+export function whenSplashGone(fn: () => void): void {
+  if (splashGone) fn();
+  else waiting.push(fn);
+}
+function markGone() {
+  splashGone = true;
+  for (const fn of waiting.splice(0)) fn();
+}
+
 const ENTER_MS = 1500; // circles meet by ~640ms; greeting settled by ~720ms, then held ~0.8s to read
 const EXIT_MS = 380;
 const EASE_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
@@ -56,7 +72,10 @@ export function Splash({ ready, names }: Props) {
   function leave() {
     const el = root.current;
     const logo = mark.current;
-    if (!el || !logo) return setGone(true);
+    if (!el || !logo) {
+      markGone();
+      return setGone(true);
+    }
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const target = document.querySelector<HTMLElement>('.app-logo, .welcome-logo');
     const anims: Animation[] = [];
@@ -103,8 +122,14 @@ export function Splash({ ready, names }: Props) {
       anims.push(logo.animate([{ opacity: 1 }, { opacity: 0 }], { duration: reduce ? 200 : 260, easing: 'ease-out', fill: 'forwards' }));
     }
     Promise.all(anims.map((a) => a.finished)).then(
-      () => setGone(true),
-      () => setGone(true),
+      () => {
+        markGone();
+        setGone(true);
+      },
+      () => {
+        markGone();
+        setGone(true);
+      },
     );
   }
 

@@ -1416,6 +1416,17 @@ label.field > span:first-child,
   background: var(--accent);
 }
 
+/* The 6-character check code wherever it appears in a row: a code to
+   compare character by character, so fixed-width and spaced out. */
+.qr-label {
+  margin-top: 26px;
+}
+
+.check-code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  letter-spacing: 0.1em;
+}
+
 .hash-code {
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
   font-size: 32px;
@@ -1612,6 +1623,13 @@ label.field > span:first-child,
   background: var(--accent);
 }
 
+.checkin-perspective {
+  margin-top: 12px;
+  color: var(--text-2);
+  font-size: var(--fs-footnote);
+  text-wrap: pretty;
+}
+
 .checkin-undo {
   margin: 12px 0 -6px -14px;
 }
@@ -1639,16 +1657,18 @@ label.field > span:first-child,
   background: var(--surface-2);
 }
 
-.pots-label {
-  font-size: var(--fs-footnote);
-  font-weight: var(--fw-label);
-  color: var(--text-2);
-  margin-bottom: -8px;
+.payoffs {
+  /* a card's own pay-off goals, under its chart */
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--separator);
 }
 
-.pots-label + .pot ~ .pots-label,
-.pot + .pots-label {
-  margin-top: 6px;
+.done-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: var(--fw-label);
 }
 
 .reorder-controls {
@@ -1666,6 +1686,44 @@ label.field > span:first-child,
 }
 
 /* Update mode: a mistyped amount says so in words, not just a red border. */
+/* A balance that looks like a slip: amber, not the teal "changed" border. */
+.update-row.typo .money-input input {
+  border-color: var(--debt);
+  background: color-mix(in srgb, var(--debt) 8%, var(--surface-2));
+}
+
+/* Shown above Save when it's pressed with an amount worth a second look. */
+.double-check {
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--debt) 45%, transparent);
+  border-radius: var(--radius);
+  box-shadow: var(--overlay-shadow);
+  padding: 12px 6px 6px;
+  margin-bottom: 10px;
+}
+
+.double-check-title {
+  font-weight: var(--fw-strong);
+  padding: 0 10px 6px;
+}
+
+.double-check ul {
+  list-style: none;
+  padding: 0;
+}
+
+.double-check-row {
+  width: 100%;
+  min-height: 44px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-weight: var(--fw-label);
+  text-align: left;
+}
+
 .row-error,
 .row-warn {
   /* these are sentences to read, so they wrap instead of trailing off */

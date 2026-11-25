@@ -108,3 +108,59 @@ export function looksLikeATypo(was: number | null, now: number | null): boolean 
   const ratio = Math.max(was, now) / Math.min(was, now);
   return ratio >= 3 && Math.abs(now - was) > 100_00;
 }
+
+/**
+ * One payday update as recorded in the shared history: every balance saved
+ * together, at one moment, on one phone. Worked out from the synced
+ * snapshots, so both phones see the same update — and it survives the app
+ * being closed.
+ */
+export interface UpdateBatch {
+  /** Stable id: the saving phone and the moment it saved. */
+  key: string;
+  at: string;
+  deviceId: string;
+  by: 'A' | 'B' | null;
+  ids: UUID[];
+  /** Every balance in it has since been undone. */
+  voided: boolean;
+}
+
+/** The most recent update typed in by hand (automatic readings aren't updates). */
+export function latestUpdateBatch(state: SyncedState): UpdateBatch | null {
+  // An account's opening balance is saved at the very moment it's created:
+  // adding a card isn't a payday update.
+  const opened = new Map(state.accounts.map((a) => [a.id, a.createdAt]));
+  const isUpdate = (s: SyncedState['snapshots'][number]) =>
+    s.deviceId !== 't212' && s.createdAt === s.at && opened.get(s.accountId) !== s.at;
+  let latest: { createdAt: string; deviceId: string } | null = null;
+  for (const s of state.snapshots) {
+    if (!isUpdate(s)) continue;
+    if (!latest || s.createdAt > latest.createdAt) latest = { createdAt: s.createdAt, deviceId: s.deviceId };
+  }
+  if (!latest) return null;
+  const batch = state.snapshots.filter(
+    (s) => isUpdate(s) && s.createdAt === latest!.createdAt && s.deviceId === latest!.deviceId,
+  );
+  const voided = new Set(state.voids.map((v) => v.snapshotId));
+  return {
+    key: `${latest.deviceId}:${latest.createdAt}`,
+    at: latest.createdAt,
+    deviceId: latest.deviceId,
+    by: batch.find((s) => s.by)?.by ?? null,
+    ids: batch.map((s) => s.id),
+    voided: batch.every((s) => voided.has(s.id)),
+  };
+}
+
+/**
+ * The check-in for a recorded update: the history as it stood just after it
+ * against the same history without it. Later readings (a Trading 212 one the
+ * next evening, say) don't get counted as part of it.
+ */
+export function checkInFor(state: SyncedState, batch: UpdateBatch, today: string): CheckIn {
+  const ids = new Set(batch.ids);
+  const after = { ...state, snapshots: state.snapshots.filter((s) => s.at <= batch.at) };
+  const before = { ...after, snapshots: after.snapshots.filter((s) => !ids.has(s.id)) };
+  return summariseCheckIn(before, after, batch.at, batch.ids, today);
+}

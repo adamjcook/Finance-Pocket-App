@@ -92,6 +92,7 @@ export function addSnapshots(
   state: SyncedState,
   ctx: Ctx,
   entries: { accountId: UUID; balance: number; at?: ISOTime }[],
+  by: 'A' | 'B' | null = null,
 ): SyncedState {
   const now = ctx.now ?? new Date().toISOString();
   const snapshots: Snapshot[] = entries.map((e) => ({
@@ -101,6 +102,7 @@ export function addSnapshots(
     at: e.at ?? now,
     deviceId: ctx.deviceId,
     createdAt: now,
+    ...(by ? { by } : {}),
   }));
   return { ...state, snapshots: [...state.snapshots, ...snapshots] };
 }

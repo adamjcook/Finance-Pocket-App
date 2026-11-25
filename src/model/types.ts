@@ -62,6 +62,12 @@ export interface Snapshot {
   at: ISOTime; // effective time (user can backdate)
   deviceId: string;
   createdAt: ISOTime;
+  /**
+   * Which partner typed it in (from the saving phone's "whose phone is
+   * this?"), so the other phone can say who did an update. Absent on older
+   * records, automatic readings and phones that haven't said whose they are.
+   */
+  by?: 'A' | 'B' | null;
 }
 
 /** Undo for a mistyped snapshot without breaking append-only semantics. */
@@ -147,9 +153,11 @@ export interface ReminderPrefs {
   monthly: boolean; // 1st of the month: update balances
   promo: boolean; // a card's 0% deal is ending
   drop: boolean; // the Trading 212 account fell 5%+ in a week
+  /** Your partner saved a payday update (automatic sync). Absent on older phones = on. */
+  partner?: boolean;
 }
 
-export const DEFAULT_REMINDER_PREFS: ReminderPrefs = { monthly: true, promo: true, drop: true };
+export const DEFAULT_REMINDER_PREFS: ReminderPrefs = { monthly: true, promo: true, drop: true, partner: true };
 
 /** This phone's push-notification registration with the Worker. */
 export interface PushDeviceState {
@@ -180,6 +188,31 @@ export interface DeviceState {
   me?: 'A' | 'B' | null;
   /** What Home's news line has shown or been told to drop, on this phone. */
   news?: import('../logic/news').NewsMemory | null;
+  /** Automatic sync through the Worker (see sync/relay.ts). Never synced itself. */
+  relay?: RelayDeviceState | null;
+  /** This phone's view of the latest payday update's card: celebrated yet, dismissed. */
+  checkIn?: { key: string; celebrated: boolean; dismissed: boolean } | null;
+}
+
+/** This phone's side of automatic sync. */
+export interface RelayDeviceState {
+  /**
+   * The key both phones encrypt with (AES-256, base64url). Made on a phone
+   * and handed to the other inside the QR codes only — never in backup
+   * files, never sent to the Worker.
+   */
+  key: string;
+  /** The pair's channel on the Worker: a fingerprint of `key` (see relayChannel). */
+  channel?: string;
+  /** Absent = on: automatic sync runs once the phones share a key and a Worker. */
+  enabled?: boolean;
+  /** Fingerprint of the data last uploaded, so unchanged data isn't re-sent. */
+  pushedHash?: string | null;
+  /** The partner copy last merged, per phone (its upload time). */
+  seen?: Record<string, string>;
+  /** Last time the partner's copy was checked, and any problem doing so. */
+  checkedAt?: string | null;
+  error?: string | null;
 }
 
 /** Everything that syncs between the two phones. */
@@ -195,6 +228,8 @@ export interface SyncPayload extends SyncedState {
   v: 1;
   deviceId: string;
   sentAt: ISOTime;
+  /** Only in QR transfers: the automatic-sync key, so the two phones share it. */
+  relayKey?: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

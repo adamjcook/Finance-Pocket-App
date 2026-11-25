@@ -14,6 +14,7 @@ import { Icon, type IconName } from './ui/components/Icon';
 import { pullReadings } from './integrations/t212';
 import { migrateSettingsGoals } from './model/repo';
 import { refreshReminders, registrationFacts } from './integrations/push';
+import { startAutoSync } from './sync/relay';
 
 const TABS: { route: string; label: string; icon: IconName }[] = [
   { route: '/', label: 'Home', icon: 'home' },
@@ -76,10 +77,16 @@ function Screens() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [t212?.accountId, t212?.endpoint, t212?.token]);
 
+  // Automatic sync through the Worker, once storage is open (it does nothing
+  // until the phones share a key and a Worker — see sync/relay.ts).
+  useEffect(() => {
+    if (app) startAutoSync();
+  }, [!!app]);
+
   // Reminders: keep the Worker's copy of this phone's registration current
   // (0% end dates, the linked account's name) — resent only when it changes.
   const reminderKey = app
-    ? JSON.stringify([app.device.push?.enabled, registrationFacts(app.state), t212?.endpoint, t212?.token])
+    ? JSON.stringify([app.device.push?.enabled, registrationFacts(app.state), t212?.endpoint, t212?.token, app.device.relay?.channel])
     : '';
   useEffect(() => {
     if (app?.device.push?.enabled) void refreshReminders();
