@@ -276,12 +276,12 @@ test('light mode is opt-in, applies live, and persists across a reload', async (
 
   // Dark by default
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(11, 13, 16)');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(11, 14, 12)');
 
   await page.goto('.#/settings');
   await page.getByRole('button', { name: 'Light', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(242, 243, 245)');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(240, 244, 242)');
 
   // Persists across a reload — it's a device preference, not just an in-memory var
   await expect.poll(async () => (await storedDevice(page))?.theme).toBe('light');
