@@ -24,7 +24,7 @@ const TABS: { route: string; label: string; icon: IconName }[] = [
 ];
 
 /** Status-bar colour for the installed app — matches --bg for each theme. */
-const THEME_COLOR = { dark: '#0b0d10', light: '#f2f3f5' } as const;
+const THEME_COLOR = { dark: '#0b0e0c', light: '#f0f4f2' } as const;
 
 export function App() {
   const app = useApp();

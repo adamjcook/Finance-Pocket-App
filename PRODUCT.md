@@ -44,7 +44,7 @@ There's no server and no cloud account. All data lives on the two phones. They l
 ## Brand Commitments
 
 - Name: the app is called **MC Bank** on the phones (the dev build is "MC Bank Dev"); the project and repository are still FinPair.
-- Icon and logo: an interlocking **MC** monogram (Figtree, weight 350) inside a thin white ring on deep green `#2f5e48`, built from one source by `scripts/gen-monogram.py` (home-screen icons and the in-app logo). Inside the app, teal and amber stay the data colours: growth and what's owed.
+- Icon and logo: an interlocking **MC** monogram (Figtree, weight 350) inside a thin white ring on deep green `#2f5e48`, built from one source by `scripts/gen-monogram.py` (home-screen icons and the in-app logo). Inside the app the icon's green owns actions and "where you are" (main buttons, the selected tab, switches, focus, selection) and faintly tints the greys; teal and amber stay the data colours: growth and what's owed.
 - Voice: plain British English, and **warmer** than the current copy. It's personal to the two of them, celebrates milestones (a card paid off, a goal reached, a new low in debt), and stays encouraging. It never preaches or shames about money, and it never says anything that would make one partner feel blamed.
 
 ## Evidence on Hand

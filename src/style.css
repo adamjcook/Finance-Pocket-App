@@ -1,29 +1,38 @@
 /* ==========================================================================
-   FinPair design system
-   Neutral graphite surfaces, one high-contrast primary action colour, and
-   the app icon's teal/amber reserved for data (growth vs. what's owed).
-   Dark is the default; light is opt-in per phone.
+   MC Bank design system (the FinPair project)
+   Graphite surfaces with the faintest lean towards the icon's green; the
+   icon's deep green owns actions and "where you are" (main buttons, the
+   selected tab, switches, focus, selection); teal and amber stay reserved
+   for data (growth vs. what's owed). Dark is the default; light is opt-in
+   per phone. Neutrals are the old graphite re-hued to the icon green in
+   OKLCH at very low chroma, so lightness and contrast are unchanged.
    ========================================================================== */
 
 :root {
-  --bg: #0b0d10;
-  --surface: #15181d;
-  --surface-2: #1e2228;
-  --surface-3: #2a2f37;
+  --bg: #0b0e0c;
+  --surface: #151917;
+  --surface-2: #1e2321;
+  --surface-3: #2b302d;
   --separator: rgb(255 255 255 / 0.07);
-  --text: #f3f5f7;
-  --text-2: #a1a8b2;
-  --text-3: #838a95; /* ≥4.5:1 on --bg, --surface and --surface-2 */
+  --text: #f3f6f4;
+  --text-2: #a3a9a6;
+  --text-3: #858b88; /* ≥4.5:1 on --bg, --surface and --surface-2 */
 
-  /* Primary actions: high-contrast ink rather than a brand colour, so the
-     teal/amber below stay meaningful as data colours. */
-  --primary: #f3f5f7;
-  --primary-ink: #0b0d10;
+  /* The icon's green. --brand fills main actions (white text 6.3:1, and 3:1
+     against the page so a button reads as a button); --brand-fg is the
+     lighter green for marks on the dark page: the selected tab, focus,
+     selection, the caret (7.6:1). Kept apart from --accent, which is data. */
+  --brand: #346a51;
+  --brand-fg: #68b08d;
+  --primary: var(--brand);
+  --primary-ink: #ffffff;
+  /* Ink on a teal --accent fill (milestone ticks). */
+  --on-accent: #0b0e0c;
 
   --accent: #4fd1a5; /* growth, progress, positive change */
   --debt: #f2a65a; /* money owed */
   --danger: #ff6b6b;
-  --focus: color-mix(in srgb, var(--accent) 55%, transparent);
+  --focus: color-mix(in srgb, var(--brand-fg) 70%, transparent);
 
   --card-shadow: none;
   --overlay-shadow: 0 12px 32px rgb(0 0 0 / 0.5);
@@ -57,16 +66,18 @@
 }
 
 :root[data-theme='light'] {
-  --bg: #f2f3f5;
+  --bg: #f0f4f2;
   --surface: #ffffff;
-  --surface-2: #f0f1f4;
-  --surface-3: #e4e6ea;
-  --separator: rgb(15 20 30 / 0.08);
-  --text: #0e1116;
-  --text-2: #5a626e;
-  --text-3: #646c77; /* ≥4.5:1 on --bg, --surface and --surface-2 */
-  --primary: #0e1116;
+  --surface-2: #eff2f0;
+  --surface-3: #e3e7e5;
+  --separator: rgb(15 30 20 / 0.08);
+  --text: #0f1210;
+  --text-2: #5e6360;
+  --text-3: #676d6a; /* ≥4.5:1 on --bg, --surface and --surface-2 */
+  --brand: #2f5e48; /* the icon's own green: white text 7.5:1 */
+  --brand-fg: #2f5e48;
   --primary-ink: #ffffff;
+  --on-accent: #ffffff;
   --accent: #0c8a68;
   --debt: #b85c0a;
   --danger: #d92d20;
@@ -91,12 +102,12 @@ body {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--accent) 32%, transparent);
+  background: color-mix(in srgb, var(--brand-fg) 32%, transparent);
   color: var(--text);
 }
 
 body {
-  caret-color: var(--accent);
+  caret-color: var(--brand-fg);
   background: var(--bg);
   color: var(--text);
   font-family: 'Figtree Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -494,10 +505,13 @@ input::placeholder {
   color: var(--text-3);
 }
 
+/* Focus is a clear ring in the brand green, so it can't be mistaken for a
+   field that has merely been changed (a quiet tint, below). */
 input:focus,
 select:focus {
   outline: none;
-  border-color: var(--focus);
+  border-color: var(--brand-fg);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-fg) 28%, transparent);
 }
 
 input.invalid {
@@ -777,7 +791,7 @@ label.field > span:first-child,
 }
 
 .tab.active .icon {
-  color: var(--accent);
+  color: var(--brand-fg);
 }
 
 /* ---- dashboard ---------------------------------------------------------------- */
@@ -1112,8 +1126,9 @@ label.field > span:first-child,
 }
 
 .chip-alias {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
+  /* An alias is one of yours, not a figure: brand green, not data teal. */
+  background: color-mix(in srgb, var(--brand-fg) 16%, transparent);
+  color: var(--brand-fg);
 }
 
 .toggle-row {
@@ -1139,7 +1154,7 @@ label.field > span:first-child,
 }
 
 .update-row.changed .money-input input {
-  border-color: var(--focus);
+  background: color-mix(in srgb, var(--brand-fg) 12%, var(--surface-2));
 }
 
 .sticky-action {
@@ -1619,7 +1634,7 @@ label.field > span:first-child,
   height: 24px;
   border-radius: 50%;
   flex: none;
-  color: var(--primary-ink);
+  color: var(--on-accent);
   background: var(--accent);
 }
 
@@ -2170,7 +2185,7 @@ label.field > span:first-child,
 }
 
 .switch[aria-checked='true'] {
-  background: var(--accent);
+  background: var(--brand);
 }
 
 .switch[aria-checked='true']::after {
@@ -2183,5 +2198,5 @@ label.field > span:first-child,
 }
 
 .switch[aria-checked='true']:active:not(:disabled) {
-  background: var(--accent);
+  background: var(--brand);
 }
