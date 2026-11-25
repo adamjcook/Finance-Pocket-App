@@ -105,10 +105,10 @@ describe('asSyncPayload', () => {
   });
 
   it('rejects non-objects, other versions, and incomplete data with readable messages', () => {
-    expect(() => asSyncPayload(null)).toThrow(/isn't FinPair data/);
+    expect(() => asSyncPayload(null)).toThrow(/isn't MC Bank data/);
     expect(() => asSyncPayload({ ...buildPayload(state(), 'd'), v: 2 })).toThrow(/version/);
     const { snapshots: _dropped, ...noSnapshots } = buildPayload(state(), 'd');
-    expect(() => asSyncPayload(noSnapshots)).toThrow(/isn't complete FinPair data/);
+    expect(() => asSyncPayload(noSnapshots)).toThrow(/isn't complete MC Bank data/);
     expect(() => asSyncPayload({ ...buildPayload(state(), 'd'), settings: {} })).toThrow(/isn't complete/);
   });
 });

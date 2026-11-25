@@ -96,7 +96,7 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await expect(page.locator('.account-row', { hasText: 'Barclaycard' })).toContainText('£1,500.00');
 
   await page.goto('.#/');
-  await expect(page.getByRole('heading', { name: 'FinPair' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'MC Bank' })).toBeVisible();
   await expect(page.locator('.subtitle', { hasText: 'Adam & Sam' })).toBeVisible();
   // Home shows whole pounds throughout.
   await expect(page.locator('.big-number', { hasText: '£1,500' })).toBeVisible();
@@ -684,7 +684,7 @@ test('automatic sync: after one QR handshake, updates reach the other phone thro
   const phoneA = await contextA.newPage();
   const phoneB = await contextB.newPage();
 
-  // Adam sets up, adds a card and points FinPair at the Worker.
+  // Adam sets up, adds a card and points MC Bank at the Worker.
   await completeSetup(phoneA, 'Adam', 'Sam');
   await addAccount(phoneA, 'Barclaycard', 'Credit card', '3000');
   await phoneA.goto('.#/settings');
@@ -714,7 +714,7 @@ test('automatic sync: after one QR handshake, updates reach the other phone thro
   // The Worker only ever holds ciphertext.
   for (const slot of slots.values()) expect(slot.data).not.toMatch(/Barclaycard|2600|260000/);
 
-  // Sam just opens FinPair: no QR codes, and Home tells the story.
+  // Sam just opens MC Bank: no QR codes, and Home tells the story.
   await phoneB.goto('.#/');
   await phoneB.reload();
   const card = phoneB.locator('.checkin');

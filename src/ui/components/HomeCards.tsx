@@ -17,6 +17,7 @@ import { getStore, mutate, patchDevice } from '../../model/store';
 import { voidSnapshot } from '../../model/repo';
 import { navigate } from '../../router';
 import { Icon } from './Icon';
+import { APP_NAME } from '../../appName';
 
 /**
  * The end of the payday update: how the two of you did, any milestones worth
@@ -238,7 +239,7 @@ export function SyncLine({ state, device }: { state: SyncedState; device: Device
     } else if (relay!.error) {
       text = `Couldn’t check ${theirPhone}`;
     } else if (relay!.pushedHash === hash) {
-      text = `Sent to ${theirPhone}: it updates next time FinPair opens there`;
+      text = `Sent to ${theirPhone}: it updates next time ${APP_NAME} opens there`;
     } else {
       text = `Not on ${theirPhone} yet`;
     }

@@ -26,6 +26,7 @@ import { latestBalances } from '../model/repo';
 import { Chart } from './components/Chart';
 import { ProgressRing } from './components/ProgressRing';
 import { Icon } from './components/Icon';
+import { APP_NAME } from '../appName';
 
 const SECTION_META: Record<DashboardSectionKey, { heading: string }> = {
   growth: { heading: 'Savings & investments' },
@@ -457,7 +458,7 @@ export function Dashboard() {
     <div>
       <header class="dash-top">
         <LogoMark class="app-logo" celebrate={celebrating} />
-        <h1>FinPair</h1>
+        <h1>{APP_NAME}</h1>
         <p class="subtitle">
           {settings.partnerAName} &amp; {settings.partnerBName}
         </p>

@@ -1,11 +1,16 @@
+import { useId } from 'preact/hooks';
+import { MONOGRAM } from './monogram';
+
 /**
- * The FinPair mark drawn inline (rather than as an <img>) so its parts can
- * move: two circles, one shared overlap. With `celebrate`, the circles draw
- * together and the overlap brightens — the launch splash's gesture, replayed
- * small when an update leaves the two of you better off.
+ * The MC Bank mark drawn inline (rather than as an <img>) so its parts can
+ * move: the ring and the interlocking letters are separate. The welcome
+ * splash draws the ring round the letters; with `celebrate`, the ring rings
+ * out and the letters lift when an update leaves the two of you better off.
+ * Same shapes as the home-screen icon (scripts/gen-monogram.py).
  */
 export function LogoMark({ class: className, celebrate = false }: { class?: string; celebrate?: boolean }) {
   const dev = import.meta.env.VITE_DEV_BUILD === '1';
+  const clip = `logo-tile-${useId()}`;
   return (
     <svg
       class={`${className ?? ''} ${celebrate ? 'celebrate' : ''}`}
@@ -14,18 +19,31 @@ export function LogoMark({ class: className, celebrate = false }: { class?: stri
       focusable="false"
     >
       <defs>
-        <clipPath id="logo-tile">
+        <clipPath id={clip}>
           <rect width="512" height="512" rx="116" />
         </clipPath>
       </defs>
-      <g clip-path="url(#logo-tile)">
-        <rect width="512" height="512" fill="#101418" />
-        <circle class="mark-a" cx="190" cy="256" r="118" fill="#4fd1a5" />
-        <circle class="mark-b" cx="322" cy="256" r="118" fill="#f2a65a" />
-        <path class="mark-lens" d="M256,158.2 A118,118 0 0 0 256,353.8 A118,118 0 0 0 256,158.2 Z" fill="#f7ef8a" />
+      <g clip-path={`url(#${clip})`}>
+        <rect width="512" height="512" fill={MONOGRAM.background} />
+        {/* Starts at the top and runs clockwise when it's drawn in. */}
+        <circle
+          class="mark-ring"
+          cx="256"
+          cy="256"
+          r={MONOGRAM.ring.r}
+          fill="none"
+          stroke="#ffffff"
+          stroke-width={MONOGRAM.ring.width}
+          pathLength={100}
+          transform="rotate(-90 256 256)"
+        />
+        <g class="mark-letters" fill="#ffffff">
+          <path transform={MONOGRAM.m.transform} d={MONOGRAM.m.d} />
+          <path transform={MONOGRAM.c.transform} d={MONOGRAM.c.d} />
+        </g>
         {dev && (
           <>
-            {/* Matches public/icons-dev/favicon.svg: the dev build's DEV band. */}
+            {/* Matches public/icons-dev: the dev build's DEV band. */}
             <rect y="334" width="512" height="108" fill="#e0b400" />
             <text
               x="256"

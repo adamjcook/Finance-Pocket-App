@@ -11,6 +11,7 @@ import { Icon } from './components/Icon';
 import { looksLikeATypo } from '../logic/checkin';
 import { clearDraft, loadDraft, saveDraft } from '../model/updateDraft';
 import { pushNow } from '../sync/relay';
+import { APP_NAME } from '../appName';
 
 /**
  * The accounts list, and — at #/update — the same list in update mode: every
@@ -109,7 +110,7 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
     const me = device.me === 'A' ? settings.partnerAName : device.me === 'B' ? settings.partnerBName : null;
     void pushNow({
       title: `${me ?? 'Your partner'} just updated the balances`,
-      body: 'Open FinPair to see how you did.',
+      body: `Open ${APP_NAME} to see how you did.`,
     }).catch(() => {
       // offline or Worker down: the next change or app open uploads it anyway
     });

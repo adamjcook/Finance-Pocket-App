@@ -233,7 +233,7 @@ describe('push endpoints', () => {
     const push = fakePushService();
     const test = await handleRequest(req('/push/test', { endpoint: browser.subscription.endpoint }), e, () => new Date(), push.impl);
     expect(test.status).toBe(200);
-    expect(JSON.parse(await browser.decrypt(push.sent[0].body)).title).toBe('FinPair reminders are on');
+    expect(JSON.parse(await browser.decrypt(push.sent[0].body)).title).toBe('MC Bank reminders are on');
 
     await handleRequest(req('/push/unsubscribe', { endpoint: browser.subscription.endpoint }), e);
     expect((await handleRequest(req('/push/test', { endpoint: browser.subscription.endpoint }), e)).status).toBe(404);

@@ -8,6 +8,7 @@ import { loadMockData } from '../dev/mockData';
 import { toDay, todayISO } from '../logic/progress';
 import { starterQuote } from '../logic/wisdom';
 import { Icon } from './components/Icon';
+import { APP_NAME } from '../appName';
 
 type Mode = 'choose' | 'form' | 'join';
 
@@ -49,7 +50,7 @@ export function Setup() {
       <div>
         {back}
         <header class="page-header" style="display:block;padding-top:6px">
-          <h1>Set up FinPair</h1>
+          <h1>Set up {APP_NAME}</h1>
           <p class="lede">Just the basics — you can change any of this later in Settings.</p>
         </header>
         <div class="card">
@@ -106,7 +107,7 @@ export function Setup() {
     <div class="welcome">
       <div class="welcome-hero">
         <img src={logo} class="welcome-logo" alt="" />
-        <h1>FinPair</h1>
+        <h1>{APP_NAME}</h1>
         <p class="lede">
           Your shared money, side by side. Everything stays on your two phones — no accounts, no
           cloud.

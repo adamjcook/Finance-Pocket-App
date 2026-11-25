@@ -11,7 +11,7 @@ self.addEventListener('push', (event) => {
   }
   const scope = self.registration.scope;
   event.waitUntil(
-    self.registration.showNotification(msg.title || 'FinPair', {
+    self.registration.showNotification(msg.title || 'MC Bank', {
       body: msg.body || '',
       tag: msg.tag || undefined,
       icon: scope + '__ICON_DIR__/icon-192.png',
