@@ -1,5 +1,5 @@
 import type { AccountKind, Snapshot, SnapshotVoid, SyncedState } from '../model/types';
-import { DEBT_KINDS, GROWTH_KINDS, LOAN_KINDS } from '../model/types';
+import { DEBT_KINDS, GROWTH_KINDS, JUNIOR_KINDS, LOAN_KINDS, PENSION_KINDS } from '../model/types';
 
 export interface SeriesPoint {
   day: string; // YYYY-MM-DD (UTC)
@@ -30,6 +30,8 @@ export function daysBetween(from: string, to: string): number {
 
 /** Balances older than this get flagged as possibly out of date. */
 export const STALE_AFTER_DAYS = 31;
+/** Pensions usually update from a quarterly statement, so they get longer. */
+export const PENSION_STALE_DAYS = 100;
 
 function addDays(day: string, n: number): string {
   const d = new Date(day + 'T00:00:00Z');
@@ -169,9 +171,19 @@ export interface GrowthProgress {
 
 /** Combined savings + investments progress. */
 export function growthProgress(state: SyncedState, today: string): GrowthProgress {
-  const { current, series } = kindTotals(state, GROWTH_KINDS, today);
+  return heldProgress(state, GROWTH_KINDS, today);
+}
+
+/** The total, 30-day change and history of some kinds of money held. */
+export function heldProgress(state: SyncedState, kinds: AccountKind[], today: string): GrowthProgress {
+  const { current, series } = kindTotals(state, kinds, today);
   return { current, delta30: change30(series, current, today), series };
 }
+
+/** Pensions: shown on their own, never in net worth. */
+export const pensionProgress = (state: SyncedState, today: string) => heldProgress(state, PENSION_KINDS, today);
+/** Children's accounts (Junior ISAs): shown on their own, never in net worth. */
+export const juniorProgress = (state: SyncedState, today: string) => heldProgress(state, JUNIOR_KINDS, today);
 
 /**
  * Combined outstanding loans (kept separate from the card payoff), with

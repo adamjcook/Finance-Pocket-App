@@ -44,7 +44,7 @@ async function completeSetup(page: Page, me: string, partner: string) {
 async function addAccount(
   page: Page,
   name: string,
-  kind: 'Credit card' | 'Loan' | 'Savings' | 'Investment',
+  kind: 'Credit card' | 'Loan' | 'Savings' | 'Investment' | 'Pension' | 'Junior ISA',
   balance: string | null,
   owner?: string,
 ) {
@@ -755,4 +755,41 @@ test('a month that went the wrong way: the cards agree with the check-in, in pla
   // Not synced yet: Home says so, with a way to fix it.
   await expect(page.locator('.sync-line')).toContainText('Not synced with');
   await expect(page.locator('.sync-line')).toHaveAttribute('href', '#/sync');
+});
+
+test('a pension and a Junior ISA: their own cards and lines, never in net worth', async ({ page }) => {
+  await completeSetup(page, 'Adam', 'Sam');
+  await addAccount(page, 'Marcus Saver', 'Savings', '1000');
+  await addAccount(page, 'Private Pension', 'Pension', '40000');
+  await addAccount(page, "Ellie's Junior ISA", 'Junior ISA', '4800');
+
+  // Accounts keeps them in their own groups.
+  await page.goto('.#/accounts');
+  await expect(page.locator('.group-label', { hasText: 'Pensions' })).toBeVisible();
+  await expect(page.locator('.group-label', { hasText: 'Junior ISAs' })).toBeVisible();
+
+  // Home: net worth is still just the couple's money; each has its own card,
+  // the ISA's named after the account.
+  await page.goto('.#/');
+  await expect(page.locator('.net-worth')).toHaveText('£1,000');
+  const pensionCard = page.locator('.dash-section', { hasText: 'put away for retirement' });
+  await expect(pensionCard.locator('h2')).toContainText('Pension');
+  await expect(pensionCard.locator('.big-number')).toHaveText('£40,000');
+  const isaCard = page.locator('.dash-section', { hasText: 'saved for the future' });
+  await expect(isaCard.locator('h2')).toContainText("Ellie's Junior ISA");
+  await expect(isaCard.locator('.big-number')).toHaveText('£4,800');
+
+  // A payday update gives them their own lines and first-time milestones,
+  // without changing whether the month counts as 'Nicely done'.
+  await page.goto('.#/update');
+  await page.getByLabel('New balance for Private Pension').fill('46000');
+  await page.getByLabel("New balance for Ellie's Junior ISA").fill('5100');
+  await page.getByRole('button', { name: /Save 2 updates/ }).click();
+  const card = page.locator('.checkin');
+  await expect(card).toContainText('Pensionup £6,000');
+  await expect(card).toContainText("Ellie's Junior ISAup £300");
+  await expect(card).toContainText("Ellie's Junior ISA over £5,000 for the first time");
+  // "Nicely done" is about the couple's own money, which didn't move.
+  await expect(card.getByRole('heading')).toHaveText('All up to date, Adam & Sam');
+  await expect(page.locator('.net-worth')).toContainText('£1,000');
 });

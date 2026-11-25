@@ -15,7 +15,7 @@ function account(
   id: string,
   name: string,
   institution: string,
-  kind: 'credit_card' | 'loan' | 'savings' | 'investment',
+  kind: 'credit_card' | 'loan' | 'savings' | 'investment' | 'pension' | 'junior_isa',
   owner: 'A' | 'B' | 'joint',
   offset = 200,
 ) {
@@ -49,6 +49,11 @@ export function buildMockPayload(): SyncPayload {
         goalDate: day(-300).slice(0, 10),
       },
       account('mock-iv-1', 'Vanguard ISA', 'Vanguard', 'investment', 'joint'),
+      account('mock-pn-1', 'Private Pension', 'Aviva', 'pension', 'A'),
+      {
+        ...account('mock-jisa-1', "Ellie's Junior ISA", 'Hargreaves Lansdown', 'junior_isa', 'joint'),
+        goalMinor: 10000_00,
+      },
     ],
     aliases: [],
     snapshots: [
@@ -62,6 +67,9 @@ export function buildMockPayload(): SyncPayload {
       snapshot('mock-sv-1', 6400_00, 120), snapshot('mock-iv-1', 8900_00, 120),
       snapshot('mock-sv-1', 7900_00, 60), snapshot('mock-iv-1', 9800_00, 60),
       snapshot('mock-sv-1', 8750_00, 14), snapshot('mock-iv-1', 10900_00, 40), // left stale on purpose
+      snapshot('mock-pn-1', 41200_00, 180), snapshot('mock-pn-1', 43900_00, 90), snapshot('mock-pn-1', 46350_00, 14),
+      snapshot('mock-jisa-1', 3100_00, 180), snapshot('mock-jisa-1', 3700_00, 120),
+      snapshot('mock-jisa-1', 4300_00, 60), snapshot('mock-jisa-1', 4900_00, 14),
     ],
     voids: [],
   };

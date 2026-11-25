@@ -31,6 +31,7 @@ There's no server and no cloud account. All data lives on the two phones. They l
 ## Capabilities and Constraints
 
 - Accounts: credit cards, savings and investments, current accounts, and others. Each has an owner (who it belongs to is hidden in the list) and an optional goal: a target amount and date for savings, or a pay-off date for debt. Cards can have a 0% deal end date.
+- Pensions and children's Junior ISAs are their own account types: each gets its own Home card (the ISA named after the account), its own Accounts group and check-in line, and can have a goal. Neither counts in net worth: the pension can't be used yet, and the ISA is the child's money. Their milestones show in the check-in but don't make a month "nicely done"; pensions get 100 days before looking out of date.
 - Balances are an append-only history stored as integer pence. Accounts shows balances as plain text, and they can only be edited through **Update**. A mistaken entry can be undone from Settings.
 - Debt progress is measured against peak recorded debt or a starting figure they set (shown as a progress ring and a trend chart). Savings show a 30-day change. Charts can be scrubbed by sliding.
 - Aliases: a stable name such as "Main Savings" points at whichever real account currently plays that role. Re-pointing an alias archives the old account.
