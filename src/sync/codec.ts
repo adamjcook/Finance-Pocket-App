@@ -1,4 +1,5 @@
 import type { SyncedState, SyncPayload } from '../model/types';
+import { APP_NAME } from '../appName';
 
 /**
  * QR frame codec: JSON -> deflate-raw -> 600-byte chunks -> text frames
@@ -108,7 +109,7 @@ export function parseFrame(text: string): ParsedFrame | null {
  */
 export function asSyncPayload(value: unknown): SyncPayload {
   const p = value as Partial<SyncPayload> | null;
-  if (!p || typeof p !== 'object') throw new Error("This isn't FinPair data.");
+  if (!p || typeof p !== 'object') throw new Error(`This isn't ${APP_NAME} data.`);
   if (p.v !== 1) {
     throw new Error(
       `This came from an app version this phone doesn't understand (v${String(p.v)}). Update both phones to the same version and try again.`,
@@ -118,7 +119,7 @@ export function asSyncPayload(value: unknown): SyncPayload {
   const ok =
     !!s && s.id === 'settings' && typeof s.updatedAt === 'string' &&
     [p.accounts, p.aliases, p.snapshots, p.voids].every(Array.isArray);
-  if (!ok) throw new Error("This isn't complete FinPair data — it may be damaged or from another app.");
+  if (!ok) throw new Error(`This isn't complete ${APP_NAME} data — it may be damaged or from another app.`);
   return p as SyncPayload;
 }
 

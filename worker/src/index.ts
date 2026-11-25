@@ -347,7 +347,7 @@ export async function handleRequest(
       const result = await sendPush(
         env.DAYS,
         reg.subscription,
-        { title: 'FinPair reminders are on', body: 'This is what a reminder looks like.', tag: 'test', url: '#/settings' },
+        { title: 'MC Bank reminders are on', body: 'This is what a reminder looks like.', tag: 'test', url: '#/settings' },
         now(),
         fetchImpl,
         env.VAPID_SUBJECT,

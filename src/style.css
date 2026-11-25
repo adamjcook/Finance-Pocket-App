@@ -1810,18 +1810,15 @@ label.field > span:first-child,
     animation: gain-in 420ms cubic-bezier(0.16, 1, 0.3, 1) 1000ms both;
   }
 
-  .app-logo.celebrate .mark-a {
-    animation: mark-meet-a 640ms cubic-bezier(0.16, 1, 0.3, 1) 1000ms both;
+  /* As the count lands, the ring rings out and the letters lift a touch. */
+  .app-logo.celebrate .mark-ring {
+    animation: ring-out 640ms cubic-bezier(0.16, 1, 0.3, 1) 1000ms both;
   }
 
-  .app-logo.celebrate .mark-b {
-    animation: mark-meet-b 640ms cubic-bezier(0.16, 1, 0.3, 1) 1000ms both;
-  }
-
-  .app-logo.celebrate .mark-lens {
+  .app-logo.celebrate .mark-letters {
     transform-box: fill-box;
     transform-origin: center;
-    animation: mark-lens 640ms cubic-bezier(0.16, 1, 0.3, 1) 1000ms both;
+    animation: letters-lift 640ms cubic-bezier(0.16, 1, 0.3, 1) 1000ms both;
   }
 
   .home-card.checkin.celebrate {
@@ -1847,33 +1844,15 @@ label.field > span:first-child,
   }
 }
 
-/* The circles part a little, then close up tighter than at rest and settle,
-   while the overlap where they meet flares brighter. */
-@keyframes mark-meet-a {
-  30% {
-    transform: translateX(-26px);
-  }
-  65% {
-    transform: translateX(10px);
+@keyframes ring-out {
+  35% {
+    stroke-width: 26px;
   }
 }
 
-@keyframes mark-meet-b {
-  30% {
-    transform: translateX(26px);
-  }
-  65% {
-    transform: translateX(-10px);
-  }
-}
-
-@keyframes mark-lens {
-  30% {
-    transform: scaleX(0.7);
-  }
-  65% {
-    transform: scaleX(1.18);
-    fill: #fffbe0;
+@keyframes letters-lift {
+  35% {
+    transform: scale(1.1);
   }
 }
 
@@ -1906,10 +1885,10 @@ label.field > span:first-child,
   }
 }
 
-/* Welcome splash (src/ui/components/Splash.tsx). The circles start a little
-   apart and meet; their overlap, the "shared" lens, lights up as they touch.
-   The resting state is the finished mark, so with reduced motion (or no
-   animation support) it simply shows the logo. */
+/* Welcome splash (src/ui/components/Splash.tsx). The ring draws itself
+   round from the top, like a pen closing a circle, while the MC rises into
+   place inside it. The resting state is the finished mark, so with reduced
+   motion (or no animation support) it simply shows the logo. */
 .splash {
   position: fixed;
   inset: 0;
@@ -1953,19 +1932,15 @@ label.field > span:first-child,
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .splash-a,
-  .splash-b {
-    animation: splash-meet-a 640ms cubic-bezier(0.33, 1, 0.68, 1) both;
+  .splash-mark .mark-ring {
+    stroke-dasharray: 100;
+    animation: ring-draw 720ms cubic-bezier(0.65, 0, 0.35, 1) 60ms both;
   }
 
-  .splash-b {
-    animation-name: splash-meet-b;
-  }
-
-  .splash-lens {
+  .splash-mark .mark-letters {
     transform-box: fill-box;
     transform-origin: center;
-    animation: splash-lens 320ms cubic-bezier(0.16, 1, 0.3, 1) 380ms both;
+    animation: letters-in 520ms cubic-bezier(0.16, 1, 0.3, 1) 240ms both;
   }
 
   .splash-greeting {
@@ -1973,9 +1948,8 @@ label.field > span:first-child,
   }
 
   /* tapped: jump straight to the finished mark, then hand off */
-  .splash-skip .splash-a,
-  .splash-skip .splash-b,
-  .splash-skip .splash-lens {
+  .splash-skip .mark-ring,
+  .splash-skip .mark-letters {
     animation-duration: 1ms;
     animation-delay: 0ms;
   }
@@ -1993,24 +1967,16 @@ label.field > span:first-child,
   }
 }
 
-@keyframes splash-meet-a {
+@keyframes ring-draw {
   from {
-    transform: translateX(-46px);
-    opacity: 0.4;
+    stroke-dashoffset: 100;
   }
 }
 
-@keyframes splash-meet-b {
-  from {
-    transform: translateX(46px);
-    opacity: 0.4;
-  }
-}
-
-@keyframes splash-lens {
+@keyframes letters-in {
   from {
     opacity: 0;
-    transform: scaleY(0.6);
+    transform: translateY(18px) scale(0.94);
   }
 }
 

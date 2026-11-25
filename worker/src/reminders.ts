@@ -151,7 +151,7 @@ function money(minor: number, currency: string): string {
 export function monthlyMessage(): PushMessage {
   return {
     title: 'Payday — time to update your balances',
-    body: "It's the last working day of the month. A couple of minutes in FinPair keeps your charts and goals accurate.",
+    body: "It's the last working day of the month. A couple of minutes in MC Bank keeps your charts and goals accurate.",
     tag: 'monthly',
     url: '#/update',
   };

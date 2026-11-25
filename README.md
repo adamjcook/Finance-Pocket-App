@@ -1,5 +1,9 @@
 # FinPair
 
+On the phones it's called **MC Bank**: the name under the icon, and the MC
+monogram. (Icons and in-app logo come from `scripts/gen-monogram.py`; the name
+from `VITE_APP_LABEL` in `.env`.)
+
 A shared finance tracker for two people, built as an installable web app (PWA). All data
 lives on your two phones — there is no server, no cloud account, and the app works fully
 offline. The two phones stay in sync by literally showing each other QR codes.

@@ -16,6 +16,7 @@ import { mergePayload } from '../sync/apply';
 import { currencySymbol, formatMoney } from '../logic/money';
 import { MoneyInput } from './components/MoneyInput';
 import { Icon } from './components/Icon';
+import { APP_NAME } from '../appName';
 
 export function Settings() {
   const app = useApp();
@@ -52,7 +53,7 @@ export function Settings() {
       try {
         parsed = JSON.parse(await file.text());
       } catch {
-        throw new Error("This file isn't a FinPair backup.");
+        throw new Error(`This file isn't a ${APP_NAME} backup.`);
       }
       // Not a sync with the partner, so it leaves the Sync screen's check code alone.
       const summary = await mergePayload(asSyncPayload(parsed));
@@ -384,7 +385,7 @@ export function Settings() {
         </div>
         <p class={`group-footer ${t212Status?.error ? 'owed' : ''}`} role="status">
           {!linkReady(state.settings.t212)
-            ? 'Records your Trading 212 account total at 9pm every day, so the chart shows each day’s change. Needs your own small Cloudflare Worker: the setup steps are under “Trading 212 link” in FinPair’s README on GitHub.'
+            ? 'Records your Trading 212 account total at 9pm every day, so the chart shows each day’s change. Needs your own small Cloudflare Worker: the setup steps are under “Trading 212 link” in the app’s README on GitHub.'
             : t212Status?.error
               ? t212Status.error
               : t212Status?.latest
@@ -436,10 +437,10 @@ export function Settings() {
         <p class={`group-footer ${pushMsg?.error ? 'owed' : ''}`} role="status">
           {pushMsg?.text ??
             (!pushSupported()
-              ? "This browser can't show notifications. Install FinPair to your home screen in Chrome to use reminders."
+              ? `This browser can't show notifications. Install ${APP_NAME} to your home screen in Chrome to use reminders.`
               : !workerReady(state.settings.t212)
                 ? 'Reminders are sent by the same Worker as the Trading 212 link — add its address and token above first.'
-                : 'Each phone chooses its own reminders. They come from your Worker, so they arrive even when FinPair is closed.')}
+                : `Each phone chooses its own reminders. They come from your Worker, so they arrive even when ${APP_NAME} is closed.`)}
         </p>
         </section>
 

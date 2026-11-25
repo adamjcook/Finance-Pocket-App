@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { LogoMark } from './LogoMark';
 
 /**
- * The welcome moment each time the app opens: the two circles of the FinPair
- * mark slide together and their shared overlap lights up, a greeting appears,
+ * The welcome moment each time the app opens: the ring of the MC Bank mark
+ * draws itself round the letters as they rise into place, a greeting appears,
  * then the mark flies into its place in Home's header while the overlay fades.
  *
  * It also stands in for the old "Loading…" text: it holds (looping nothing,
@@ -143,16 +144,7 @@ export function Splash({ ready, names }: Props) {
       onPointerDown={() => setSkipped(true)}
     >
       <div ref={mark} class="splash-mark">
-        <svg viewBox="0 0 512 512" width="96" height="96">
-          <rect width="512" height="512" rx="116" fill="#101418" />
-          <circle class="splash-a" cx="190" cy="256" r="118" fill="#4fd1a5" />
-          <circle class="splash-b" cx="322" cy="256" r="118" fill="#f2a65a" />
-          <path
-            class="splash-lens"
-            d="M256,158.2 A118,118 0 0 0 256,353.8 A118,118 0 0 0 256,158.2 Z"
-            fill="#f7ef8a"
-          />
-        </svg>
+        <LogoMark class="splash-logo" />
       </div>
       <div class="splash-greeting-slot">
         {names && <p class="splash-greeting">{`${greeting()}, ${names}`}</p>}

@@ -1,6 +1,7 @@
 import type { Snapshot, SyncedState, T212Link, T212Reading } from '../model/types';
 import { getStore, mutate, patchDevice } from '../model/store';
 import { toDay } from '../logic/progress';
+import { APP_NAME } from '../appName';
 
 /**
  * Trading 212 daily readings → balance entries on the linked account.
@@ -95,7 +96,7 @@ function rejectWrongCurrency(readings: T212Reading[], currency: string) {
   const wrong = readings.find((r) => r.currency !== currency);
   if (wrong) {
     throw new Error(
-      `Trading 212 reports in ${wrong.currency} but FinPair is set to ${currency} — readings weren't added.`,
+      `Trading 212 reports in ${wrong.currency} but ${APP_NAME} is set to ${currency} — readings weren't added.`,
     );
   }
 }

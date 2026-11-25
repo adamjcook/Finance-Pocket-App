@@ -2,6 +2,7 @@ import type { ReminderPrefs, SyncedState } from '../model/types';
 import { DEFAULT_REMINDER_PREFS } from '../model/types';
 import { getStore, patchDevice } from '../model/store';
 import { call, workerReady } from './t212';
+import { APP_NAME } from '../appName';
 
 /**
  * Reminder notifications. The app can't run in the background, so the
@@ -74,7 +75,7 @@ export async function enableReminders(): Promise<void> {
   const l = link();
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') {
-    throw new Error("Notifications are blocked for FinPair — allow them in Chrome's site settings, then try again.");
+    throw new Error(`Notifications are blocked for ${APP_NAME} — allow them in Chrome's site settings, then try again.`);
   }
   const { publicKey } = await call<{ publicKey: string }>(l, '/push/key');
   const key = fromB64url(publicKey);

@@ -6,6 +6,7 @@ import { currentFrames, type ApplyResult } from '../sync/apply';
 import { QRLoop } from '../sync/send';
 import { ScanPanel } from './components/ScanPanel';
 import { Icon } from './components/Icon';
+import { APP_NAME } from '../appName';
 
 type Mode = 'idle' | 'show' | 'scan' | 'merged';
 
@@ -157,7 +158,7 @@ export function Sync() {
           ? relay.error
           : relay.checkedAt
             ? `On · checked ${ago(relay.checkedAt)}`
-            : 'On · checks when FinPair opens';
+            : `On · checks when ${APP_NAME} opens`;
 
   // Until there's a Worker, automatic sync can't be switched on, so the way
   // that works today (QR) comes first and this sits below it as a pointer.

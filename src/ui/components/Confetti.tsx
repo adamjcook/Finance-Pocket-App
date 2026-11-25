@@ -2,13 +2,13 @@ import { useEffect, useRef } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 
 /**
- * A one-off burst of the FinPair mark's own pieces — teal and amber circles
- * and the yellow lens where they overlap — thrown up from `origin` and
- * falling away. Drawn on a canvas that ignores taps and removes itself when
+ * A one-off burst of the MC Bank mark's own pieces — little rings like the
+ * one round the letters, and dots — in white, the mark's green, the app's
+ * teal and a soft gold, thrown up from `origin` and falling away. Drawn on a canvas that ignores taps and removes itself when
  * done; skipped entirely with reduced motion.
  */
 
-const COLORS = ['#4fd1a5', '#f2a65a', '#f7ef8a'];
+const COLORS = ['#ffffff', '#5fae86', '#4fd1a5', '#f0d58c'];
 
 interface Piece {
   x: number;
@@ -19,7 +19,8 @@ interface Piece {
   spin: number;
   angle: number;
   color: string;
-  lens: boolean;
+  /** A small ring (the mark's) rather than a dot. */
+  ring: boolean;
 }
 
 export function Confetti({
@@ -67,7 +68,7 @@ export function Confetti({
           spin: (Math.random() - 0.5) * 0.3,
           angle: Math.random() * Math.PI,
           color: COLORS[Math.floor(Math.random() * COLORS.length)],
-          lens: Math.random() < 0.35,
+          ring: Math.random() < 0.4,
         };
       });
 
@@ -90,15 +91,19 @@ export function Confetti({
           ctx.globalAlpha = t < 0.6 ? 1 : Math.max(0, 1 - (t - 0.6) / 0.4);
           ctx.translate(p.x, p.y);
           ctx.rotate(p.angle);
-          ctx.fillStyle = p.color;
           ctx.beginPath();
-          if (p.lens) {
-            // The overlap of two circles: a pointed oval.
-            ctx.ellipse(0, 0, p.r * 0.55, p.r * 1.4, 0, 0, Math.PI * 2);
+          if (p.ring) {
+            // The ring round the letters, in miniature. A slight squash makes
+            // it tumble as it spins.
+            ctx.strokeStyle = p.color;
+            ctx.lineWidth = Math.max(1.5, p.r * 0.38);
+            ctx.ellipse(0, 0, p.r * 1.25, p.r * 0.85, 0, 0, Math.PI * 2);
+            ctx.stroke();
           } else {
+            ctx.fillStyle = p.color;
             ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+            ctx.fill();
           }
-          ctx.fill();
           ctx.restore();
         }
         if (t < 1) raf = requestAnimationFrame(frame);
