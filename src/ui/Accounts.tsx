@@ -2,11 +2,11 @@ import { useRef, useState } from 'preact/hooks';
 import { useApp, mutate, getStore } from '../model/store';
 import { addSnapshots, aliasForAccount, latestBalances } from '../model/repo';
 import type { Account } from '../model/types';
-import { ACCOUNT_KIND_LABELS, GROWTH_KINDS, OWED_KINDS } from '../model/types';
+import { ACCOUNT_KIND_LABELS, GROWTH_KINDS, JUNIOR_KINDS, OWED_KINDS, PENSION_KINDS } from '../model/types';
 import { currencySymbol, formatMoney } from '../logic/money';
 import { MoneyInput } from './components/MoneyInput';
 import { navigate } from '../router';
-import { daysBetween, formatDay, STALE_AFTER_DAYS, toDay, todayISO } from '../logic/progress';
+import { daysBetween, formatDay, PENSION_STALE_DAYS, STALE_AFTER_DAYS, toDay, todayISO } from '../logic/progress';
 import { Icon } from './components/Icon';
 import { looksLikeATypo } from '../logic/checkin';
 import { clearDraft, loadDraft, saveDraft } from '../model/updateDraft';
@@ -51,9 +51,18 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
     { title: 'Credit cards', accounts: visible.filter((a) => a.kind === 'credit_card') },
     { title: 'Loans', accounts: visible.filter((a) => a.kind === 'loan') },
     { title: 'Savings & investments', accounts: visible.filter((a) => GROWTH_KINDS.includes(a.kind)) },
+    // Held apart from net worth, as on Home.
+    { title: 'Pensions', accounts: visible.filter((a) => PENSION_KINDS.includes(a.kind)) },
+    { title: 'Junior ISAs', accounts: visible.filter((a) => JUNIOR_KINDS.includes(a.kind)) },
     {
       title: 'Everything else',
-      accounts: visible.filter((a) => !OWED_KINDS.includes(a.kind) && !GROWTH_KINDS.includes(a.kind)),
+      accounts: visible.filter(
+        (a) =>
+          !OWED_KINDS.includes(a.kind) &&
+          !GROWTH_KINDS.includes(a.kind) &&
+          !PENSION_KINDS.includes(a.kind) &&
+          !JUNIOR_KINDS.includes(a.kind),
+      ),
     },
   ].filter((g) => g.accounts.length > 0);
   // Enter moves to the next input in on-screen order, across groups.
@@ -141,8 +150,8 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
             0% until {formatDay(a.promoEndsOn!)}
           </span>
         )}
-        {!a.archived && latest && t212Id !== a.id && age > STALE_AFTER_DAYS && (
-          <span class="chip chip-warn" title="Balance not updated for over a month">
+        {!a.archived && latest && t212Id !== a.id && age > (PENSION_KINDS.includes(a.kind) ? PENSION_STALE_DAYS : STALE_AFTER_DAYS) && (
+          <span class="chip chip-warn" title="Balance not updated for a while">
             Updated {age} days ago
           </span>
         )}

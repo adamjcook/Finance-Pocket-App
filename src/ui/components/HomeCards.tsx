@@ -84,9 +84,20 @@ export function CheckInCard({
     const up = checkIn.savingsChange > 0;
     lines.push({ label: 'Savings', text: `${up ? 'up' : 'down'} ${money(checkIn.savingsChange)}`, good: up });
   }
+  // The pension and a child's ISA get their own lines; they're not part of
+  // the "how did we do" judgement below, which is about the couple's money.
+  for (const [has, change, label] of [
+    [checkIn.has.pension, checkIn.pensionChange, checkIn.labels.pension],
+    [checkIn.has.junior, checkIn.juniorChange, checkIn.labels.junior],
+  ] as const) {
+    if (!has || change === 0) continue;
+    lines.push({ label, text: `${change > 0 ? 'up' : 'down'} ${money(change)}`, good: change > 0 });
+  }
   // Judged on the whole picture: savings up £250 doesn't make a month where
   // card debt rose by much more a "nicely done" one.
   const anyGood = checkIn.milestones.length > 0 || checkIn.netChange > 0;
+  // Pension / Junior ISA milestones are shown too, after the couple's own.
+  const allMilestones = [...checkIn.milestones, ...checkIn.heldMilestones];
 
   const undo = async () => {
     const { device } = getStore();
@@ -116,10 +127,10 @@ export function CheckInCard({
       ) : (
         <p class="home-card-text">Balances saved. Nothing in your totals moved this time.</p>
       )}
-      {!anyGood && perspective && <p class="checkin-perspective">{perspective}</p>}
-      {checkIn.milestones.length > 0 && (
+      {checkIn.netChange < 0 && perspective && <p class="checkin-perspective">{perspective}</p>}
+      {allMilestones.length > 0 && (
         <ul class="milestones">
-          {checkIn.milestones.map((m, i) => (
+          {allMilestones.map((m, i) => (
             <li key={m} style={`--i:${i}`}>
               <span class="milestone-mark" aria-hidden="true">
                 <Icon name="check" size={14} />

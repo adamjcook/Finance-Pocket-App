@@ -7,7 +7,17 @@ export interface Meta {
   updatedBy: string; // deviceId that made the change
 }
 
-export type AccountKind = 'credit_card' | 'loan' | 'savings' | 'investment' | 'checking' | 'other';
+export type AccountKind =
+  | 'credit_card'
+  | 'loan'
+  | 'savings'
+  | 'investment'
+  | 'checking'
+  | 'other'
+  /** Locked away until retirement: its own card, never counted in net worth. */
+  | 'pension'
+  /** A child's Junior ISA: their money, so its own card and never in net worth. */
+  | 'junior_isa';
 export type Owner = 'A' | 'B' | 'joint';
 
 export interface Account extends Meta {
@@ -144,9 +154,9 @@ export const CURRENCIES = ['GBP', 'EUR', 'USD'];
 
 export type Theme = 'dark' | 'light';
 
-export type DashboardSectionKey = 'growth' | 'goals' | 'debt' | 'loans';
+export type DashboardSectionKey = 'growth' | 'goals' | 'debt' | 'loans' | 'pension' | 'junior';
 // Clearing the card debt is the first job, so it leads on a new phone.
-export const DEFAULT_DASHBOARD_ORDER: DashboardSectionKey[] = ['debt', 'growth', 'goals', 'loans'];
+export const DEFAULT_DASHBOARD_ORDER: DashboardSectionKey[] = ['debt', 'growth', 'goals', 'loans', 'pension', 'junior'];
 
 /** Which reminders this phone wants (Settings → Reminders). */
 export interface ReminderPrefs {
@@ -269,6 +279,8 @@ export const ACCOUNT_KIND_LABELS: Record<AccountKind, string> = {
   investment: 'Investment',
   checking: 'Current account',
   other: 'Other',
+  pension: 'Pension',
+  junior_isa: 'Junior ISA',
 };
 
 /** Kinds counted in the card-payoff headline and goal. Loans stay separate. */
@@ -279,3 +291,11 @@ export const LOAN_KINDS: AccountKind[] = ['loan'];
 export const GROWTH_KINDS: AccountKind[] = ['savings', 'investment'];
 /** Kinds where the balance is money owed, not money held. */
 export const OWED_KINDS: AccountKind[] = ['credit_card', 'loan'];
+/** Pensions: their own card, left out of net worth (the money isn't usable). */
+export const PENSION_KINDS: AccountKind[] = ['pension'];
+/** Children's accounts: their own card, left out of net worth (it's their money). */
+export const JUNIOR_KINDS: AccountKind[] = ['junior_isa'];
+/** Kinds that can have a target to save up to (a "pot" goal). */
+export const POT_KINDS: AccountKind[] = [...GROWTH_KINDS, ...PENSION_KINDS, ...JUNIOR_KINDS];
+/** Every kind that's money held rather than owed, with its own Home card. */
+export const HELD_KINDS: AccountKind[] = POT_KINDS;

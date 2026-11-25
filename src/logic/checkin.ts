@@ -1,7 +1,15 @@
 import type { SyncedState, UUID } from '../model/types';
-import { GROWTH_KINDS, OWED_KINDS } from '../model/types';
+import { GROWTH_KINDS, JUNIOR_KINDS, OWED_KINDS, PENSION_KINDS, POT_KINDS } from '../model/types';
 import { latestBalances } from '../model/repo';
-import { debtProgress, growthProgress, loanProgress, netWorthMilestone, netWorthSeries } from './progress';
+import {
+  debtProgress,
+  growthProgress,
+  juniorProgress,
+  loanProgress,
+  netWorthMilestone,
+  netWorthSeries,
+  pensionProgress,
+} from './progress';
 import { formatMoneyWhole } from './money';
 
 /**
@@ -18,10 +26,20 @@ export interface CheckIn {
   savingsChange: number;
   /** Net worth after − before (savings up, debts down both count). */
   netChange: number;
+  /** Pensions and children's accounts: their own lines, never in net worth. */
+  pensionChange: number;
+  juniorChange: number;
+  /** What to call them: "Pension"/"Pensions"; the Junior ISA's own name, or "Junior ISAs". */
+  labels: { pension: string; junior: string };
   /** Which of those totals this couple actually tracks (so we don't say "£0"). */
-  has: { cards: boolean; loans: boolean; savings: boolean };
+  has: { cards: boolean; loans: boolean; savings: boolean; pension: boolean; junior: boolean };
   /** Moments worth naming, most important first. */
   milestones: string[];
+  /**
+   * Milestones for the pension or a child's ISA. Shown too, after the
+   * couple's own, but they don't decide whether the month was "nicely done".
+   */
+  heldMilestones: string[];
 }
 
 export function summariseCheckIn(
@@ -37,8 +55,14 @@ export function summariseCheckIn(
   const loansAfter = loanProgress(after, today);
   const savingsBefore = growthProgress(before, today);
   const savingsAfter = growthProgress(after, today);
+  const pensionBefore = pensionProgress(before, today);
+  const pensionAfter = pensionProgress(after, today);
+  const juniorBefore = juniorProgress(before, today);
+  const juniorAfter = juniorProgress(after, today);
+  const labels = heldLabels(after);
 
   const milestones: string[] = [];
+  const heldMilestones: string[] = [];
   const hadCardDebt = debtBefore.series.length > 0;
 
   // All the card debt gone is the big one; otherwise a new lowest total.
@@ -73,9 +97,20 @@ export function summariseCheckIn(
       milestones.push(`${a.name} paid off`);
     }
     const goal = a.goalMinor ?? 0;
-    if (GROWTH_KINDS.includes(a.kind) && goal > 0 && was < goal && now >= goal) {
-      milestones.push(`${a.name} reached its goal`);
+    if (POT_KINDS.includes(a.kind) && goal > 0 && was < goal && now >= goal) {
+      (GROWTH_KINDS.includes(a.kind) ? milestones : heldMilestones).push(`${a.name} reached its goal`);
     }
+  }
+
+  // The pension or the Junior ISA past a round number for the first time
+  // (the same lines as net worth's: £1k steps to £10k, then £5k, then £10k).
+  const currency = after.settings.currency;
+  for (const [label, was, now] of [
+    [labels.pension, pensionBefore, pensionAfter],
+    [labels.junior, juniorBefore, juniorAfter],
+  ] as const) {
+    const line = netWorthMilestone(was.series, now.current);
+    if (typeof line === 'number') heldMilestones.push(`${label} over ${formatMoneyWhole(line, currency)} for the first time`);
   }
 
   return {
@@ -89,12 +124,18 @@ export function summariseCheckIn(
       savingsBefore.current -
       (debtAfter.current - debtBefore.current) -
       (loansAfter.current - loansBefore.current),
+    pensionChange: pensionAfter.current - pensionBefore.current,
+    juniorChange: juniorAfter.current - juniorBefore.current,
+    labels,
     has: {
       cards: debtAfter.series.length > 0,
       loans: loansAfter.series.length > 0,
       savings: savingsAfter.series.length > 0,
+      pension: pensionAfter.series.length > 0,
+      junior: juniorAfter.series.length > 0,
     },
     milestones,
+    heldMilestones,
   };
 }
 
@@ -163,4 +204,19 @@ export function checkInFor(state: SyncedState, batch: UpdateBatch, today: string
   const after = { ...state, snapshots: state.snapshots.filter((s) => s.at <= batch.at) };
   const before = { ...after, snapshots: after.snapshots.filter((s) => !ids.has(s.id)) };
   return summariseCheckIn(before, after, batch.at, batch.ids, today);
+}
+
+/**
+ * What to call the pension and children's totals: "Pension" (or "Pensions"
+ * with more than one); a single Junior ISA by its own name (say "Ellie's
+ * Junior ISA"), several as "Junior ISAs".
+ */
+export function heldLabels(state: SyncedState): { pension: string; junior: string } {
+  const active = (kinds: string[]) => state.accounts.filter((a) => !a.archived && kinds.includes(a.kind));
+  const pensions = active(PENSION_KINDS);
+  const juniors = active(JUNIOR_KINDS);
+  return {
+    pension: pensions.length > 1 ? 'Pensions' : 'Pension',
+    junior: juniors.length === 1 ? juniors[0].name : 'Junior ISAs',
+  };
 }

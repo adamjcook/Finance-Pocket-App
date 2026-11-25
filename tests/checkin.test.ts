@@ -36,7 +36,7 @@ describe('summariseCheckIn', () => {
     ]);
     expect(c.cardChange).toBe(-300_00);
     expect(c.savingsChange).toBe(300_00);
-    expect(c.has).toEqual({ cards: true, loans: false, savings: true });
+    expect(c.has).toEqual({ cards: true, loans: false, savings: true, pension: false, junior: false });
     expect(c.snapshotIds).toHaveLength(2);
   });
 
@@ -152,5 +152,45 @@ describe('the latest update, from the shared history', () => {
     const batch = latestUpdateBatch(s1)!;
     const s2 = batch.ids.reduce((acc, id) => voidSnapshot(acc, { deviceId: 'phone-a' }, id), s1);
     expect(latestUpdateBatch(s2)!.voided).toBe(true);
+  });
+});
+
+describe('pensions and Junior ISAs', () => {
+  function withHeld() {
+    const s = base();
+    return {
+      ...s,
+      accounts: [
+        ...s.accounts,
+        account({ id: 'pen', name: 'Private Pension', kind: 'pension' }),
+        account({ id: 'jisa', name: "Ellie's Junior ISA", kind: 'junior_isa', goalMinor: 5000_00 }),
+      ],
+      snapshots: [
+        ...s.snapshots,
+        snapshot({ accountId: 'pen', balance: 41000_00, at: '2026-09-30T09:00:00.000Z' }),
+        snapshot({ accountId: 'jisa', balance: 4800_00, at: '2026-09-30T09:00:00.000Z' }),
+      ],
+    };
+  }
+
+  it('get their own lines and milestones, but never touch net worth', () => {
+    const before = withHeld();
+    const after = addSnapshots(before, { deviceId: 'd', now: AT }, [
+      { accountId: 'pen', balance: 46000_00, at: AT },
+      { accountId: 'jisa', balance: 5100_00, at: AT },
+    ]);
+    const ids = after.snapshots.slice(before.snapshots.length).map((s) => s.id);
+    const c = summariseCheckIn(before, after, AT, ids, TODAY);
+    expect(c.pensionChange).toBe(5000_00);
+    expect(c.juniorChange).toBe(300_00);
+    expect(c.netChange).toBe(0);
+    expect(c.labels).toEqual({ pension: 'Pension', junior: "Ellie's Junior ISA" });
+    // Shown, but kept apart: they don't make it the couple's "nicely done".
+    expect(c.milestones).toEqual([]);
+    expect(c.heldMilestones).toEqual([
+      "Ellie's Junior ISA reached its goal",
+      'Pension over £45,000 for the first time',
+      "Ellie's Junior ISA over £5,000 for the first time",
+    ]);
   });
 });

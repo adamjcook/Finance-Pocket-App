@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import { useApp, mutate, getStore } from '../model/store';
 import { addAccount, updateAccount } from '../model/repo';
 import type { AccountKind, Owner } from '../model/types';
-import { ACCOUNT_KIND_LABELS, GROWTH_KINDS, OWED_KINDS } from '../model/types';
+import { ACCOUNT_KIND_LABELS, OWED_KINDS, POT_KINDS } from '../model/types';
 import { MoneyInput } from './components/MoneyInput';
 import { currencySymbol } from '../logic/money';
 import { navigate } from '../router';
@@ -34,7 +34,7 @@ export function AccountForm({ id }: Props) {
     const { device } = getStore();
     const ctx = { deviceId: device.deviceId };
     // Only keep the extras that apply to this kind of account.
-    const isPot = GROWTH_KINDS.includes(kind);
+    const isPot = POT_KINDS.includes(kind);
     const extras = {
       goalMinor: isPot ? goalMinor : null,
       // Pots: the date to reach the target by. Cards/loans: the date to pay off by.
@@ -113,6 +113,13 @@ export function AccountForm({ id }: Props) {
               </option>
             ))}
           </select>
+          {(kind === 'pension' || kind === 'junior_isa') && (
+            <p class="field-hint">
+              {kind === 'pension'
+                ? 'Gets its own card on Home. Not counted in net worth, as you can’t use it until you retire.'
+                : 'Gets its own card on Home, named after this account. Not counted in net worth: it’s their money.'}
+            </p>
+          )}
         </label>
         <div class="field">
           <span class="field-label" id="owner-label">
@@ -131,7 +138,7 @@ export function AccountForm({ id }: Props) {
             ))}
           </div>
         </div>
-        {GROWTH_KINDS.includes(kind) && (
+        {POT_KINDS.includes(kind) && (
           <div class="field">
             <span class="field-label">Goal for this pot</span>
             <div class="row" style="gap:8px">
@@ -163,7 +170,7 @@ export function AccountForm({ id }: Props) {
               value={goalDate}
               onInput={(e) => setGoalDate((e.target as HTMLInputElement).value)}
             />
-            <p class="field-hint">Optional. Home's Goals card shows the monthly amount it takes.</p>
+            <p class="field-hint">Optional. Home shows the monthly amount it takes, in this account's card.</p>
           </label>
         )}
         {kind === 'credit_card' && (

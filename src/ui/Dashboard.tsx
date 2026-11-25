@@ -6,22 +6,32 @@ import {
   daysBetween,
   formatDay,
   growthProgress,
+  juniorProgress,
   lastManualUpdate,
   latestPayday,
   loanProgress,
   monthlyToTarget,
+  pensionProgress,
   toDay,
   todayISO,
 } from '../logic/progress';
 import { formatMoneyWhole } from '../logic/money';
 import { lastWorkingDay } from '../../worker/src/ukdates';
-import { checkInFor, latestUpdateBatch } from '../logic/checkin';
+import { checkInFor, heldLabels, latestUpdateBatch } from '../logic/checkin';
 import { whenSplashGone } from './components/Splash';
 import { LogoMark } from './components/LogoMark';
 import { Confetti } from './components/Confetti';
 import { navigate } from '../router';
 import { CheckInCard, NewsLine, PaydayCard, SyncLine } from './components/HomeCards';
-import { GROWTH_KINDS, OWED_KINDS, type DashboardSectionKey } from '../model/types';
+import {
+  GROWTH_KINDS,
+  JUNIOR_KINDS,
+  OWED_KINDS,
+  PENSION_KINDS,
+  POT_KINDS,
+  type AccountKind,
+  type DashboardSectionKey,
+} from '../model/types';
 import { latestBalances } from '../model/repo';
 import { Chart } from './components/Chart';
 import { ProgressRing } from './components/ProgressRing';
@@ -33,6 +43,9 @@ const SECTION_META: Record<DashboardSectionKey, { heading: string }> = {
   debt: { heading: 'Credit card debt' },
   loans: { heading: 'Loans' },
   goals: { heading: 'Savings goals' },
+  // These two are named from the accounts themselves (see heldLabels).
+  pension: { heading: 'Pension' },
+  junior: { heading: 'Junior ISAs' },
 };
 
 interface Drag {
@@ -141,7 +154,7 @@ export function Dashboard() {
   // to save up to; cards and loans have a date to pay them off by.
   const balances = latestBalances(state);
   const pots = state.accounts
-    .filter((a) => !a.archived && GROWTH_KINDS.includes(a.kind) && (a.goalMinor ?? 0) > 0)
+    .filter((a) => !a.archived && POT_KINDS.includes(a.kind) && (a.goalMinor ?? 0) > 0)
     .map((a) => {
       const current = balances.get(a.id)?.balance ?? 0;
       const goal = a.goalMinor!;
@@ -170,7 +183,19 @@ export function Dashboard() {
       };
     })
     .sort((x, y) => x.account.goalDate!.localeCompare(y.account.goalDate!));
-  const hasGoals = pots.length > 0; // pay-off goals live in the debt and loan cards
+  // Savings goals holds the ordinary savings pots; pay-off goals live in the
+  // debt and loan cards, and pension or Junior ISA goals in their own cards.
+  const savingsPots = pots.filter((p) => GROWTH_KINDS.includes(p.account.kind));
+  const hasGoals = savingsPots.length > 0;
+  // Pensions and Junior ISAs: their own cards, never in net worth.
+  const pension = pensionProgress(state, today);
+  const junior = juniorProgress(state, today);
+  const held = heldLabels(state);
+  const hasKind = (kinds: AccountKind[]) => state.accounts.some((a) => !a.archived && kinds.includes(a.kind));
+  const showPension = hasKind(PENSION_KINDS);
+  const showJunior = hasKind(JUNIOR_KINDS);
+  const headingFor = (key: DashboardSectionKey) =>
+    key === 'pension' ? held.pension : key === 'junior' ? held.junior : SECTION_META[key].heading;
 
   // Trading 212 link: the linked account's move on its latest day, and its
   // overall gain from the Worker's latest reading.
@@ -208,7 +233,11 @@ export function Dashboard() {
   const payday = latestPayday(today, lastWorkingDay);
   const paydayDue = hasAccounts && (lastUpdate === null || lastUpdate < payday);
   const baseVisible = device.dashboardOrder.filter(
-    (k) => (k !== 'loans' || showLoans) && (k !== 'goals' || hasGoals),
+    (k) =>
+      (k !== 'loans' || showLoans) &&
+      (k !== 'goals' || hasGoals) &&
+      (k !== 'pension' || showPension) &&
+      (k !== 'junior' || showJunior),
   );
   // The rendered order stays fixed at the pre-drag order for the whole drag:
   // Chromium silently releases pointer capture when the captured element is
@@ -318,7 +347,81 @@ export function Dashboard() {
     );
   };
 
+  // Savings-style goals ("£X of £Y"), for whichever pots belong in a card.
+  // `label` replaces the account's name, e.g. "Goal" when the card's heading
+  // already is that name.
+  const potList = (list: typeof pots, label?: string) =>
+    list.length === 0 ? null : (
+      <>
+        {list.map((p) => (
+            <div class="pot" key={p.account.id}>
+              <div class="pot-head">
+                <span class="pot-name">{label ?? p.account.name}</span>
+                <span class="pot-figures num">
+                  <strong>{formatMoneyWhole(p.current, currency)}</strong> of {formatMoneyWhole(p.goal, currency)}
+                </span>
+              </div>
+              <div class="goal-bar" role="img" aria-label={`${p.account.name}: ${p.pct.toFixed(0)}% of goal`}>
+                <span style={`width:${p.pct}%`} />
+              </div>
+              <div class="pot-note">
+                {p.current >= p.goal ? (
+                  <span class="positive done-note">
+                    <Icon name="check" size={14} /> Goal reached
+                  </span>
+                ) : (
+                  <>
+                    {formatMoneyWhole(p.goal - p.current, currency)} to go
+                    {p.account.goalDate &&
+                      (p.monthly !== null ? (
+                        <>
+                          {' '}
+                          · about <strong class="num">{formatMoneyWhole(p.monthly, currency)}/month</strong> to
+                          reach it by {formatDay(p.account.goalDate)}
+                        </>
+                      ) : (
+                        <> · goal date {formatDay(p.account.goalDate)} has passed</>
+                      ))}
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+      </>
+    );
+
+  // A card for money held apart from net worth: the pension, or a child's ISA.
+  const heldCard = (progress: typeof pension, caption: string, change: number | undefined, kinds: AccountKind[]) => {
+    const own = pots.filter((p) => kinds.includes(p.account.kind));
+    // With one account the card is already named after it, so its goal row
+    // just says "Goal".
+    const inCard = state.accounts.filter((a) => !a.archived && kinds.includes(a.kind));
+    return (
+      <div class="dash-body">
+        <div class="figure-row">
+          <div class="grow">
+            <div class="big-number">{formatMoneyWhole(progress.current, currency)}</div>
+            <div class="figure-caption">{caption}</div>
+          </div>
+          <Change change={change ?? progress.delta30} goodWhen="up" window={changeWindow} currency={currency} stacked />
+        </div>
+        {progress.series.length > 1 && <Chart series={progress.series} currency={currency} color="var(--accent)" />}
+        {own.length > 0 && (
+          <div class="pots payoffs">
+            {potList(own, inCard.length === 1 ? 'Goal' : undefined)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const sectionBody = (key: DashboardSectionKey) => {
+    if (key === 'pension') {
+      return heldCard(pension, 'put away for retirement · not in net worth', checkIn?.pensionChange, PENSION_KINDS);
+    }
+    if (key === 'junior') {
+      return heldCard(junior, 'saved for the future · not in net worth', checkIn?.juniorChange, JUNIOR_KINDS);
+    }
     if (key === 'debt') {
       return (
         <div class="dash-body">
@@ -350,40 +453,7 @@ export function Dashboard() {
     if (key === 'goals') {
       return (
         <div class="dash-body pots">
-          {pots.map((p) => (
-            <div class="pot" key={p.account.id}>
-              <div class="pot-head">
-                <span class="pot-name">{p.account.name}</span>
-                <span class="pot-figures num">
-                  <strong>{formatMoneyWhole(p.current, currency)}</strong> of {formatMoneyWhole(p.goal, currency)}
-                </span>
-              </div>
-              <div class="goal-bar" role="img" aria-label={`${p.account.name}: ${p.pct.toFixed(0)}% of goal`}>
-                <span style={`width:${p.pct}%`} />
-              </div>
-              <div class="pot-note">
-                {p.current >= p.goal ? (
-                  <span class="positive done-note">
-                    <Icon name="check" size={14} /> Goal reached
-                  </span>
-                ) : (
-                  <>
-                    {formatMoneyWhole(p.goal - p.current, currency)} to go
-                    {p.account.goalDate &&
-                      (p.monthly !== null ? (
-                        <>
-                          {' '}
-                          · about <strong class="num">{formatMoneyWhole(p.monthly, currency)}/month</strong> to
-                          reach it by {formatDay(p.account.goalDate)}
-                        </>
-                      ) : (
-                        <> · goal date {formatDay(p.account.goalDate)} has passed</>
-                      ))}
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
+          {potList(savingsPots)}
         </div>
       );
     }
@@ -524,7 +594,7 @@ export function Dashboard() {
       )}
 
       {visible.map((key) => {
-        const meta = SECTION_META[key];
+        const meta = { heading: headingFor(key) };
         const dragging = dragKey === key;
         const shift = dragging ? 0 : shiftFor(key);
         return (
