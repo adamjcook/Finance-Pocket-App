@@ -199,8 +199,9 @@ export function Settings() {
           </label>
         </div>
         <p class="group-footer">
-          Shared by both phones. The names label who owns each account, so keep them the same on
-          both sides.
+          {device.me
+            ? 'The names are shared: change one here and it changes on your partner’s phone too. Each phone shows its own owner as “You”.'
+            : 'The names are shared: change one here and it changes on your partner’s phone too.'}
         </p>
       </section>
 
