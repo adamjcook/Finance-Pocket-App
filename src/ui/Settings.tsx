@@ -25,7 +25,7 @@ export function Settings() {
   const [t212Busy, setT212Busy] = useState<'check' | 'reading' | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMsg, setPushMsg] = useState<{ text: string; error: boolean } | null>(null);
-  // The Worker and Trading 212 are one-time setup most visits never need.
+  // Trading 212 and reminders are one-time setup most visits never need.
   const [connectionsOpen, setConnectionsOpen] = useState(false);
 
   if (!app) return null;
@@ -206,58 +206,6 @@ export function Settings() {
         </p>
       </section>
 
-      {/* Per-phone notifications: their own section, apart from the one-time
-          Worker setup under Connections (which they rely on). */}
-      <section class="group">
-        <h2 class="group-label">Reminders</h2>
-        <div class="list">
-          <div class="list-row">
-            <div class="grow">
-              <div class="row-title">Notifications on this phone</div>
-            </div>
-            <button
-              class="switch"
-              role="switch"
-              aria-checked={!!push?.enabled}
-              aria-label="Notifications on this phone"
-              disabled={pushBusy || !pushSupported() || !workerReady(state.settings.t212)}
-              onClick={() =>
-                void runPush(
-                  push?.enabled ? disableReminders : enableReminders,
-                  push?.enabled ? undefined : 'Reminders are on for this phone.',
-                )
-              }
-            />
-          </div>
-          {push?.enabled && (
-            <>
-              {reminderRow('monthly', 'Update your balances', '9am on payday — the last working day of each month')}
-              {reminderRow('promo', '0% deals ending', '30, 7 and 1 days before — set the date on each card')}
-              {reminderRow('partner', 'Partner updates', 'When your partner saves a payday update (with automatic sync on)')}
-              {linkReady(state.settings.t212) &&
-                reminderRow('drop', 'Trading 212 drops', 'When the linked account is down 5% or more on the week')}
-              <div class="list-row">
-                <button
-                  class="btn-sm grow"
-                  disabled={pushBusy}
-                  onClick={() => void runPush(sendTestReminder, 'Test sent — it should appear in a few seconds.')}
-                >
-                  Send a test notification
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-        <p class={`group-footer ${pushMsg?.error ? 'owed' : ''}`} role="status">
-          {pushMsg?.text ??
-            (!pushSupported()
-              ? `This browser can't show notifications. Install ${APP_NAME} to your home screen in Chrome to use reminders.`
-              : !workerReady(state.settings.t212)
-                ? 'Reminders come from your own Worker, which isn’t set up yet: add its address and token under Connections, below.'
-                : `Each phone chooses its own reminders. They come from your Worker, so they arrive even when ${APP_NAME} is closed.`)}
-        </p>
-      </section>
-
       <section class="group">
         <h2 class="group-label">How “paid off” is measured</h2>
         <div class="list">
@@ -364,13 +312,17 @@ export function Settings() {
           >
             <Icon name="link" />
             <span class="grow">
-              Your Worker and Trading 212
+              Trading 212 and reminders
               <span class="row-sub" style="display:block">
-                {!workerReady(state.settings.t212)
-                  ? 'Not set up · needs your own Worker'
-                  : linkReady(state.settings.t212)
-                    ? `Set up · Trading 212 linked to ${state.accounts.find((a) => a.id === state.settings.t212?.accountId)?.name ?? 'an account'}`
-                    : 'Set up · Trading 212 not linked'}
+                {workerReady(state.settings.t212)
+                  ? [
+                      linkReady(state.settings.t212) &&
+                        `Linked to ${state.accounts.find((a) => a.id === state.settings.t212?.accountId)?.name ?? 'an account'}`,
+                      push?.enabled ? 'reminders on' : 'reminders off',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  : 'Not set up · needs your own Worker'}
               </span>
             </span>
             <Icon name="chevron" size={18} class={`row-chevron ${connectionsOpen ? 'open' : ''}`} />
@@ -442,6 +394,55 @@ export function Settings() {
         </p>
         </section>
 
+        <section class="group">
+        <h2 class="group-label">Reminders</h2>
+        <div class="list">
+          <div class="list-row">
+            <div class="grow">
+              <div class="row-title">Notifications on this phone</div>
+            </div>
+            <button
+              class="switch"
+              role="switch"
+              aria-checked={!!push?.enabled}
+              aria-label="Notifications on this phone"
+              disabled={pushBusy || !pushSupported() || !workerReady(state.settings.t212)}
+              onClick={() =>
+                void runPush(
+                  push?.enabled ? disableReminders : enableReminders,
+                  push?.enabled ? undefined : 'Reminders are on for this phone.',
+                )
+              }
+            />
+          </div>
+          {push?.enabled && (
+            <>
+              {reminderRow('monthly', 'Update your balances', '9am on payday — the last working day of each month')}
+              {reminderRow('promo', '0% deals ending', '30, 7 and 1 days before — set the date on each card')}
+              {reminderRow('partner', 'Partner updates', 'When your partner saves a payday update (with automatic sync on)')}
+              {linkReady(state.settings.t212) &&
+                reminderRow('drop', 'Trading 212 drops', 'When the linked account is down 5% or more on the week')}
+              <div class="list-row">
+                <button
+                  class="btn-sm grow"
+                  disabled={pushBusy}
+                  onClick={() => void runPush(sendTestReminder, 'Test sent — it should appear in a few seconds.')}
+                >
+                  Send a test notification
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+        <p class={`group-footer ${pushMsg?.error ? 'owed' : ''}`} role="status">
+          {pushMsg?.text ??
+            (!pushSupported()
+              ? `This browser can't show notifications. Install ${APP_NAME} to your home screen in Chrome to use reminders.`
+              : !workerReady(state.settings.t212)
+                ? 'Reminders are sent by the same Worker as the Trading 212 link — add its address and token above first.'
+                : `Each phone chooses its own reminders. They come from your Worker, so they arrive even when ${APP_NAME} is closed.`)}
+        </p>
+        </section>
 
         </div>
       )}
