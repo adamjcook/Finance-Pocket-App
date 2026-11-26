@@ -154,9 +154,14 @@ export const CURRENCIES = ['GBP', 'EUR', 'USD'];
 
 export type Theme = 'dark' | 'light';
 
-export type DashboardSectionKey = 'growth' | 'goals' | 'debt' | 'loans' | 'pension' | 'junior';
+/**
+ * Home's cards. Savings goals live inside the savings card; pensions and
+ * Junior ISAs share one compact 'held' card. (Phones that stored the older
+ * 'goals', 'pension' or 'junior' keys have them dropped on load.)
+ */
+export type DashboardSectionKey = 'growth' | 'debt' | 'loans' | 'held';
 // Clearing the card debt is the first job, so it leads on a new phone.
-export const DEFAULT_DASHBOARD_ORDER: DashboardSectionKey[] = ['debt', 'growth', 'goals', 'loans', 'pension', 'junior'];
+export const DEFAULT_DASHBOARD_ORDER: DashboardSectionKey[] = ['debt', 'growth', 'loans', 'held'];
 
 /** Which reminders this phone wants (Settings → Reminders). */
 export interface ReminderPrefs {

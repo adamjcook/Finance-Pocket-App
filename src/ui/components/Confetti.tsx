@@ -8,7 +8,7 @@ import { createPortal } from 'preact/compat';
  * done; skipped entirely with reduced motion.
  */
 
-const COLORS = ['#ffffff', '#5fae86', '#4fd1a5', '#f0d58c'];
+const COLORS = ['#ffffff', '#5fae86', '#4dd7c6', '#f0d58c'];
 
 interface Piece {
   x: number;

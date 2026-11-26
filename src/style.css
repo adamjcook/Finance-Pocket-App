@@ -29,7 +29,9 @@
   /* Ink on a teal --accent fill (milestone ticks). */
   --on-accent: #0b0e0c;
 
-  --accent: #4fd1a5; /* growth, progress, positive change */
+  /* Growth, progress, positive change. A cyan-leaning teal (OKLCH hue ~184),
+     so data reads apart from the icon green (hue ~162) used for actions. */
+  --accent: #4dd7c6;
   --debt: #f2a65a; /* money owed */
   --danger: #ff6b6b;
   --focus: color-mix(in srgb, var(--brand-fg) 70%, transparent);
@@ -78,7 +80,7 @@
   --brand-fg: #2f5e48;
   --primary-ink: #ffffff;
   --on-accent: #ffffff;
-  --accent: #0c8a68;
+  --accent: #00756a; /* ≥4.5:1 on white, the bg and its own 14% pill tint */
   --debt: #b85c0a;
   --danger: #d92d20;
   --card-shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
@@ -1038,16 +1040,27 @@ label.field > span:first-child,
 /* ---- chart ---------------------------------------------------------------- */
 
 .chart {
+  position: relative;
   margin-top: 14px;
 }
 
+/* The press-and-hold readout floats over the chart's top-left corner (above
+   the plot, clear of the thumb) instead of reserving an empty line in every
+   card. */
 .chart-tooltip {
-  min-height: 18px;
+  position: absolute;
+  top: -4px;
+  left: 0;
+  z-index: 1;
+  padding: 2px 6px 2px 0;
+  background: var(--surface);
   font-size: var(--fs-caption);
   font-weight: var(--fw-label);
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
+  pointer-events: none;
 }
+
 
 .chart svg {
   display: block;
@@ -1519,6 +1532,77 @@ label.field > span:first-child,
   font-size: var(--fs-subhead);
 }
 
+/* ---- Home: Held apart (pensions, Junior ISAs) -------------------------------- */
+
+/* One row per account: name and kind (with its change), the figure, and a
+   way into the Held apart page. Compact so another child's ISA adds a line,
+   not a card. */
+.held-rows {
+  padding-top: 4px;
+  padding-bottom: 6px;
+}
+
+.held-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  margin: 0 -8px;
+  padding: 8px 4px 8px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.held-row + .held-row {
+  border-top: 1px solid var(--separator);
+  border-radius: 0;
+}
+
+.held-row:active {
+  background: var(--surface-2);
+}
+
+.held-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.held-row-name {
+  font-weight: var(--fw-label);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.held-row-sub {
+  font-size: var(--fs-footnote);
+  color: var(--text-2);
+}
+
+.held-row-figure {
+  font-size: var(--fs-heading);
+  font-weight: var(--fw-strong);
+}
+
+.held-section {
+  scroll-margin-top: 16px;
+}
+
+.held-section.focused {
+  box-shadow: 0 0 0 2px var(--brand-fg);
+}
+
+.held-goal {
+  margin-top: 16px;
+}
+
+.held-edit {
+  margin: 10px 0 -6px -14px;
+}
+
 /* ---- Home: check-in, payday and empty cards --------------------------------- */
 
 .home-card {
@@ -1671,6 +1755,24 @@ label.field > span:first-child,
   font-weight: var(--fw-strong);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* "Since payday, 31 Oct: card debt down £450 · savings up £650": the
+   month's answer on the first screen every day, quietly. */
+.month-verdict {
+  margin-top: 8px;
+  font-size: var(--fs-footnote);
+  color: var(--text-2);
+  text-wrap: pretty;
+}
+
+.month-verdict strong {
+  font-weight: var(--fw-strong);
+  color: var(--text);
+}
+
+.month-verdict strong.positive {
+  color: var(--accent);
 }
 
 .hero-note {

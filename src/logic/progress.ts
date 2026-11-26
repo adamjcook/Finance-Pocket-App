@@ -215,6 +215,8 @@ export function monthsUntil(today: string, targetDate: string): number {
  * `targetDate`. Direction is explicit so an exceeded goal reads as met:
  * 'down' for paydown goals (debt to 0), 'up' for savings goals.
  * Null when there's no date, the date has passed, or the target is met.
+ * Less than a month away counts as one month: the rest is due by then, not
+ * scaled up to a monthly rate (3 days left on £5,000 isn't £50,000/month).
  */
 export function monthlyToTarget(
   current: number,
@@ -228,7 +230,13 @@ export function monthlyToTarget(
   if (met) return null;
   const months = monthsUntil(today, targetDate);
   if (months <= 0) return null;
-  return Math.ceil(Math.abs(target - current) / months);
+  return Math.ceil(Math.abs(target - current) / Math.max(1, months));
+}
+
+/** True when `targetDate` is today or later but less than a month away. */
+export function dueWithinMonth(today: string, targetDate: string): boolean {
+  const months = monthsUntil(today, targetDate);
+  return months > 0 && months < 1;
 }
 
 /**
@@ -300,4 +308,24 @@ export function netWorthMilestone(before: SeriesPoint[], now: number): number | 
   if (now > 0 && highest <= 0) return 'positive';
   const passed = netWorthLines(now).filter((t) => t > highest);
   return passed.length ? passed[passed.length - 1] : null;
+}
+
+/**
+ * How a total moved since a day: its value now against its value at the end
+ * of `since` (or its first reading, if it only started after that, so a new
+ * account isn't counted as growth).
+ */
+export function changeSince(series: SeriesPoint[], current: number, since: string): number {
+  if (series.length === 0) return 0;
+  let was = series[0].value;
+  for (const p of series) {
+    if (p.day <= since) was = p.value;
+    else break;
+  }
+  return current - was;
+}
+
+/** The day before `day` (YYYY-MM-DD). */
+export function dayBefore(day: string): string {
+  return addDays(day, -1);
 }

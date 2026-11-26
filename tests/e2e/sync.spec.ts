@@ -101,7 +101,8 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   // Home shows whole pounds throughout.
   await expect(page.locator('.big-number', { hasText: '£1,500' })).toBeVisible();
   await expect(page.getByRole('img', { name: '50% paid off' })).toBeVisible(); // half of the £3,000 peak
-  await expect(page.getByText('£1,500 of £3,000 paid off')).toBeVisible();
+  // The ring carries "paid off" on its own now; the £X-of-£Y line was a repeat.
+  await expect(page.getByText(/of £3,000 paid off/)).toHaveCount(0);
 
   // A second change through the Update button; balances on the list are plain text
   await page.goto('.#/accounts');
@@ -121,7 +122,6 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await expect(page.getByText('still owed on loans')).toBeVisible();
   const loansCard = page.locator('.dash-section', { hasText: 'Loans' });
   await expect(loansCard.getByRole('img', { name: '0% paid off' })).toBeVisible(); // ring, like the cards'
-  await expect(loansCard).toContainText('£0 of £9,000 paid off');
   await expect(loansCard.locator('.big-number')).toHaveText('£9,000');
   await expect(page.locator('.dash-section', { hasText: 'Credit card debt' }).locator('.big-number')).toHaveText('£1,500'); // unchanged
 
@@ -465,7 +465,8 @@ test('pot goals on Home, 0% deal and stale-balance pills, and the Reminders sect
   await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
 
   await page.goto('.#/');
-  const goals = page.locator('.dash-section', { hasText: 'Savings goals' });
+  // Savings goals sit in the savings card, with the money they're saved from.
+  const goals = page.locator('.dash-section', { hasText: 'Savings & investments' });
   await expect(goals).toContainText('Wedding Fund');
   await expect(goals).toContainText('£2,000 of £10,000');
   await expect(goals).toContainText('£8,000 to go');
@@ -547,7 +548,7 @@ test('charts: a swipe scrolls, a press-and-hold reads out a day with a vibration
   expect(await touch('touchmove', { x: at(0.5).x, y: at(0.5).y - 40 })).toBe(true);
   await page.waitForTimeout(400);
   await touch('touchend', null);
-  await expect(tooltip).toHaveText(/^\s*$/);
+  await expect(tooltip).toHaveCount(0); // no readout until a day is picked
   expect(await buzzes()).toBe(0);
 
   // Press and hold: after the hold time the day is read out and it buzzes once.
@@ -560,7 +561,7 @@ test('charts: a swipe scrolls, a press-and-hold reads out a day with a vibration
   await expect(tooltip).toContainText('£900.00');
   // Lifting the finger clears it.
   await touch('touchend', null);
-  await expect(tooltip).toHaveText(/^\s*$/);
+  await expect(tooltip).toHaveCount(0); // no readout until a day is picked
   await context.close();
 });
 
@@ -768,16 +769,22 @@ test('a pension and a Junior ISA: their own cards and lines, never in net worth'
   await expect(page.locator('.group-label', { hasText: 'Pensions' })).toBeVisible();
   await expect(page.locator('.group-label', { hasText: 'Junior ISAs' })).toBeVisible();
 
-  // Home: net worth is still just the couple's money; each has its own card,
-  // the ISA's named after the account.
+  // Home: net worth is still just the couple's money; the pension and the ISA
+  // share one compact "Held apart" card, a row each.
   await page.goto('.#/');
   await expect(page.locator('.net-worth')).toHaveText('£1,000');
-  const pensionCard = page.locator('.dash-section', { hasText: 'put away for retirement' });
-  await expect(pensionCard.locator('h2')).toContainText('Pension');
-  await expect(pensionCard.locator('.big-number')).toHaveText('£40,000');
-  const isaCard = page.locator('.dash-section', { hasText: 'saved for the future' });
-  await expect(isaCard.locator('h2')).toContainText("Ellie's Junior ISA");
-  await expect(isaCard.locator('.big-number')).toHaveText('£4,800');
+  const held = page.locator('.dash-section', { hasText: 'Held apart' });
+  await expect(held.locator('h2')).toContainText('not in net worth');
+  await expect(held.locator('.held-row')).toHaveCount(2);
+  await expect(held.locator('.held-row', { hasText: 'Private Pension' })).toContainText('£40,000');
+  await expect(held.locator('.held-row', { hasText: "Ellie's Junior ISA" })).toContainText('£4,800');
+
+  // A row opens the Held apart page, at that account, with its detail.
+  await held.locator('.held-row', { hasText: "Ellie's Junior ISA" }).click();
+  await expect(page.getByRole('heading', { name: 'Held apart' })).toBeVisible();
+  await expect(page.locator('.held-section.focused h2')).toHaveText("Ellie's Junior ISA");
+  await expect(page.locator('.held-section.focused .big-number')).toHaveText('£4,800');
+  await expect(page.locator('.tab.active')).toHaveText('Home');
 
   // A payday update gives them their own lines and first-time milestones,
   // without changing whether the month counts as 'Nicely done'.
@@ -792,4 +799,47 @@ test('a pension and a Junior ISA: their own cards and lines, never in net worth'
   // "Nicely done" is about the couple's own money, which didn't move.
   await expect(card.getByRole('heading')).toHaveText('All up to date, Adam & Sam');
   await expect(page.locator('.net-worth')).toContainText('£1,000');
+});
+
+test("Home's month verdict: what's moved since payday, every day once the check-in is dismissed", async ({ page }) => {
+  await completeSetup(page, 'Adam', 'Sam');
+  // Two accounts with balances from 45 days ago, i.e. from before the latest payday.
+  const ago = new Date(Date.now() - 45 * 86400000).toISOString();
+  const acc = (id: string, name: string, kind: string) => ({
+    id, name, kind, institution: '', owner: 'joint', archived: false, createdAt: ago, updatedAt: ago, updatedBy: 'seed',
+  });
+  const snap = (accountId: string, balance: number) => ({
+    id: `seed-${accountId}`, accountId, balance, at: ago, deviceId: 'seed', createdAt: ago,
+  });
+  await page.evaluate(
+    (p) => window.__syncTest.importPayload(p as never),
+    {
+      v: 1,
+      deviceId: 'seed',
+      sentAt: ago,
+      settings: { id: 'settings', partnerAName: 'Adam', partnerBName: 'Sam', currency: 'GBP', debtBaselineMinor: null, updatedAt: '2000-01-01T00:00:00.000Z', updatedBy: 'seed' },
+      accounts: [acc('card', 'Barclaycard', 'credit_card'), acc('saver', 'Marcus Saver', 'savings')],
+      aliases: [],
+      snapshots: [snap('card', 1000_00), snap('saver', 500_00)],
+      voids: [],
+    },
+  );
+
+  // Nothing has moved since payday yet (that's the payday card's job), so no verdict.
+  await page.goto('.#/');
+  await expect(page.locator('.month-verdict')).toHaveCount(0);
+
+  await page.goto('.#/update');
+  await page.getByLabel('New balance for Barclaycard').fill('800');
+  await page.getByLabel('New balance for Marcus Saver').fill('650');
+  await page.getByRole('button', { name: /Save 2 updates/ }).click();
+  // The check-in card tells the story first…
+  await expect(page.locator('.checkin')).toBeVisible();
+  await expect(page.locator('.month-verdict')).toHaveCount(0);
+  // …then, once dismissed, the verdict line keeps telling it.
+  await page.locator('.checkin').getByRole('button', { name: 'Dismiss' }).click();
+  const verdict = page.locator('.month-verdict');
+  await expect(verdict).toContainText('Since payday');
+  await expect(verdict).toContainText('card debt down £200');
+  await expect(verdict).toContainText('savings up £150');
 });
