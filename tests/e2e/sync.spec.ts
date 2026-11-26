@@ -425,7 +425,7 @@ test('Trading 212 link imports daily readings and shows the day and overall chan
 
   await page.goto('.#/settings');
   // One-time setup lives behind Connections, which says it's not set up yet.
-  const connections = page.getByRole('button', { name: /Trading 212 and reminders/ });
+  const connections = page.getByRole('button', { name: /Your Worker and Trading 212/ });
   await expect(connections).toContainText('Not set up');
   await connections.click();
   await page.getByLabel('Trading 212 linked account').selectOption({ label: 'Stocks ISA' });
@@ -486,12 +486,13 @@ test('pot goals on Home, 0% deal and stale-balance pills, and the Reminders sect
   await page.reload();
   await expect(page.locator('.account-row', { hasText: 'Wedding Fund' })).toContainText('Updated 42 days ago');
 
-  // Reminders need the Worker set up first.
+  // Reminders have their own section, and say they need the Worker, which
+  // is set up under Connections.
   await page.goto('.#/settings');
-  await page.getByRole('button', { name: /Trading 212 and reminders/ }).click();
   const toggle = page.getByRole('switch', { name: 'Notifications on this phone' });
   await expect(toggle).toBeDisabled();
-  await expect(page.getByText(/Reminders are sent by the same Worker/)).toBeVisible();
+  await expect(page.getByText(/Reminders come from your own Worker, which isn’t set up yet/)).toBeVisible();
+  await page.getByRole('button', { name: /Your Worker and Trading 212/ }).click();
   await page.getByPlaceholder('Paste address').fill('https://t212.example');
   await page.getByPlaceholder('Paste address').press('Tab');
   await page.getByPlaceholder('FINPAIR_TOKEN').fill('tok');
@@ -688,7 +689,7 @@ test('automatic sync: after one QR handshake, updates reach the other phone thro
   await completeSetup(phoneA, 'Adam', 'Sam');
   await addAccount(phoneA, 'Barclaycard', 'Credit card', '3000');
   await phoneA.goto('.#/settings');
-  await phoneA.getByRole('button', { name: /Trading 212 and reminders/ }).click();
+  await phoneA.getByRole('button', { name: /Your Worker and Trading 212/ }).click();
   await phoneA.getByPlaceholder('Paste address').fill('https://relay.example');
   await phoneA.getByPlaceholder('Paste address').press('Tab');
   await phoneA.getByPlaceholder('FINPAIR_TOKEN').fill('secret-token');
