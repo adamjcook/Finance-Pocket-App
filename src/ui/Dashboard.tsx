@@ -12,6 +12,7 @@ import {
   latestPayday,
   loanProgress,
   monthlyToTarget,
+  dueWithinMonth,
   toDay,
   todayISO,
 } from '../logic/progress';
@@ -336,6 +337,8 @@ export function Dashboard() {
                   <span class="positive done-note">
                     <Icon name="check" size={14} /> Paid off
                   </span>
+                ) : p.monthly !== null && dueWithinMonth(today, p.account.goalDate!) ? (
+                  <>Pay off by {formatDay(p.account.goalDate!)}, this month</>
                 ) : p.monthly !== null ? (
                   <>
                     Pay off by {formatDay(p.account.goalDate!)} · about{' '}
@@ -377,7 +380,9 @@ export function Dashboard() {
                   <>
                     {formatMoneyWhole(p.goal - p.current, currency)} to go
                     {p.account.goalDate &&
-                      (p.monthly !== null ? (
+                      (p.monthly !== null && dueWithinMonth(today, p.account.goalDate) ? (
+                        <> · due by {formatDay(p.account.goalDate)}</>
+                      ) : p.monthly !== null ? (
                         <>
                           {' '}
                           · about <strong class="num">{formatMoneyWhole(p.monthly, currency)}/month</strong> to

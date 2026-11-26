@@ -215,6 +215,8 @@ export function monthsUntil(today: string, targetDate: string): number {
  * `targetDate`. Direction is explicit so an exceeded goal reads as met:
  * 'down' for paydown goals (debt to 0), 'up' for savings goals.
  * Null when there's no date, the date has passed, or the target is met.
+ * Less than a month away counts as one month: the rest is due by then, not
+ * scaled up to a monthly rate (3 days left on £5,000 isn't £50,000/month).
  */
 export function monthlyToTarget(
   current: number,
@@ -228,7 +230,13 @@ export function monthlyToTarget(
   if (met) return null;
   const months = monthsUntil(today, targetDate);
   if (months <= 0) return null;
-  return Math.ceil(Math.abs(target - current) / months);
+  return Math.ceil(Math.abs(target - current) / Math.max(1, months));
+}
+
+/** True when `targetDate` is today or later but less than a month away. */
+export function dueWithinMonth(today: string, targetDate: string): boolean {
+  const months = monthsUntil(today, targetDate);
+  return months > 0 && months < 1;
 }
 
 /**

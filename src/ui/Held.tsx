@@ -2,7 +2,7 @@ import { useEffect } from 'preact/hooks';
 import type { Account, SyncedState } from '../model/types';
 import { ACCOUNT_KIND_LABELS, JUNIOR_KINDS, PENSION_KINDS } from '../model/types';
 import { useApp } from '../model/store';
-import { heldProgress, monthlyToTarget, formatDay, toDay, todayISO } from '../logic/progress';
+import { heldProgress, monthlyToTarget, dueWithinMonth, formatDay, toDay, todayISO } from '../logic/progress';
 import { formatMoneyWhole } from '../logic/money';
 import { navigate } from '../router';
 import { Chart } from './components/Chart';
@@ -47,7 +47,10 @@ function Goal({ account, current, currency, today }: { account: Account; current
         ) : (
           <>
             {formatMoneyWhole(current, currency)} of {formatMoneyWhole(goal, currency)}
-            {account.goalDate && monthly !== null && (
+            {account.goalDate && monthly !== null && dueWithinMonth(today, account.goalDate) && (
+              <> · due by {formatDay(account.goalDate)}</>
+            )}
+            {account.goalDate && monthly !== null && !dueWithinMonth(today, account.goalDate) && (
               <>
                 {' '}
                 · about <strong>{formatMoneyWhole(monthly, currency)}/month</strong> by {formatDay(account.goalDate)}

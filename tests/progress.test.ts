@@ -7,6 +7,7 @@ import {
   loanProgress,
   monthlyToTarget,
   monthsUntil,
+  dueWithinMonth,
 } from '../src/logic/progress';
 import { aliasSeries, latestBalances, migrateSettingsGoals, repointAlias, updateAccount } from '../src/model/repo';
 import { account, alias, settings, snapshot, state } from './helpers';
@@ -333,5 +334,15 @@ describe('migrateSettingsGoals (goals moved from Settings to accounts)', () => {
     expect(s1.settings).toMatchObject({ debtTargetDate: null, loanTargetDate: null, savingsTargetMinor: null, savingsTargetDate: null, updatedAt: '2026-11-24T10:00:00.000Z' });
     // Nothing left to migrate: same state back.
     expect(migrateSettingsGoals(s1, { deviceId: 'd' })).toBe(s1);
+  });
+});
+
+describe('goals due within a month', () => {
+  it('asks for the rest, not a scaled-up monthly rate', () => {
+    // 3 days to find £5,000: that's £5,000, not ~£50,000/month.
+    expect(monthlyToTarget(10_000_00, 15_000_00, 'up', '2026-11-29', '2026-11-26')).toBe(5_000_00);
+    expect(dueWithinMonth('2026-11-26', '2026-11-29')).toBe(true);
+    expect(dueWithinMonth('2026-11-26', '2027-01-29')).toBe(false);
+    expect(dueWithinMonth('2026-11-26', '2026-11-26')).toBe(false);
   });
 });
