@@ -3,35 +3,28 @@ import { useApp, patchDevice } from '../model/store';
 import {
   effectiveSnapshots,
   debtProgress,
+  changeSince,
+  dayBefore,
   daysBetween,
   formatDay,
   growthProgress,
-  juniorProgress,
   lastManualUpdate,
   latestPayday,
   loanProgress,
   monthlyToTarget,
-  pensionProgress,
   toDay,
   todayISO,
 } from '../logic/progress';
 import { formatMoneyWhole } from '../logic/money';
 import { lastWorkingDay } from '../../worker/src/ukdates';
-import { checkInFor, heldLabels, latestUpdateBatch } from '../logic/checkin';
+import { checkInFor, latestUpdateBatch } from '../logic/checkin';
+import { heldAccounts, HeldRows } from './Held';
 import { whenSplashGone } from './components/Splash';
 import { LogoMark } from './components/LogoMark';
 import { Confetti } from './components/Confetti';
 import { navigate } from '../router';
 import { CheckInCard, NewsLine, PaydayCard, SyncLine } from './components/HomeCards';
-import {
-  GROWTH_KINDS,
-  JUNIOR_KINDS,
-  OWED_KINDS,
-  PENSION_KINDS,
-  POT_KINDS,
-  type AccountKind,
-  type DashboardSectionKey,
-} from '../model/types';
+import { GROWTH_KINDS, OWED_KINDS, POT_KINDS, type DashboardSectionKey } from '../model/types';
 import { latestBalances } from '../model/repo';
 import { Chart } from './components/Chart';
 import { ProgressRing } from './components/ProgressRing';
@@ -42,10 +35,7 @@ const SECTION_META: Record<DashboardSectionKey, { heading: string }> = {
   growth: { heading: 'Savings & investments' },
   debt: { heading: 'Credit card debt' },
   loans: { heading: 'Loans' },
-  goals: { heading: 'Savings goals' },
-  // These two are named from the accounts themselves (see heldLabels).
-  pension: { heading: 'Pension' },
-  junior: { heading: 'Junior ISAs' },
+  held: { heading: 'Held apart · not in net worth' },
 };
 
 interface Drag {
@@ -183,19 +173,24 @@ export function Dashboard() {
       };
     })
     .sort((x, y) => x.account.goalDate!.localeCompare(y.account.goalDate!));
-  // Savings goals holds the ordinary savings pots; pay-off goals live in the
-  // debt and loan cards, and pension or Junior ISA goals in their own cards.
+  // Savings pots' goals sit in the savings card; pay-off goals in the debt and
+  // loan cards; pension and Junior ISA goals on the Held apart page.
   const savingsPots = pots.filter((p) => GROWTH_KINDS.includes(p.account.kind));
-  const hasGoals = savingsPots.length > 0;
-  // Pensions and Junior ISAs: their own cards, never in net worth.
-  const pension = pensionProgress(state, today);
-  const junior = juniorProgress(state, today);
-  const held = heldLabels(state);
-  const hasKind = (kinds: AccountKind[]) => state.accounts.some((a) => !a.archived && kinds.includes(a.kind));
-  const showPension = hasKind(PENSION_KINDS);
-  const showJunior = hasKind(JUNIOR_KINDS);
-  const headingFor = (key: DashboardSectionKey) =>
-    key === 'pension' ? held.pension : key === 'junior' ? held.junior : SECTION_META[key].heading;
+  // Pensions and Junior ISAs: one compact card of rows, never in net worth.
+  const showHeld = heldAccounts(state).length > 0;
+  // Each held account's move in the check-in's update, so its row agrees with
+  // the card above (balances just after the update vs just before it).
+  const heldNow = new Map<string, number>();
+  const heldBefore = new Map<string, number>();
+  if (batch && !batch.voided) {
+    const ids = new Set(batch.ids);
+    const upTo = state.snapshots.filter((s) => s.at <= batch.at);
+    for (const [id, snap] of latestBalances({ ...state, snapshots: upTo })) heldNow.set(id, snap.balance);
+    for (const [id, snap] of latestBalances({ ...state, snapshots: upTo.filter((s) => !ids.has(s.id)) })) {
+      heldBefore.set(id, snap.balance);
+    }
+  }
+  const headingFor = (key: DashboardSectionKey) => SECTION_META[key].heading;
 
   // Trading 212 link: the linked account's move on its latest day, and its
   // overall gain from the Worker's latest reading.
@@ -232,12 +227,21 @@ export function Dashboard() {
   const lastUpdate = lastManualUpdate(state);
   const payday = latestPayday(today, lastWorkingDay);
   const paydayDue = hasAccounts && (lastUpdate === null || lastUpdate < payday);
+  // The month's verdict, every day: what's moved since the last payday. Not
+  // shown while the check-in or payday card is already telling that story.
+  const since = dayBefore(payday);
+  const verdictParts = [
+    { label: 'card debt', change: changeSince(debt.series, debt.current, since), goodWhen: 'down' },
+    { label: 'loans', change: changeSince(loans.series, loans.current, since), goodWhen: 'down' },
+    { label: 'savings', change: changeSince(growth.series, growth.current, since), goodWhen: 'up' },
+  ]
+    .filter((m) => m.change !== 0)
+    .map((m) => ({ ...m, good: m.goodWhen === 'down' ? m.change < 0 : m.change > 0 }));
+  const monthVerdict = !showCheckIn && !paydayDue && verdictParts.length > 0 ? verdictParts : null;
   const baseVisible = device.dashboardOrder.filter(
     (k) =>
       (k !== 'loans' || showLoans) &&
-      (k !== 'goals' || hasGoals) &&
-      (k !== 'pension' || showPension) &&
-      (k !== 'junior' || showJunior),
+      (k !== 'held' || showHeld),
   );
   // The rendered order stays fixed at the pre-drag order for the whole drag:
   // Chromium silently releases pointer capture when the captured element is
@@ -390,37 +394,16 @@ export function Dashboard() {
       </>
     );
 
-  // A card for money held apart from net worth: the pension, or a child's ISA.
-  const heldCard = (progress: typeof pension, caption: string, change: number | undefined, kinds: AccountKind[]) => {
-    const own = pots.filter((p) => kinds.includes(p.account.kind));
-    // With one account the card is already named after it, so its goal row
-    // just says "Goal".
-    const inCard = state.accounts.filter((a) => !a.archived && kinds.includes(a.kind));
-    return (
-      <div class="dash-body">
-        <div class="figure-row">
-          <div class="grow">
-            <div class="big-number">{formatMoneyWhole(progress.current, currency)}</div>
-            <div class="figure-caption">{caption}</div>
-          </div>
-          <Change change={change ?? progress.delta30} goodWhen="up" window={changeWindow} currency={currency} stacked />
-        </div>
-        {progress.series.length > 1 && <Chart series={progress.series} currency={currency} color="var(--accent)" />}
-        {own.length > 0 && (
-          <div class="pots payoffs">
-            {potList(own, inCard.length === 1 ? 'Goal' : undefined)}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   const sectionBody = (key: DashboardSectionKey) => {
-    if (key === 'pension') {
-      return heldCard(pension, 'put away for retirement · not in net worth', checkIn?.pensionChange, PENSION_KINDS);
-    }
-    if (key === 'junior') {
-      return heldCard(junior, 'saved for the future · not in net worth', checkIn?.juniorChange, JUNIOR_KINDS);
+    if (key === 'held') {
+      return (
+        <HeldRows
+          state={state}
+          today={today}
+          window={changeWindow}
+          change={(a, p) => (checkIn ? (heldNow.get(a.id) ?? 0) - (heldBefore.get(a.id) ?? 0) : p.delta30)}
+        />
+      );
     }
     if (key === 'debt') {
       return (
@@ -432,9 +415,6 @@ export function Dashboard() {
                 <div class="grow">
                   <div class="big-number">{formatMoneyWhole(debt.current, currency)}</div>
                   <div class="figure-caption">left to clear</div>
-                  <div class="figure-caption positive num" style="margin-top:8px;font-weight:550">
-                    {formatMoneyWhole(debt.paidOff, currency)} of {formatMoneyWhole(debt.baseline, currency)} paid off
-                  </div>
                   <Change change={checkIn ? checkIn.cardChange : debt.delta30} goodWhen="down" window={changeWindow} currency={currency} />
                 </div>
               </div>
@@ -450,13 +430,6 @@ export function Dashboard() {
         </div>
       );
     }
-    if (key === 'goals') {
-      return (
-        <div class="dash-body pots">
-          {potList(savingsPots)}
-        </div>
-      );
-    }
     if (key === 'loans') {
       return (
         <div class="dash-body">
@@ -465,9 +438,6 @@ export function Dashboard() {
             <div class="grow">
               <div class="big-number">{formatMoneyWhole(loans.current, currency)}</div>
               <div class="figure-caption">still owed on loans</div>
-              <div class="figure-caption positive num" style="margin-top:8px;font-weight:550">
-                {formatMoneyWhole(loans.paidOff, currency)} of {formatMoneyWhole(loans.baseline, currency)} paid off
-              </div>
               <Change change={checkIn ? checkIn.loanChange : loans.delta30} goodWhen="down" window={changeWindow} currency={currency} />
             </div>
           </div>
@@ -516,6 +486,8 @@ export function Dashboard() {
               </div>
             )}
             <Chart series={growth.series} currency={currency} color="var(--accent)" />
+            {/* Savings goals live here, with the money they're saved from. */}
+            {savingsPots.length > 0 && <div class="pots payoffs">{potList(savingsPots)}</div>}
           </>
         ) : (
           <p class="empty-note">No savings or investment accounts yet.</p>
@@ -574,6 +546,18 @@ export function Dashboard() {
             <Icon name="up" size={14} />
             {formatMoneyWhole(checkIn.netChange, currency)} since the last update
           </div>
+        )}
+        {monthVerdict && (
+          <p class="month-verdict">
+            Since payday, {formatDay(payday).replace(/ \d{4}$/, '')}:{' '}
+            {monthVerdict.map((m, i) => (
+              <span key={m.label}>
+                {i > 0 && ' · '}
+                {m.label} {m.change < 0 ? 'down' : 'up'}{' '}
+                <strong class={`num ${m.good ? 'positive' : ''}`}>{formatMoneyWhole(Math.abs(m.change), currency)}</strong>
+              </span>
+            ))}
+          </p>
         )}
         {lastUpdate && <div class="hero-note">Balances as of {formatDay(lastUpdate)}</div>}
         {hasAccounts && <SyncLine state={state} device={device} />}

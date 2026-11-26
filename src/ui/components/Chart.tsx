@@ -144,9 +144,9 @@ export function Chart({ series, currency, color, height = 110 }: Props) {
     <div class="chart">
       {/* Above the chart, not below: on a touchscreen a thumb resting on the
           plot to pick a point would otherwise cover a readout placed under it. */}
-      <p class="chart-tooltip">
-        {pickedPoint ? `${formatDay(pickedPoint.day)}: ${formatMoney(pickedPoint.value, currency)}` : ' '}
-      </p>
+      {pickedPoint && (
+        <p class="chart-tooltip">{`${formatDay(pickedPoint.day)}: ${formatMoney(pickedPoint.value, currency)}`}</p>
+      )}
       <svg
         ref={svgRef}
         role="img"

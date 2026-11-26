@@ -301,3 +301,23 @@ export function netWorthMilestone(before: SeriesPoint[], now: number): number | 
   const passed = netWorthLines(now).filter((t) => t > highest);
   return passed.length ? passed[passed.length - 1] : null;
 }
+
+/**
+ * How a total moved since a day: its value now against its value at the end
+ * of `since` (or its first reading, if it only started after that, so a new
+ * account isn't counted as growth).
+ */
+export function changeSince(series: SeriesPoint[], current: number, since: string): number {
+  if (series.length === 0) return 0;
+  let was = series[0].value;
+  for (const p of series) {
+    if (p.day <= since) was = p.value;
+    else break;
+  }
+  return current - was;
+}
+
+/** The day before `day` (YYYY-MM-DD). */
+export function dayBefore(day: string): string {
+  return addDays(day, -1);
+}

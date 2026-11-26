@@ -5,6 +5,7 @@ import { Dashboard } from './ui/Dashboard';
 import { Accounts } from './ui/Accounts';
 import { AccountForm } from './ui/AccountForm';
 import { Aliases } from './ui/Aliases';
+import { HeldPage } from './ui/Held';
 import { Sync } from './ui/Sync';
 import { Settings } from './ui/Settings';
 import { Setup } from './ui/Setup';
@@ -123,13 +124,17 @@ function Screens() {
   else if (route === '/accounts/new') screen = <AccountForm key="new" id={null} />;
   else if (route.startsWith('/accounts/')) screen = <AccountForm key={route} id={route.slice('/accounts/'.length)} />;
   else if (route === '/aliases') screen = <Aliases />;
+  // Pensions and Junior ISAs in full (Home shows them as compact rows).
+  else if (route === '/held' || route.startsWith('/held/')) {
+    screen = <HeldPage key="held" focus={route.startsWith('/held/') ? route.slice('/held/'.length) : null} />;
+  }
   // Update mode of the Accounts page (also where the payday reminder lands).
   else if (route === '/update') screen = <Accounts key="update" updating />;
   else if (route === '/sync') screen = <Sync />;
   else if (route === '/settings') screen = <Settings />;
   else screen = <Dashboard />;
 
-  const tabRoute = route === '/update' ? '/accounts' : route;
+  const tabRoute = route === '/update' ? '/accounts' : route.startsWith('/held') ? '/' : route;
   const activeTab = TABS.find(
     (t) => tabRoute === t.route || (t.route !== '/' && tabRoute.startsWith(t.route)),
   );
