@@ -135,3 +135,20 @@ describe('net-worth news', () => {
     );
   });
 });
+
+describe('homeNews beside the payday summary', () => {
+  it('leaves out what the summary already names, and keeps the rest', () => {
+    const s = cardHistory(
+      [
+        ['2026-09-30', 3400_00],
+        ['2026-10-31', 3150_00],
+        ['2026-11-25', 2950_00],
+      ],
+      { promoEndsOn: '2026-12-17' },
+    );
+    // A new low leads on its own…
+    expect(homeNews(s, '2026-11-26', EMPTY_NEWS_MEMORY)?.key).toBe('low:300000');
+    // …but beside the summary (which says "Lowest card debt yet") the 0% countdown shows instead.
+    expect(homeNews(s, '2026-11-26', EMPTY_NEWS_MEMORY, { besideSummary: true })?.key).toMatch(/^promo:card:/);
+  });
+});

@@ -543,7 +543,7 @@ export function Dashboard() {
       ) : (
         paydayDue && <PaydayCard window={summary!.window} today={localDay(new Date())} lastUpdate={lastUpdate} names={names} />
       )}
-      <NewsLine state={state} device={device} today={today} hidden={summary!.status !== 'closed' && hasAccounts} />
+      <NewsLine state={state} device={device} today={today} besideSummary={paydayOpen} />
 
       <section class="hero">
         <div class="hero-label">Net worth</div>

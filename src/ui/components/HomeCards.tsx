@@ -201,9 +201,21 @@ export function PaydayCard({
 /**
  * One line of news, only on days there is some (see logic/news.ts). Always
  * mounted so this phone keeps noticing forecast changes; renders nothing when
- * quiet or when a check-in or payday card already has the top of Home.
+ * quiet. It has its own place under the payday card or summary rather than
+ * waiting for payday to pass; beside the summary it leaves out the
+ * milestones the summary already names.
  */
-export function NewsLine({ state, device, today, hidden }: { state: SyncedState; device: DeviceState; today: string; hidden: boolean }) {
+export function NewsLine({
+  state,
+  device,
+  today,
+  besideSummary,
+}: {
+  state: SyncedState;
+  device: DeviceState;
+  today: string;
+  besideSummary: boolean;
+}) {
   const memory = device.news ?? EMPTY_NEWS_MEMORY;
   const forecast = cardForecast(state, today);
   useEffect(() => {
@@ -211,7 +223,7 @@ export function NewsLine({ state, device, today, hidden }: { state: SyncedState;
     if (next !== memory) void patchDevice({ news: next });
   }, [forecast]);
 
-  const news = hidden ? null : homeNews(state, today, memory);
+  const news = homeNews(state, today, memory, { besideSummary });
   useEffect(() => {
     if (!news) return;
     const next = rememberShown(memory, news.key, today);
