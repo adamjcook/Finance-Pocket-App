@@ -1801,12 +1801,20 @@ label.field > span:first-child,
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
   margin-top: 16px;
 }
 
+/* A little tighter side by side, so both fit on one line on a phone. */
+.checkin-actions .btn-sm {
+  padding: 0 12px;
+}
+
+.checkin-actions .btn-quiet {
+  padding: 0 10px;
+}
+
 .checkin-actions.undo-only {
-  margin: 12px 0 -6px -14px;
+  margin: 12px 0 -6px -10px;
 }
 
 /* Whether the two phones agree: quiet when they do, a way to fix it when not. */
