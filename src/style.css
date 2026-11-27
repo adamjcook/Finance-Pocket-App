@@ -1735,6 +1735,45 @@ label.field > span:first-child,
   margin: -4px -8px 0 0;
 }
 
+/* Payday's own mark, shared by the payday card and the summary it becomes,
+   so it reads apart from the news line. Green on the payday card (it's an
+   action waiting); teal on the summary, like the rest of its good news. */
+.payday-mark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 11px;
+  color: var(--brand-fg);
+  background: color-mix(in srgb, var(--brand) 22%, var(--surface));
+}
+
+.home-card.checkin .payday-mark {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+
+.home-card-head .grow {
+  min-width: 0;
+}
+
+.payday-line {
+  margin-top: 2px;
+  font-size: var(--fs-footnote);
+  color: var(--text-2);
+}
+
+.payday-line strong {
+  color: var(--text);
+  font-weight: var(--fw-label);
+}
+
+.home-card-head + .checkin-lines,
+.home-card-head + .home-card-text {
+  margin-top: 14px;
+}
+
 .home-card-text {
   color: var(--text-2);
   font-size: var(--fs-footnote);

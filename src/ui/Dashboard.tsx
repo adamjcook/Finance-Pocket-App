@@ -527,11 +527,10 @@ export function Dashboard() {
         <CheckInCard
           checkIn={summary!.checkIn}
           names={names}
-          subtitle={
-            paydayOpen
-              ? `Our payday so far · ${dayRange(summary!.window.opens, summary!.closes)}`
-              : `Our ${windowMonthName(summary!.window)} payday · ${dayRange(summary!.window.opens, summary!.closes)}`
-          }
+          payday={{
+            label: paydayOpen ? 'Our payday so far' : `Our ${windowMonthName(summary!.window)} payday`,
+            days: dayRange(summary!.window.opens, summary!.closes),
+          }}
           open={paydayOpen}
           perspective={perspective}
           currency={currency}
@@ -539,9 +538,12 @@ export function Dashboard() {
           celebrate={celebrating}
         />
       ) : undone ? (
-        <CheckInCard checkIn={null} names={names} subtitle="" currency={currency} perspective={null} onDismiss={dismissCheckIn} />
+        <CheckInCard checkIn={null} names={names} payday={null} currency={currency} perspective={null} onDismiss={dismissCheckIn} />
       ) : (
-        paydayDue && <PaydayCard window={summary!.window} today={localDay(new Date())} lastUpdate={lastUpdate} names={names} />
+        paydayDue && <PaydayCard window={summary!.window} today={localDay(new Date())} lastUpdate={lastUpdate}
+            names={names}
+            days={dayRange(summary!.window.opens, summary!.closes)}
+          />
       )}
       <NewsLine state={state} device={device} today={today} besideSummary={paydayOpen} />
 
