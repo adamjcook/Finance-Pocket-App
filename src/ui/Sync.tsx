@@ -290,7 +290,7 @@ export function Sync() {
             <span>Last synced</span>
             <span class="muted">
               {device.lastSyncAt
-                ? new Date(device.lastSyncAt).toLocaleString(undefined, {
+                ? new Date(device.lastSyncAt).toLocaleString('en-GB', {
                     day: 'numeric',
                     month: 'short',
                     hour: '2-digit',
