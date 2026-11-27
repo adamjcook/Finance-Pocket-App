@@ -1,3 +1,4 @@
+import type { PaydayRule } from '../../worker/src/payday';
 export type UUID = string;
 export type ISOTime = string;
 
@@ -119,6 +120,12 @@ export interface Settings extends Meta {
    * Added after v1 shipped — undefined reads as "not linked".
    */
   t212?: T212Link | null;
+  /**
+   * Each partner's payday (see worker/src/payday.ts). Shared, so both phones
+   * work out the same payday window. Absent = the default rule.
+   */
+  paydayA?: PaydayRule | null;
+  paydayB?: PaydayRule | null;
 }
 
 export interface T212Link {
@@ -166,7 +173,7 @@ export const DEFAULT_DASHBOARD_ORDER: DashboardSectionKey[] = ['debt', 'growth',
 
 /** Which reminders this phone wants (Settings → Reminders). */
 export interface ReminderPrefs {
-  monthly: boolean; // 1st of the month: update balances
+  monthly: boolean; // payday: update balances
   promo: boolean; // a card's 0% deal is ending
   drop: boolean; // the Trading 212 account fell 5%+ in a week
   /** Your partner saved a payday update (automatic sync). Absent on older phones = on. */

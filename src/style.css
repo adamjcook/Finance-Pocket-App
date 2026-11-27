@@ -728,6 +728,32 @@ label.field > span:first-child,
   max-width: 170px;
 }
 
+/* Settings → Paydays: who and the rule above, the choices below. */
+.payday-setting {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.payday-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.payday-controls select {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  min-height: 40px;
+}
+
+.payday-controls select:first-child {
+  flex-basis: 100%;
+}
+
 .setting-control {
   display: flex;
   align-items: center;
@@ -1771,6 +1797,11 @@ label.field > span:first-child,
 
 .checkin-undo {
   margin: 12px 0 -6px -14px;
+}
+
+/* While payday is still on: room to add the next update. */
+.checkin-more {
+  margin-top: 16px;
 }
 
 /* Whether the two phones agree: quiet when they do, a way to fix it when not. */

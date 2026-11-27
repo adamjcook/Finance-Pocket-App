@@ -17,6 +17,8 @@ import { currencySymbol, formatMoney } from '../logic/money';
 import { MoneyInput } from './components/MoneyInput';
 import { Icon } from './components/Icon';
 import { APP_NAME } from '../appName';
+import { paydayRules } from '../logic/payday';
+import { describePaydayRule, type PaydayRule } from '../../worker/src/payday';
 
 export function Settings() {
   const app = useApp();
@@ -116,6 +118,57 @@ export function Settings() {
 
   const nameOf = (who: 'A' | 'B') => (who === 'A' ? state.settings.partnerAName : state.settings.partnerBName);
 
+  // Each partner's payday. Shared, so both phones agree on the payday window.
+  const rules = paydayRules(state.settings);
+  const saveRule = (who: 'A' | 'B', rule: PaydayRule) => saveField(who === 'A' ? { paydayA: rule } : { paydayB: rule });
+  const people = device.me ? ([device.me, device.me === 'A' ? 'B' : 'A'] as const) : (['A', 'B'] as const);
+  const paydayRow = (who: 'A' | 'B', label: string) => {
+    const rule = rules[who === 'A' ? 0 : 1];
+    const pick = (kind: PaydayRule['kind']) =>
+      saveRule(who, kind === 'date' ? { kind, day: rule.kind === 'date' ? rule.day : 24, arrives: rule.arrives } : { kind, arrives: rule.arrives });
+    return (
+      <div class="list-row payday-setting" key={who}>
+        <div>
+          <div class="row-title">{label}</div>
+          <div class="row-sub" style="white-space:normal">{describePaydayRule(rule)}</div>
+        </div>
+        <div class="payday-controls">
+          <select
+            aria-label={`${label}: which day`}
+            value={rule.kind}
+            onChange={(e) => pick((e.target as HTMLSelectElement).value as PaydayRule['kind'])}
+          >
+            <option value="before-last-working-day">Day before the last working day</option>
+            <option value="last-working-day">Last working day</option>
+            <option value="date">A date each month</option>
+            <option value="last-friday">Last Friday</option>
+          </select>
+          {rule.kind === 'date' && (
+            <select
+              aria-label={`${label}: date`}
+              value={String(rule.day)}
+              onChange={(e) => saveRule(who, { ...rule, day: Number((e.target as HTMLSelectElement).value) })}
+            >
+              {Array.from({ length: 31 }, (_, i) => (
+                <option key={i} value={String(i + 1)}>
+                  {i + 1}
+                </option>
+              ))}
+            </select>
+          )}
+          <select
+            aria-label={`${label}: when it lands`}
+            value={rule.arrives}
+            onChange={(e) => saveRule(who, { ...rule, arrives: (e.target as HTMLSelectElement).value as PaydayRule['arrives'] })}
+          >
+            <option value="morning">First thing</option>
+            <option value="afternoon">From 4pm</option>
+          </select>
+        </div>
+      </div>
+    );
+  };
+
   const fixSnapshots = fixAccountId
     ? effectiveSnapshots(state.snapshots, state.voids)
         .filter((s) => s.accountId === fixAccountId)
@@ -208,6 +261,20 @@ export function Settings() {
           {device.me
             ? 'The names are shared: change one here and it changes on your partner’s phone too. Each phone shows its own owner as “You”.'
             : 'The names are shared: change one here and it changes on your partner’s phone too.'}
+        </p>
+      </section>
+
+      <section class="group">
+        <h2 class="group-label">Paydays</h2>
+        <div class="list">
+          {people.map((who, i) =>
+            paydayRow(who, device.me ? (i === 0 ? 'Your payday' : 'Your partner’s payday') : `${nameOf(who)}’s payday`),
+          )}
+        </div>
+        <p class="group-footer">
+          Payday runs from the first of your paydays to the end of the month’s last working day. Every balance either
+          of you saves in that time goes into one payday summary on Home. Each phone’s reminder comes on its own
+          person’s payday.
         </p>
       </section>
 
@@ -422,7 +489,7 @@ export function Settings() {
           </div>
           {push?.enabled && (
             <>
-              {reminderRow('monthly', 'Update your balances', '4pm on payday — the working day before the last working day of each month')}
+              {reminderRow('monthly', 'Update your balances', device.me ? 'On your payday, once the pay is in (set under Paydays)' : 'On payday, once the pay is in — choose whose phone this is under You two')}
               {reminderRow('promo', '0% deals ending', '30, 7 and 1 days before — set the date on each card')}
               {reminderRow('partner', 'Partner updates', 'When your partner saves a payday update (with automatic sync on)')}
               {linkReady(state.settings.t212) &&

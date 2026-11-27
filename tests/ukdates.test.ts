@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { easterSunday, isLastWorkingDay, isPayday, lastWorkingDay, paydayOf, ukBankHolidays } from '../worker/src/ukdates';
-import { latestPayday, paydayCard } from '../src/logic/progress';
+import { easterSunday, isLastWorkingDay, lastWorkingDay, ukBankHolidays } from '../worker/src/ukdates';
 
 describe('UK working days', () => {
   it('computes Easter correctly', () => {
@@ -42,46 +41,5 @@ describe('UK working days', () => {
     expect(isLastWorkingDay('2026-08-28')).toBe(true);
     expect(isLastWorkingDay('2026-08-31')).toBe(false);
     expect(isLastWorkingDay('2026-12-01')).toBe(false);
-  });
-
-  it('puts payday on the working day before the last working day', () => {
-    expect(paydayOf(2026, 11)).toBe('2026-11-27'); // last working day Mon 30th → Fri 27th
-    expect(paydayOf(2026, 12)).toBe('2026-12-30'); // Thu 31st → Wed 30th
-    expect(paydayOf(2026, 1)).toBe('2026-01-29'); // Fri 30th → Thu 29th
-    expect(paydayOf(2026, 8)).toBe('2026-08-27'); // Mon 31st is a bank holiday, so Fri 28th → Thu 27th
-    expect(paydayOf(2026, 6)).toBe('2026-06-29'); // Tue 30th → Mon 29th
-    expect(paydayOf(2027, 3)).toBe('2027-03-30'); // Wed 31st → Tue 30th
-    expect(paydayOf(2029, 3)).toBe('2029-03-28'); // Thu 29th (Good Friday next) → Wed 28th
-    expect(paydayOf(2027, 5)).toBe('2027-05-27'); // Fri 28th → Thu 27th
-    expect(paydayOf(2025, 6)).toBe('2025-06-27'); // Mon 30th → Fri 27th
-  });
-
-  it('isPayday', () => {
-    expect(isPayday('2026-11-27')).toBe(true);
-    expect(isPayday('2026-11-30')).toBe(false);
-  });
-
-  it('latest payday only counts once pay is in at 4pm', () => {
-    expect(latestPayday('2026-11-27', 15, paydayOf, 16)).toBe('2026-10-29'); // Fri 30 Oct last working day
-    expect(latestPayday('2026-11-27', 16, paydayOf, 16)).toBe('2026-11-27');
-    expect(latestPayday('2026-11-30', 9, paydayOf, 16)).toBe('2026-11-27');
-    expect(latestPayday('2026-11-26', 20, paydayOf, 16)).toBe('2026-10-29');
-    expect(latestPayday('2027-01-10', 9, paydayOf, 16)).toBe('2026-12-30');
-  });
-
-  it('payday card: up all of payday, cleared only by an update after the pay is in', () => {
-    const at = (d: number, h: number, min = 0) => new Date(2026, 10, d, h, min); // November 2026, local time
-    const card = (now: Date, last: Date | null) => paydayCard(now, last?.toISOString() ?? null, paydayOf, 16);
-    // Payday morning: up as a heads-up, even with an update earlier that day.
-    expect(card(at(27, 9), at(27, 8))).toEqual({ payday: '2026-11-27', due: true, payIn: false });
-    // From 4pm: still due if the only updates were before the pay arrived.
-    expect(card(at(27, 18), at(27, 14))).toEqual({ payday: '2026-11-27', due: true, payIn: true });
-    // An update after 4pm clears it.
-    expect(card(at(27, 18), at(27, 16, 5)).due).toBe(false);
-    // Over the weekend it stays until that update happens.
-    expect(card(at(29, 10), at(27, 14)).due).toBe(true);
-    // The day before payday: last month's payday, long since updated.
-    expect(card(at(26, 20), at(5, 12))).toEqual({ payday: '2026-10-29', due: false, payIn: true });
-    expect(card(at(26, 20), null).due).toBe(true);
   });
 });

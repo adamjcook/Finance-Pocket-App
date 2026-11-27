@@ -3,8 +3,9 @@
  * push subscription here, along with which reminders it wants and the facts
  * they need (the cards' 0% end dates, the Trading 212 account's name). The
  * Worker's cron then sends:
- *   - 4:30pm UK on payday (the working day before the month's last working day,
- *     once Monzo's early pay is in): "time to update your balances"
+ *   - on the phone owner's own payday (their rule, see payday.ts): "time to
+ *     update your balances", at 9am if the pay lands first thing, or 4:30pm
+ *     if it lands from 4pm
  *   - 9am UK, 30 / 7 / 1 days before (and on the day) a card's 0% deal ends
  *   - after the 9pm Trading 212 reading: if the account is down 5%+ on the week
  */
@@ -12,7 +13,7 @@
 import type { Env, KV, Reading } from './index';
 import { listReadings, ukTime } from './index';
 import { sendPush, type PushMessage, type PushSubscriptionJSON } from './push';
-import { PAYDAY_HOUR, isPayday } from './ukdates';
+import { DEFAULT_PAYDAY_RULE, isPaydayFor, parsePaydayRule, type PayArrives, type PaydayRule } from './payday';
 
 export interface ReminderPrefs {
   monthly: boolean;
@@ -32,6 +33,8 @@ export interface Registration {
   prefs: ReminderPrefs;
   promos: Promo[];
   t212Name: string | null;
+  /** The phone owner's payday. Absent on older registrations = the default rule. */
+  payday?: PaydayRule;
   /** The phone's automatic-sync pair (see relay.ts); partner notices stay within it. */
   channel?: string | null;
   updatedAt: string;
@@ -44,6 +47,7 @@ const DROP_MARKER = 'dropAlert';
 export const PROMO_WARN_DAYS = [30, 7, 1, 0];
 export const DROP_THRESHOLD = -0.05;
 const REMINDER_HOUR = 9;
+const PAYDAY_AFTERNOON_HOUR = 16; // the run at 4:30pm, just after a 4pm pay
 
 async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -79,6 +83,7 @@ export function parseRegistration(body: unknown, now: Date): Registration {
       .slice(0, 50)
       .map((x) => ({ name: x.name.slice(0, 80), endsOn: x.endsOn })),
     t212Name: typeof b?.t212Name === 'string' ? b.t212Name.slice(0, 80) : null,
+    payday: parsePaydayRule(b?.payday),
     channel: typeof b?.channel === 'string' && /^[0-9a-f]{16,64}$/.test(b.channel) ? b.channel : null,
     updatedAt: now.toISOString(),
   };
@@ -153,7 +158,7 @@ function money(minor: number, currency: string): string {
 export function monthlyMessage(): PushMessage {
   return {
     title: 'Payday — time to update your balances',
-    body: 'Your pay should be in. A couple of minutes in MC Bank keeps your charts and goals accurate.',
+    body: "Your pay should be in. Add your balances to this month's payday summary — it takes a couple of minutes.",
     tag: 'monthly',
     url: '#/update',
   };
@@ -175,22 +180,37 @@ export function promoMessages(promos: Promo[], today: string): PushMessage[] {
   return out;
 }
 
-/** The 9am run: 0% deal countdowns. Once per day. */
+/** Whether this phone's owner is paid today, at this run (morning or afternoon). */
+const paidNow = (r: Registration, day: string, arrives: PayArrives) => {
+  const rule = r.payday ?? DEFAULT_PAYDAY_RULE;
+  return rule.arrives === arrives && isPaydayFor(rule, day);
+};
+
+/** The 9am run: payday reminders for pay that lands first thing, 0% deal countdowns. Once per day. */
 export async function dailyReminders(env: Env, now: Date, fetchImpl: typeof fetch = fetch): Promise<number> {
   const { day } = ukTime(now);
   if (await env.DAYS.get(DAILY_MARKER + day)) return 0;
   await env.DAYS.put(DAILY_MARKER + day, now.toISOString());
   const regs = await allRegistrations(env.DAYS);
-  return broadcast(env, regs, (r) => (r.prefs.promo ? promoMessages(r.promos, day) : []), now, fetchImpl);
+  return broadcast(
+    env,
+    regs,
+    (r) => [
+      ...(r.prefs.monthly && paidNow(r, day, 'morning') ? [monthlyMessage()] : []),
+      ...(r.prefs.promo ? promoMessages(r.promos, day) : []),
+    ],
+    now,
+    fetchImpl,
+  );
 }
 
-/** The 4:30pm run: the payday reminder, on payday only, once. */
+/** The 4:30pm run: payday reminders for pay that lands from 4pm. Once per day. */
 export async function paydayReminder(env: Env, now: Date, fetchImpl: typeof fetch = fetch): Promise<number> {
   const { day } = ukTime(now);
-  if (!isPayday(day) || (await env.DAYS.get(PAYDAY_MARKER + day))) return 0;
+  if (await env.DAYS.get(PAYDAY_MARKER + day)) return 0;
   await env.DAYS.put(PAYDAY_MARKER + day, now.toISOString());
   const regs = await allRegistrations(env.DAYS);
-  return broadcast(env, regs, (r) => (r.prefs.monthly ? [monthlyMessage()] : []), now, fetchImpl);
+  return broadcast(env, regs, (r) => (r.prefs.monthly && paidNow(r, day, 'afternoon') ? [monthlyMessage()] : []), now, fetchImpl);
 }
 
 /**
@@ -234,4 +254,4 @@ export async function dropCheck(env: Env, now: Date, fetchImpl: typeof fetch = f
 }
 
 export const isReminderHour = (now: Date) => ukTime(now).hour === REMINDER_HOUR;
-export const isPaydayHour = (now: Date) => ukTime(now).hour === PAYDAY_HOUR;
+export const isPaydayHour = (now: Date) => ukTime(now).hour === PAYDAY_AFTERNOON_HOUR;

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { stateHash } from '../../logic/merge';
 import { workerReady } from '../../integrations/t212';
 import type { CheckIn } from '../../logic/checkin';
+import type { PaydayWindow } from '../../../worker/src/payday';
 import type { DeviceState, SyncedState } from '../../model/types';
 import {
   cardForecast,
@@ -20,48 +21,54 @@ import { Icon } from './Icon';
 import { APP_NAME } from '../../appName';
 
 /**
- * The end of the payday update: how the two of you did, any milestones worth
- * naming, and (on the phone that saved it) a way to take it back. Worked out
- * from the shared history, so the partner who didn't do the update sees it
- * too. Changes that went the wrong way are stated plainly, never as a
+ * The payday summary: how the two of you did this payday, every update
+ * either of you saved added together (see logic/payday.ts), with any
+ * milestones worth naming. Worked out from the shared history, so both
+ * phones show the same one, and it never says who updated. While payday is
+ * still on, more updates can be added (and the phone that saved the latest
+ * can take it back); after that it stays as it was until the next payday.
+ * Changes that went the wrong way are stated plainly, never as a
  * telling-off, with one line of what's still true.
  */
 export function CheckInCard({
   checkIn,
-  undone,
   names,
   subtitle,
+  open = false,
   perspective,
   currency,
-  canUndo,
+  undoIds = null,
   celebrate = false,
   onDismiss,
 }: {
-  /** Null once the update has been undone. */
+  /** Null once the payday's only update has been undone. */
   checkIn: CheckIn | null;
-  undone: boolean;
   names: string;
-  /** "Since your last update", or "Adam updated on 30 Nov". */
+  /** "Our payday so far · 24–30 Nov", or "Our November payday · 24–30 Nov". */
   subtitle: string;
+  /** Payday is still on: more updates count. */
+  open?: boolean;
   /** For a month that went the wrong way: what's still true. */
   perspective: string | null;
   currency: string;
-  /** Only the phone that saved the update offers to undo it. */
-  canUndo: boolean;
+  /** The latest update's balances, on the phone that saved it, to undo. */
+  undoIds?: string[] | null;
   /** Net worth went up: the card arrives with a little more ceremony. */
   celebrate?: boolean;
-  onDismiss: () => void;
+  onDismiss?: () => void;
 }) {
   const money = (minor: number) => formatMoneyWhole(Math.abs(minor), currency);
 
-  if (undone || !checkIn) {
+  if (!checkIn) {
     return (
       <section class="home-card checkin" aria-live="polite">
         <div class="home-card-head">
           <h2>Update undone</h2>
-          <button class="btn-icon btn-quiet" aria-label="Dismiss" onClick={onDismiss}>
-            <Icon name="x" size={18} />
-          </button>
+          {onDismiss && (
+            <button class="btn-icon btn-quiet" aria-label="Dismiss" onClick={onDismiss}>
+              <Icon name="x" size={18} />
+            </button>
+          )}
         </div>
         <p class="home-card-text">Your balances are back as they were before it.</p>
         <button class="btn-sm" onClick={() => navigate('/update')}>
@@ -101,18 +108,13 @@ export function CheckInCard({
 
   const undo = async () => {
     const { device } = getStore();
-    await mutate((s) =>
-      checkIn.snapshotIds.reduce((acc, id) => voidSnapshot(acc, { deviceId: device.deviceId }, id), s),
-    );
+    await mutate((s) => (undoIds ?? []).reduce((acc, id) => voidSnapshot(acc, { deviceId: device.deviceId }, id), s));
   };
 
   return (
     <section class={`home-card checkin ${celebrate ? 'celebrate' : ''}`} aria-live="polite">
       <div class="home-card-head">
         <h2>{anyGood ? `Nicely done, ${names}` : `All up to date, ${names}`}</h2>
-        <button class="btn-icon btn-quiet" aria-label="Dismiss" onClick={onDismiss}>
-          <Icon name="x" size={18} />
-        </button>
       </div>
       <p class="home-card-text">{subtitle}</p>
       {lines.length > 0 ? (
@@ -125,7 +127,9 @@ export function CheckInCard({
           ))}
         </ul>
       ) : (
-        <p class="home-card-text">Balances saved. Nothing in your totals moved this time.</p>
+        <p class="home-card-text">
+          {open ? 'Balances saved. Nothing in your totals has moved yet.' : 'Nothing in your totals moved this payday.'}
+        </p>
       )}
       {checkIn.netChange < 0 && perspective && <p class="checkin-perspective">{perspective}</p>}
       {allMilestones.length > 0 && (
@@ -140,9 +144,15 @@ export function CheckInCard({
           ))}
         </ul>
       )}
-      {canUndo && (
+      {open && (
+        <button class="btn-sm checkin-more" onClick={() => navigate('/update')}>
+          <Icon name="update" size={16} />
+          Add more balances
+        </button>
+      )}
+      {undoIds && (
         <button class="btn-sm btn-quiet checkin-undo" onClick={() => void undo()}>
-          Undo this update
+          Undo the last update
         </button>
       )}
     </section>
@@ -150,37 +160,16 @@ export function CheckInCard({
 }
 
 /**
- * Shown on Home all of payday, and after that until balances are saved once
- * the pay is in, so the monthly update is one tap from where the app opens.
- * On payday morning it's a heads-up: no button until the pay has arrived.
+ * Shown on Home from the start of payday until the first update of it, so
+ * the monthly update is one tap from where the app opens.
  */
-export function PaydayCard({
-  payday,
-  payIn,
-  today,
-  lastUpdate,
-}: {
-  payday: string;
-  payIn: boolean;
-  today: string;
-  lastUpdate: string | null;
-}) {
-  const isToday = payday === today;
-  if (!payIn) {
-    return (
-      <section class="home-card payday">
-        <div class="home-card-head">
-          <h2>It's payday</h2>
-        </div>
-        <p class="home-card-text">Your pay lands from 4pm. Update your balances once it's in.</p>
-      </section>
-    );
-  }
+export function PaydayCard({ window, today, lastUpdate }: { window: PaydayWindow; today: string; lastUpdate: string | null }) {
+  const isToday = today <= window.closes;
   const since = lastUpdate ? daysBetween(lastUpdate, today) : null;
   return (
     <section class="home-card payday">
       <div class="home-card-head">
-        <h2>{isToday ? "It's payday" : 'Time for your payday update'}</h2>
+        <h2>{isToday ? "It's payday" : 'Time for our payday update'}</h2>
       </div>
       <p class="home-card-text">
         {lastUpdate

@@ -158,6 +158,36 @@ describe('daily reminders', () => {
     expect(await paydayReminder(e, new Date('2026-11-30T16:30:00Z'), push.impl)).toBe(0);
   });
 
+  it("sends each phone its own owner's payday, at 9am when the pay lands first thing", async () => {
+    const e = env();
+    const mine = await fakeBrowser('https://push.example/mine');
+    const theirs = await fakeBrowser('https://push.example/theirs');
+    await register(e, mine.subscription); // no payday sent: the default (Monzo, from 4pm)
+    await register(e, theirs.subscription, { payday: { kind: 'date', day: 24, arrives: 'morning' } });
+    const push = fakePushService();
+    // Tue 24 Nov, 9am: theirs only.
+    expect(await dailyReminders(e, new Date('2026-11-24T09:00:00Z'), push.impl)).toBe(1);
+    expect(push.sent[0].url).toBe('https://push.example/theirs');
+    expect(await paydayReminder(e, new Date('2026-11-24T16:30:00Z'), push.impl)).toBe(0);
+    // Fri 27 Nov: mine only, at 4:30pm.
+    expect(await dailyReminders(e, new Date('2026-11-27T09:00:00Z'), push.impl)).toBe(0);
+    expect(await paydayReminder(e, new Date('2026-11-27T16:30:00Z'), push.impl)).toBe(1);
+    expect(push.sent[1].url).toBe('https://push.example/mine');
+  });
+
+  it('keeps a posted payday rule, and falls back to the default for a bad one', () => {
+    const sub = { endpoint: 'https://push.example/x', keys: { p256dh: 'p', auth: 'a' } };
+    expect(parseRegistration({ subscription: sub, payday: { kind: 'date', day: 24, arrives: 'morning' } }, new Date()).payday).toEqual({
+      kind: 'date',
+      day: 24,
+      arrives: 'morning',
+    });
+    expect(parseRegistration({ subscription: sub, payday: { kind: 'nope' } }, new Date()).payday).toEqual({
+      kind: 'before-last-working-day',
+      arrives: 'afternoon',
+    });
+  });
+
   it('warns 30, 7 and 1 days before a 0% deal ends, and on the day', () => {
     const promos = [{ name: 'M&S Card', endsOn: '2027-03-01' }];
     const on = (day: string) => promoMessages(promos, day).map((m) => m.title);

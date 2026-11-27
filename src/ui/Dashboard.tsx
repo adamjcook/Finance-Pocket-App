@@ -4,14 +4,9 @@ import {
   effectiveSnapshots,
   debtProgress,
   changeSince,
-  dayBefore,
-  daysBetween,
   formatDay,
   growthProgress,
   lastManualUpdate,
-  lastManualUpdateAt,
-  paydayCard,
-  latestPayday,
   loanProgress,
   monthlyToTarget,
   dueWithinMonth,
@@ -19,7 +14,7 @@ import {
   todayISO,
 } from '../logic/progress';
 import { formatMoneyWhole } from '../logic/money';
-import { PAYDAY_HOUR, paydayOf } from '../../worker/src/ukdates';
+import { dayRange, localDay, paydaySummary, windowMonthName } from '../logic/payday';
 import { checkInFor, latestUpdateBatch } from '../logic/checkin';
 import { heldAccounts, HeldRows } from './Held';
 import { whenSplashGone } from './components/Splash';
@@ -80,19 +75,23 @@ export function Dashboard() {
   // all the time; it's done once in a while, not every visit.
   const [editing, setEditing] = useState(false);
 
-  // The latest payday update, from the shared history — so the partner who
-  // didn't do it sees the same card after syncing. Each phone keeps its own
-  // note of whether it has celebrated and whether it has dismissed it.
+  // The month's payday summary, from the shared history, so both phones show
+  // the same one (see logic/payday.ts). Each save during it still gets its
+  // own moment: the latest update's change, celebrated once per phone, which
+  // the phone that saved it can undo. Each phone keeps its own note of
+  // whether it has celebrated.
   const [celebrating, setCelebrating] = useState(false);
   const [confetti, setConfetti] = useState(false);
   const day0 = toDay(todayISO());
+  const summary = app ? paydaySummary(app.state, new Date()) : null;
   const batch = app ? latestUpdateBatch(app.state) : null;
   const memo = app && batch && app.device.checkIn?.key === batch.key ? app.device.checkIn : null;
   const mine = !!app && !!batch && batch.deviceId === app.device.deviceId;
-  const showCheckIn =
-    !!batch && daysBetween(toDay(batch.at), day0) <= 10 && !memo?.dismissed && (!batch.voided || mine);
-  const checkIn = app && showCheckIn && !batch!.voided ? checkInFor(app.state, batch!, day0) : null;
-  const undone = showCheckIn && !!batch?.voided;
+  const counted = !!summary && !!batch && batch.ids.some((id) => summary.updateIds.includes(id));
+  const checkIn = app && counted && summary!.status === 'open' ? checkInFor(app.state, batch!, day0) : null;
+  // Undoing the payday's only update: say so, with a way to do it again.
+  const undone =
+    !!batch && batch.voided && mine && summary?.status === 'waiting' && localDay(batch.at) >= summary.window.opens && !memo?.dismissed;
   const shouldCelebrate = !!checkIn && checkIn.netChange > 0 && !memo?.celebrated;
 
   // A better-off update plays its moment once per phone: on the saving phone
@@ -228,12 +227,11 @@ export function Dashboard() {
           : null;
   const hasAccounts = state.accounts.some((a) => !a.archived);
   const lastUpdate = lastManualUpdate(state);
-  const payday = latestPayday(today, new Date().getHours(), paydayOf, PAYDAY_HOUR);
-  const card = paydayCard(new Date(), lastManualUpdateAt(state), paydayOf, PAYDAY_HOUR);
-  const paydayDue = hasAccounts && card.due;
-  // The month's verdict, every day: what's moved since the last payday. Not
-  // shown while the check-in or payday card is already telling that story.
-  const since = dayBefore(payday);
+  const paydayDue = hasAccounts && summary!.status === 'waiting' && !undone;
+  const paydayOpen = !!summary?.checkIn && summary.status === 'open';
+  // What's moved since the payday summary closed, for mid-month glances. Not
+  // shown while payday is still happening: the summary is telling that story.
+  const since = summary!.closes;
   const verdictParts = [
     { label: 'card debt', change: changeSince(debt.series, debt.current, since), goodWhen: 'down' },
     { label: 'loans', change: changeSince(loans.series, loans.current, since), goodWhen: 'down' },
@@ -241,7 +239,7 @@ export function Dashboard() {
   ]
     .filter((m) => m.change !== 0)
     .map((m) => ({ ...m, good: m.goodWhen === 'down' ? m.change < 0 : m.change > 0 }));
-  const monthVerdict = !showCheckIn && !paydayDue && verdictParts.length > 0 ? verdictParts : null;
+  const monthVerdict = summary!.status === 'closed' && verdictParts.length > 0 ? verdictParts : null;
   const baseVisible = device.dashboardOrder.filter(
     (k) =>
       (k !== 'loans' || showLoans) &&
@@ -514,22 +512,27 @@ export function Dashboard() {
         </p>
       </header>
 
-      {showCheckIn && batch ? (
+      {summary!.checkIn ? (
         <CheckInCard
-          checkIn={checkIn}
-          undone={undone}
+          checkIn={summary!.checkIn}
           names={names}
-          subtitle={checkInSubtitle(batch, mine, today, settings)}
+          subtitle={
+            paydayOpen
+              ? `Our payday so far · ${dayRange(summary!.window.opens, summary!.closes)}`
+              : `Our ${windowMonthName(summary!.window)} payday · ${dayRange(summary!.window.opens, summary!.closes)}`
+          }
+          open={paydayOpen}
           perspective={perspective}
           currency={currency}
-          canUndo={mine}
+          undoIds={mine && checkIn && !batch!.voided ? batch!.ids : null}
           celebrate={celebrating}
-          onDismiss={dismissCheckIn}
         />
+      ) : undone ? (
+        <CheckInCard checkIn={null} names={names} subtitle="" currency={currency} perspective={null} onDismiss={dismissCheckIn} />
       ) : (
-        paydayDue && <PaydayCard payday={card.payday} payIn={card.payIn} today={today} lastUpdate={lastUpdate} />
+        paydayDue && <PaydayCard window={summary!.window} today={localDay(new Date())} lastUpdate={lastUpdate} />
       )}
-      <NewsLine state={state} device={device} today={today} hidden={showCheckIn || paydayDue} />
+      <NewsLine state={state} device={device} today={today} hidden={summary!.status !== 'closed' && hasAccounts} />
 
       <section class="hero">
         <div class="hero-label">Net worth</div>
@@ -557,7 +560,7 @@ export function Dashboard() {
         )}
         {monthVerdict && (
           <p class="month-verdict">
-            Since payday, {formatDay(payday).replace(/ \d{4}$/, '')}:{' '}
+            Since our payday:{' '}
             {monthVerdict.map((m, i) => (
               <span key={m.label}>
                 {i > 0 && ' · '}
@@ -730,18 +733,4 @@ function CountUp({ from, to, currency }: { from: number; to: number; currency: s
       <span class="visually-hidden">{formatMoneyWhole(to, currency)}</span>
     </>
   );
-}
-
-/** Who did the update and when, from this phone's point of view. */
-function checkInSubtitle(
-  batch: { at: string; by: 'A' | 'B' | null },
-  mine: boolean,
-  today: string,
-  settings: { partnerAName: string; partnerBName: string },
-): string {
-  const day = toDay(batch.at);
-  const when = day === today ? 'today' : `on ${formatDay(day)}`;
-  if (mine) return day === today ? 'Since your last update' : `Your update ${when}`;
-  const who = batch.by === 'A' ? settings.partnerAName : batch.by === 'B' ? settings.partnerBName : null;
-  return who ? `${who} updated ${when}` : `Updated ${when}`;
 }
