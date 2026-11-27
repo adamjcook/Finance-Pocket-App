@@ -820,7 +820,7 @@ test('a pension and a Junior ISA: their own cards and lines, never in net worth'
 
 test('the payday summary: every update in the window adds up, then it stays until next payday', async ({ page }) => {
   // Paydays left at the default (the day before the last working day), so
-  // November's window is Fri 27 – Mon 30 Nov. The phone's clock starts on payday.
+  // November's window is Fri 27 Nov – Wed 2 Dec. The phone's clock starts on payday.
   await page.clock.install({ time: new Date('2026-11-27T12:00:00') });
   await completeSetup(page, 'Adam', 'Sam');
   const early = '2026-11-02T12:00:00.000Z';
@@ -858,7 +858,7 @@ test('the payday summary: every update in the window adds up, then it stays unti
   await page.getByLabel('New balance for Marcus Saver').fill('650');
   await page.getByRole('button', { name: /Save 1 update/ }).click();
   const card = page.locator('.checkin');
-  await expect(card).toContainText('Our payday so far · 27–30 Nov');
+  await expect(card).toContainText('Our payday so far · 27 Nov – 2 Dec');
   await expect(card).toContainText('down £200');
   await expect(card).toContainText('up £150');
   await expect(card.getByRole('button', { name: 'Add more balances' })).toBeVisible();
@@ -871,7 +871,7 @@ test('the payday summary: every update in the window adds up, then it stays unti
   await page.getByLabel('New balance for Barclaycard').fill('700');
   await page.getByRole('button', { name: /Save 1 update/ }).click();
   await expect(page.locator('.hero-note')).toContainText('10 Dec');
-  await expect(card).toContainText('Our November payday · 27–30 Nov');
+  await expect(card).toContainText('Our November payday · 27 Nov – 2 Dec');
   await expect(card).toContainText('down £200');
   await expect(card.getByRole('button', { name: 'Add more balances' })).toHaveCount(0);
   const verdict = page.locator('.month-verdict');

@@ -12,7 +12,8 @@ import { summariseCheckIn, type CheckIn } from './checkin';
  * Home's payday summary: one shared picture of the month's payday update.
  *
  * The window opens on the earlier of the two paydays and closes at the end
- * of the month's last working day (see worker/src/payday.ts). Every balance
+ * of the 2nd of the next month, or the next working day (see
+ * worker/src/payday.ts), so the bills on the 1st and 2nd are included. Every balance
  * either of you types in during it counts, all added together, and once it
  * has closed the summary stays as it was until the next window opens. It's
  * about the two of you together: it never says who updated, or whose pay

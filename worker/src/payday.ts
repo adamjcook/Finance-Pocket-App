@@ -1,8 +1,9 @@
 /**
  * Paydays. Each partner has their own payday rule (shared in Settings, so
  * both phones agree), and the month's payday update runs as one shared
- * window: from the earlier of the two paydays to the end of the month's last
- * working day. Used by the app (Home's payday summary) and by the Worker
+ * window: from the earlier of the two paydays to the end of the 2nd of the
+ * next month (or the next working day after it), so the bills that go out on
+ * the 1st and 2nd are part of it. Used by the app (Home's payday summary) and by the Worker
  * (each phone's payday reminder).
  */
 
@@ -31,6 +32,15 @@ function workingDayOnOrBefore(y: number, m: number, d: number): string {
   }
   // Never happens for a real month; fall back to the previous month's last.
   return m === 1 ? lastWorkingDay(y - 1, 12) : lastWorkingDay(y, m - 1);
+}
+
+/** The working day on or after day `d` of the month (into the next month if need be). */
+function workingDayOnOrAfter(y: number, m: number, d: number): string {
+  for (let i = 0; ; i++) {
+    const t = new Date(Date.UTC(y, m - 1, d + i));
+    const [ty, tm, td] = [t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate()];
+    if (isWorkingDay(ty, tm, td)) return isoDay(ty, tm, td);
+  }
 }
 
 /** The payday (YYYY-MM-DD) a rule gives in a month. */
@@ -97,18 +107,16 @@ export interface PaydayWindow {
   month: string;
   /** The earliest of the paydays. */
   opens: string;
-  /** The last working day of the month (never before any payday). */
+  /** The 2nd of the next month, or the working day after it: bills out on the 1st and 2nd count. */
   closes: string;
 }
 
 export function paydayWindow(rules: PaydayRule[], y: number, m: number): PaydayWindow {
   const days = rules.map((r) => paydayFor(r, y, m)).sort();
-  const last = lastWorkingDay(y, m);
-  const latest = days[days.length - 1] ?? last;
   return {
     month: `${y}-${String(m).padStart(2, '0')}`,
-    opens: days[0] ?? last,
-    closes: latest > last ? latest : last,
+    opens: days[0] ?? lastWorkingDay(y, m),
+    closes: m === 12 ? workingDayOnOrAfter(y + 1, 1, 2) : workingDayOnOrAfter(y, m + 1, 2),
   };
 }
 
