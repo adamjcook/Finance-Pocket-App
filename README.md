@@ -164,8 +164,8 @@ run in the background, so it can't remind you itself):
   phone is reminded on its own owner's payday: at 9am if the pay lands first
   thing, or at 4:30pm if it lands from 4pm.
 
-Home's **payday summary** runs from the earlier of the two paydays to the end
-of the month's last working day: every balance either of you saves in that
+Home's **payday summary** runs from the earlier of the two paydays to the 2nd
+of the next month (or the next working day), so bills on the 1st and 2nd count: every balance either of you saves in that
 time is added into one summary of how the two of you did, which then stays on
 Home until the next payday.
 - **0% deals:** 30, 7 and 1 days before (and on the day) a card's 0% deal ends —

@@ -272,7 +272,7 @@ export function Settings() {
           )}
         </div>
         <p class="group-footer">
-          Payday runs from the first of your paydays to the end of the month’s last working day. Every balance either
+          Payday runs from the first of your paydays to the 2nd of the next month (or the next working day), so the bills that go out on the 1st and 2nd are included. Every balance either
           of you saves in that time goes into one payday summary on Home. Each phone’s reminder comes on its own
           person’s payday.
         </p>

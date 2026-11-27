@@ -60,10 +60,12 @@ describe('payday rules', () => {
 });
 
 describe('the shared payday window', () => {
-  it('runs from the earlier payday to the end of the last working day', () => {
-    expect(paydayWindow([MONZO, THE_24TH], 2026, 11)).toEqual({ month: '2026-11', opens: '2026-11-24', closes: '2026-11-30' });
-    expect(paydayWindow([MONZO, THE_24TH], 2027, 1)).toEqual({ month: '2027-01', opens: '2027-01-22', closes: '2027-01-29' });
-    expect(paydayWindow([MONZO, MONZO], 2026, 11)).toEqual({ month: '2026-11', opens: '2026-11-27', closes: '2026-11-30' });
+  it('runs from the earlier payday to the 2nd of the next month, or the next working day', () => {
+    expect(paydayWindow([MONZO, THE_24TH], 2026, 11)).toEqual({ month: '2026-11', opens: '2026-11-24', closes: '2026-12-02' });
+    expect(paydayWindow([MONZO, THE_24TH], 2027, 1)).toEqual({ month: '2027-01', opens: '2027-01-22', closes: '2027-02-02' });
+    expect(paydayWindow([MONZO, MONZO], 2026, 11)).toEqual({ month: '2026-11', opens: '2026-11-27', closes: '2026-12-02' });
+    expect(paydayWindow([MONZO], 2026, 12).closes).toBe('2027-01-04'); // Sat 2 Jan → Mon 4th
+    expect(paydayWindow([MONZO], 2027, 9).closes).toBe('2027-10-04'); // Sat 2 Oct → Mon 4th
   });
 
   it('is last month’s until this month’s opens', () => {
@@ -120,13 +122,27 @@ describe('payday summary', () => {
     expect(paydaySummary(s0, new Date(2026, 11, 24, 9)).status).toBe('waiting');
   });
 
-  it('counts a late update as the payday’s when nothing was saved during it', () => {
-    const s0 = base([update('card', 1800_00, '2026-12-02T12:00:00.000Z')]);
+  it('includes the bills on the 1st and 2nd', () => {
+    const s0 = base([
+      update('card', 1900_00, '2026-11-27T17:00:00.000Z'),
+      update('pot', 900_00, '2026-12-02T09:00:00.000Z'), // the 2nd: a bill out of savings
+      update('pot', 800_00, '2026-12-03T09:00:00.000Z'), // the 3rd: too late
+    ]);
     const s = paydaySummary(s0, new Date(2026, 11, 2, 18));
     expect(s.status).toBe('open');
-    expect(s.closes).toBe('2026-12-02');
+    expect(s.checkIn!.savingsChange).toBe(-100_00);
+    const later = paydaySummary(s0, new Date(2026, 11, 3, 18));
+    expect(later.status).toBe('closed');
+    expect(later.checkIn!.savingsChange).toBe(-100_00);
+  });
+
+  it('counts a late update as the payday’s when nothing was saved during it', () => {
+    const s0 = base([update('card', 1800_00, '2026-12-07T12:00:00.000Z')]);
+    const s = paydaySummary(s0, new Date(2026, 11, 7, 18));
+    expect(s.status).toBe('open');
+    expect(s.closes).toBe('2026-12-07');
     expect(s.checkIn!.cardChange).toBe(-200_00);
-    expect(paydaySummary(s0, new Date(2026, 11, 5, 12)).status).toBe('closed');
+    expect(paydaySummary(s0, new Date(2026, 11, 9, 12)).status).toBe('closed');
   });
 
   it('leaves out undone updates, automatic readings and new accounts’ opening balances', () => {
