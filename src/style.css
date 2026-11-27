@@ -1795,13 +1795,26 @@ label.field > span:first-child,
   text-wrap: pretty;
 }
 
-.checkin-undo {
-  margin: 12px 0 -6px -14px;
+/* While payday is still on, "Add more balances" sits beside Undo on one
+   centred line. Undo alone keeps its words in line with the card's text. */
+.checkin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 16px;
 }
 
-/* While payday is still on: room to add the next update. */
-.checkin-more {
-  margin-top: 16px;
+/* A little tighter side by side, so both fit on one line on a phone. */
+.checkin-actions .btn-sm {
+  padding: 0 12px;
+}
+
+.checkin-actions .btn-quiet {
+  padding: 0 10px;
+}
+
+.checkin-actions.undo-only {
+  margin: 12px 0 -6px -10px;
 }
 
 /* Whether the two phones agree: quiet when they do, a way to fix it when not. */

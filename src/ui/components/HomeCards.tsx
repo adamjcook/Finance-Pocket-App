@@ -144,16 +144,20 @@ export function CheckInCard({
           ))}
         </ul>
       )}
-      {open && (
-        <button class="btn-sm checkin-more" onClick={() => navigate('/update')}>
-          <Icon name="update" size={16} />
-          Add more balances
-        </button>
-      )}
-      {undoIds && (
-        <button class="btn-sm btn-quiet checkin-undo" onClick={() => void undo()}>
-          Undo the last update
-        </button>
+      {(open || undoIds) && (
+        <div class={`checkin-actions${open ? '' : ' undo-only'}`}>
+          {open && (
+            <button class="btn-sm" onClick={() => navigate('/update')}>
+              <Icon name="update" size={16} />
+              Add more balances
+            </button>
+          )}
+          {undoIds && (
+            <button class="btn-sm btn-quiet" onClick={() => void undo()}>
+              Undo the last update
+            </button>
+          )}
+        </div>
       )}
     </section>
   );
