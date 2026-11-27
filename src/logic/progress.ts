@@ -239,31 +239,20 @@ export function dueWithinMonth(today: string, targetDate: string): boolean {
   return months > 0 && months < 1;
 }
 
-/**
- * The most recent payday that has arrived: this month's once its day has come
- * and pay is in (from `payHour`), otherwise last month's.
- */
-export function latestPayday(
-  today: string,
-  hour: number,
-  paydayOf: (y: number, m: number) => string,
-  payHour: number,
-): string {
-  const [y, m] = today.split('-').map(Number);
-  const thisMonth = paydayOf(y, m);
-  if (today > thisMonth || (today === thisMonth && hour >= payHour)) return thisMonth;
-  return m === 1 ? paydayOf(y - 1, 12) : paydayOf(y, m - 1);
+/** When (ISO timestamp) the latest balance was typed in by hand, or null if none. */
+export function lastManualUpdateAt(state: SyncedState): string | null {
+  let last: string | null = null;
+  for (const s of effectiveSnapshots(state.snapshots, state.voids)) {
+    if (s.deviceId === 't212') continue; // the daily automatic readings
+    if (last === null || s.at > last) last = s.at;
+  }
+  return last;
 }
 
 /** Day (YYYY-MM-DD) of the latest balance typed in by hand, or null if none. */
 export function lastManualUpdate(state: SyncedState): string | null {
-  let last: string | null = null;
-  for (const s of effectiveSnapshots(state.snapshots, state.voids)) {
-    if (s.deviceId === 't212') continue; // the daily automatic readings
-    const day = toDay(s.at);
-    if (last === null || day > last) last = day;
-  }
-  return last;
+  const at = lastManualUpdateAt(state);
+  return at === null ? null : toDay(at);
 }
 
 /**

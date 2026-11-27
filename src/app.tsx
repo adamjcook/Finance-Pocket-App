@@ -98,7 +98,7 @@ function Screens() {
   // Reminders: keep the Worker's copy of this phone's registration current
   // (0% end dates, the linked account's name) — resent only when it changes.
   const reminderKey = app
-    ? JSON.stringify([app.device.push?.enabled, registrationFacts(app.state), t212?.endpoint, t212?.token, app.device.relay?.channel])
+    ? JSON.stringify([app.device.push?.enabled, registrationFacts(app.state, app.device.me), t212?.endpoint, t212?.token, app.device.relay?.channel])
     : '';
   useEffect(() => {
     if (app?.device.push?.enabled) void refreshReminders();

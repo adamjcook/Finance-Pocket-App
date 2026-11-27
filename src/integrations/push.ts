@@ -1,4 +1,5 @@
 import type { ReminderPrefs, SyncedState } from '../model/types';
+import { myPaydayRule } from '../logic/payday';
 import { DEFAULT_REMINDER_PREFS } from '../model/types';
 import { getStore, patchDevice } from '../model/store';
 import { call, workerReady } from './t212';
@@ -9,8 +10,8 @@ import { APP_NAME } from '../appName';
  * finpair-t212 Worker sends them (worker/src/reminders.ts) as Web Push
  * messages. This phone subscribes with the Worker's public key and registers
  * that subscription with the Worker, together with which reminders it wants
- * and the facts the Worker needs: the cards' 0% end dates and the Trading 212
- * account's name. Re-registered whenever those change.
+ * and the facts the Worker needs: the cards' 0% end dates, the Trading 212
+ * account's name, and the phone owner's payday rule. Re-registered whenever those change.
  */
 
 export function pushSupported(): boolean {
@@ -23,9 +24,10 @@ export function pushSupported(): boolean {
 }
 
 /** What the Worker is told about this phone's reminders. */
-export function registrationFacts(state: SyncedState) {
+export function registrationFacts(state: SyncedState, me: 'A' | 'B' | null | undefined) {
   const t212 = state.settings.t212;
   return {
+    payday: myPaydayRule(state.settings, me),
     promos: state.accounts
       .filter((a) => !a.archived && a.kind === 'credit_card' && a.promoEndsOn)
       .map((a) => ({ name: a.name, endsOn: a.promoEndsOn! }))
@@ -64,7 +66,7 @@ async function currentSubscription(): Promise<PushSubscription | null> {
 }
 
 async function register(sub: PushSubscription, prefs: ReminderPrefs): Promise<void> {
-  const body = JSON.stringify({ subscription: sub.toJSON(), prefs, ...registrationFacts(getStore().state), channel: getStore().device.relay?.channel ?? null });
+  const body = JSON.stringify({ subscription: sub.toJSON(), prefs, ...registrationFacts(getStore().state, getStore().device.me), channel: getStore().device.relay?.channel ?? null });
   await call(link(), '/push/subscribe', { method: 'POST', body });
   await patchDevice({ push: { enabled: true, prefs, sentHash: fingerprint(body) } });
 }
@@ -136,7 +138,7 @@ export async function refreshReminders(): Promise<void> {
       await patchDevice({ push: { ...push, enabled: false, sentHash: null } });
       return;
     }
-    const body = JSON.stringify({ subscription: sub.toJSON(), prefs: push.prefs, ...registrationFacts(getStore().state), channel: getStore().device.relay?.channel ?? null });
+    const body = JSON.stringify({ subscription: sub.toJSON(), prefs: push.prefs, ...registrationFacts(getStore().state, getStore().device.me), channel: getStore().device.relay?.channel ?? null });
     if (fingerprint(body) !== push.sentHash) await register(sub, push.prefs);
   } catch {
     // offline or Worker unreachable — try again next time the app opens

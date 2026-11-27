@@ -23,4 +23,4 @@ Endpoints (all but `/` need `Authorization: Bearer <FINPAIR_TOKEN>`):
   not turned off) a notification. The copies are encrypted on the phones with a key the Worker never sees.
 
 Schedule (UTC crons, acting only on the matching UK hour): 9pm UK reading +
-weekly drop check; 9am UK 0% deal reminders; 4:30pm UK payday reminder (payday = the working day before the last working day of the month).
+weekly drop check; 9am UK 0% deal reminders and payday reminders for pay that lands first thing; 4:30pm UK payday reminders for pay that lands from 4pm (each phone's own payday rule, see `src/payday.ts`).

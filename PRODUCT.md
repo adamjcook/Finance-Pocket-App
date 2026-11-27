@@ -22,7 +22,7 @@ There's no server and no cloud account. All data lives on the two phones. They l
 
 ## Operating Context
 
-- **Main ritual: the payday check-in.** Once a month, on payday — the working day before the last working day, when Monzo pays early from 4pm (a push reminder arrives at 4:30pm UK time), they open Accounts, tap **Update**, type in the balances that changed, and save. Then they look at Home: did debt go down, did savings go up?
+- **Main ritual: the payday check-in.** Each has their own payday (one on the working day on or before the 24th, paid first thing; the other on the working day before the last working day, when Monzo pays early from 4pm), set in Settings → Paydays, and each phone gets a reminder on its owner's payday. The payday window runs from the earlier payday to the end of the month's last working day; whenever either of them updates in it, they open Accounts, tap **Update**, type in the balances that changed, and save. Home's payday summary adds every update in the window into one picture of how the two of them did (did debt go down, did savings go up?), then stays until the next payday. It never says who updated or whose pay is still to come.
 - **Sync session:** they sit together. One phone shows a loop of QR codes and the other scans it, then they swap. Both phones then display a 6-character check code, and matching codes mean the phones are identical.
 - **Between paydays:** occasional glances. A Trading 212 account updates itself daily through the Worker.
 - **Reminders:** payday, 0% deals ending (30, 7 and 1 days before, and on the day), and a Trading 212 drop of 5% or more over a week.
@@ -59,9 +59,10 @@ There's no server and no cloud account. All data lives on the two phones. They l
 
 1. **One honest picture, shared.** Both phones must agree. Never show a number that could differ between them, and make agreement visible.
 2. **The payday check-in is the hero flow.** Getting from opening the app to "updated, and here's how we did" should take as little friction as possible.
-3. **Nothing leaves the phones** unless they opted in, and say plainly what does.
-4. **Mistake-proof and calm.** History is append-only, undo is available, and errors are never frightening.
-5. **Make progress feel good.** Debt going down and savings going up are worth celebrating together, warmly and without nagging.
+3. **Always "us", never a scorecard.** Nothing compares what each partner contributed or points out who hasn’t updated. Totals, milestones and payday summaries are about the two of them together.
+4. **Nothing leaves the phones** unless they opted in, and say plainly what does.
+5. **Mistake-proof and calm.** History is append-only, undo is available, and errors are never frightening.
+6. **Make progress feel good.** Debt going down and savings going up are worth celebrating together, warmly and without nagging.
 
 ## Accessibility & Inclusion
 

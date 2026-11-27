@@ -157,10 +157,17 @@ instead, add a variable `T212_BASE_URL` = `https://demo.trading212.com`.
 Phone notifications, sent by the same `finpair-t212` Worker (the app can't
 run in the background, so it can't remind you itself):
 
-- **4:30pm on payday**: time to update your balances. Payday is the working
-  day before the last working day of the month (skipping weekends and UK bank
-  holidays), because Monzo pays salaries early from 4pm that day: Friday
-  27 Nov 2026 for a Monday 30 Nov month-end. Home's payday card appears from 4pm too.
+- **On your payday**: time to update your balances. Each of you sets your own
+  payday in Settings → Paydays (a date such as the 24th, the working day before
+  the last working day for Monzo's early pay, the last working day, or the last
+  Friday; all skip weekends and UK bank holidays), and when the pay lands. Each
+  phone is reminded on its own owner's payday: at 9am if the pay lands first
+  thing, or at 4:30pm if it lands from 4pm.
+
+Home's **payday summary** runs from the earlier of the two paydays to the end
+of the month's last working day: every balance either of you saves in that
+time is added into one summary of how the two of you did, which then stays on
+Home until the next payday.
 - **0% deals:** 30, 7 and 1 days before (and on the day) a card's 0% deal ends —
   set the date on the card (Accounts → the card → "0% deal ends").
 - **Trading 212 drops:** after the 9pm reading, if the linked account is down

@@ -85,7 +85,7 @@ test('setup, accounts, balance updates, and dashboard progress', async ({ page }
   await expect(checkIn.getByRole('heading', { name: 'Nicely done, Adam & Sam' })).toBeVisible();
   await expect(checkIn).toContainText('Card debt');
   await expect(checkIn).toContainText('down £1,500');
-  await expect(checkIn.getByRole('button', { name: 'Undo this update' })).toBeVisible();
+  await expect(checkIn.getByRole('button', { name: 'Undo the last update' })).toBeVisible();
   // Net worth went up, so Home celebrates it — once.
   await expect(page.locator('.net-gain')).toHaveText('£1,500 since the last update');
   await expect(page.locator('.app-logo.celebrate')).toHaveCount(1);
@@ -623,7 +623,7 @@ test('payday update: mistypes are caught, drafts survive a reload, and a check-i
   await expect(checkIn).toContainText('down £200');
   // The debt going down raised net worth: £1,800 owed → £1,600.
   await expect(page.locator('.net-worth')).toContainText('−£1,600');
-  await checkIn.getByRole('button', { name: 'Undo this update' }).click();
+  await checkIn.getByRole('button', { name: 'Undo the last update' }).click();
   await expect(checkIn.getByRole('heading', { name: 'Update undone' })).toBeVisible();
   // Undo puts the headline back too: no stale figure or gain left on screen.
   await expect(page.locator('.net-worth')).toContainText('−£1,800');
@@ -645,10 +645,11 @@ test('the partner who did not do the update sees it too, after syncing', async (
   await phoneA.goto('.#/update');
   await phoneA.getByLabel('New balance for Barclaycard').fill('2600');
   await phoneA.getByRole('button', { name: /Save 1 update/ }).click();
-  await expect(phoneA.locator('.checkin')).toContainText('Since your last update');
+  await expect(phoneA.locator('.checkin')).toContainText('Our payday so far');
 
-  // Sam's phone joins and syncs: same card, saying who did it, celebrating
-  // once (net worth went up), but with no Undo — that's Adam's to take back.
+  // Sam's phone joins and syncs: the same payday summary (never saying who
+  // did it), celebrating once (net worth went up), but with no Undo — that's
+  // Adam's to take back.
   await phoneB.goto('.');
   await expect(phoneB.getByRole('button', { name: "Join your partner's setup" })).toBeVisible();
   const frames = await phoneA.evaluate(() => window.__syncTest.exportFrames());
@@ -656,22 +657,19 @@ test('the partner who did not do the update sees it too, after syncing', async (
   await phoneB.goto('.#/');
   const card = phoneB.locator('.checkin');
   await expect(card.getByRole('heading', { name: 'Nicely done, Adam & Sam' })).toBeVisible();
-  await expect(card).toContainText('Adam updated today');
+  await expect(card).toContainText('Our payday so far');
+  await expect(card).not.toContainText('updated');
   await expect(card).toContainText('down £400');
-  await expect(card.getByRole('button', { name: 'Undo this update' })).toHaveCount(0);
+  await expect(card.getByRole('button', { name: 'Undo the last update' })).toHaveCount(0);
   await expect(phoneB.locator('.net-gain')).toHaveText('£400 since the last update');
 
-  // It survives the app being reopened, without celebrating again…
+  // It survives the app being reopened, without celebrating again, and
+  // stays: the payday summary isn't dismissed.
   await phoneB.reload();
-  await expect(phoneB.locator('.checkin')).toContainText('Adam updated today');
+  await expect(phoneB.locator('.checkin')).toContainText('Our payday so far');
   await phoneB.waitForTimeout(2500);
   await expect(phoneB.locator('.net-gain')).toHaveCount(0);
-  // …until this phone dismisses it.
-  await phoneB.locator('.checkin').getByRole('button', { name: 'Dismiss' }).click();
-  await expect(phoneB.locator('.checkin')).toHaveCount(0);
-  await phoneB.reload();
-  await expect(phoneB.locator('.dash-top')).toBeVisible();
-  await expect(phoneB.locator('.checkin')).toHaveCount(0);
+  await expect(phoneB.locator('.checkin').getByRole('button', { name: 'Dismiss' })).toHaveCount(0);
 
   await contextA.close();
   await contextB.close();
@@ -738,7 +736,7 @@ test('automatic sync: after one QR handshake, updates reach the other phone thro
   await phoneB.goto('.#/');
   await phoneB.reload();
   const card = phoneB.locator('.checkin');
-  await expect(card).toContainText('Adam updated today');
+  await expect(card).toContainText('Our payday so far');
   await expect(card).toContainText('down £400');
   await expect(phoneB.locator('.dash-section', { hasText: 'Credit card debt' }).locator('.big-number')).toHaveText('£2,600');
 
@@ -820,22 +818,24 @@ test('a pension and a Junior ISA: their own cards and lines, never in net worth'
   await expect(page.locator('.net-worth')).toContainText('£1,000');
 });
 
-test("Home's month verdict: what's moved since payday, every day once the check-in is dismissed", async ({ page }) => {
+test('the payday summary: every update in the window adds up, then it stays until next payday', async ({ page }) => {
+  // Paydays left at the default (the day before the last working day), so
+  // November's window is Fri 27 – Mon 30 Nov. The phone's clock starts on payday.
+  await page.clock.install({ time: new Date('2026-11-27T12:00:00') });
   await completeSetup(page, 'Adam', 'Sam');
-  // Two accounts with balances from 45 days ago, i.e. from before the latest payday.
-  const ago = new Date(Date.now() - 45 * 86400000).toISOString();
+  const early = '2026-11-02T12:00:00.000Z';
   const acc = (id: string, name: string, kind: string) => ({
-    id, name, kind, institution: '', owner: 'joint', archived: false, createdAt: ago, updatedAt: ago, updatedBy: 'seed',
+    id, name, kind, institution: '', owner: 'joint', archived: false, createdAt: early, updatedAt: early, updatedBy: 'seed',
   });
   const snap = (accountId: string, balance: number) => ({
-    id: `seed-${accountId}`, accountId, balance, at: ago, deviceId: 'seed', createdAt: ago,
+    id: `seed-${accountId}`, accountId, balance, at: '2026-11-05T12:00:00.000Z', deviceId: 'seed', createdAt: '2026-11-05T12:00:00.000Z',
   });
   await page.evaluate(
     (p) => window.__syncTest.importPayload(p as never),
     {
       v: 1,
       deviceId: 'seed',
-      sentAt: ago,
+      sentAt: early,
       settings: { id: 'settings', partnerAName: 'Adam', partnerBName: 'Sam', currency: 'GBP', debtBaselineMinor: null, updatedAt: '2000-01-01T00:00:00.000Z', updatedBy: 'seed' },
       accounts: [acc('card', 'Barclaycard', 'credit_card'), acc('saver', 'Marcus Saver', 'savings')],
       aliases: [],
@@ -844,21 +844,37 @@ test("Home's month verdict: what's moved since payday, every day once the check-
     },
   );
 
-  // Nothing has moved since payday yet (that's the payday card's job), so no verdict.
+  // Payday, nothing saved yet: the nudge.
   await page.goto('.#/');
+  await expect(page.locator('.home-card.payday')).toContainText("It's payday");
   await expect(page.locator('.month-verdict')).toHaveCount(0);
 
+  // Two saves on payday add up into one summary.
   await page.goto('.#/update');
   await page.getByLabel('New balance for Barclaycard').fill('800');
+  await page.getByRole('button', { name: /Save 1 update/ }).click();
+  await expect(page.locator('.checkin')).toContainText('down £200');
+  await page.goto('.#/update');
   await page.getByLabel('New balance for Marcus Saver').fill('650');
-  await page.getByRole('button', { name: /Save 2 updates/ }).click();
-  // The check-in card tells the story first…
-  await expect(page.locator('.checkin')).toBeVisible();
+  await page.getByRole('button', { name: /Save 1 update/ }).click();
+  const card = page.locator('.checkin');
+  await expect(card).toContainText('Our payday so far · 27–30 Nov');
+  await expect(card).toContainText('down £200');
+  await expect(card).toContainText('up £150');
+  await expect(card.getByRole('button', { name: 'Add more balances' })).toBeVisible();
   await expect(page.locator('.month-verdict')).toHaveCount(0);
-  // …then, once dismissed, the verdict line keeps telling it.
-  await page.locator('.checkin').getByRole('button', { name: 'Dismiss' }).click();
+
+  // A fortnight on, it's November's payday, unchanged by a mid-month update,
+  // which the "since our payday" line picks up instead.
+  await page.clock.setSystemTime(new Date('2026-12-10T12:00:00'));
+  await page.goto('.#/update');
+  await page.getByLabel('New balance for Barclaycard').fill('700');
+  await page.getByRole('button', { name: /Save 1 update/ }).click();
+  await expect(page.locator('.hero-note')).toContainText('10 Dec');
+  await expect(card).toContainText('Our November payday · 27–30 Nov');
+  await expect(card).toContainText('down £200');
+  await expect(card.getByRole('button', { name: 'Add more balances' })).toHaveCount(0);
   const verdict = page.locator('.month-verdict');
-  await expect(verdict).toContainText('Since payday');
-  await expect(verdict).toContainText('card debt down £200');
-  await expect(verdict).toContainText('savings up £150');
+  await expect(verdict).toContainText('Since our payday');
+  await expect(verdict).toContainText('card debt down £100');
 });

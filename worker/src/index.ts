@@ -185,8 +185,8 @@ async function getStatus(env: Env): Promise<Status | null> {
  *   - 9pm UK: the day's Trading 212 reading. Runs every 15 minutes through
  *     the hour; once a final reading exists the rest are no-ops, so the later
  *     ones are automatic retries. A new reading then gets the weekly drop check.
- *   - 9am UK: 0% deal reminders.
- *   - 4:30pm UK: the payday reminder (on payday only; see ukdates.ts).
+ *   - 9am UK: 0% deal reminders, and payday reminders for pay that lands first thing.
+ *   - 4:30pm UK: payday reminders for pay that lands from 4pm (see payday.ts).
  */
 export async function onSchedule(
   env: Env,
