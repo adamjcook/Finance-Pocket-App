@@ -2,6 +2,7 @@ import type { SyncedState } from '../model/types';
 import { latestBalances } from '../model/repo';
 import { formatMoneyWhole } from './money';
 import { daysBetween, debtProgress, formatDay, netWorthLines, netWorthSeries, type SeriesPoint } from './progress';
+import { yearAgoNews } from './story';
 
 /**
  * The one line of news at the top of Home. It only appears when something
@@ -192,6 +193,11 @@ function candidates(state: SyncedState, today: string, memory: NewsMemory, curre
       });
     }
   }
+
+  // How things stood a year ago, once there's a year to look back on: the
+  // quietest news, only when nothing else has something to say.
+  const year = yearAgoNews(state, today);
+  if (year) rest.push(year);
 
   return [...urgent, ...rest];
 }

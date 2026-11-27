@@ -6,6 +6,7 @@ import { Accounts } from './ui/Accounts';
 import { AccountForm } from './ui/AccountForm';
 import { Aliases } from './ui/Aliases';
 import { HeldPage } from './ui/Held';
+import { StoryPage } from './ui/Story';
 import { Sync } from './ui/Sync';
 import { Settings } from './ui/Settings';
 import { Setup } from './ui/Setup';
@@ -139,13 +140,14 @@ function Screens() {
   else if (route === '/held' || route.startsWith('/held/')) {
     screen = <HeldPage key="held" focus={route.startsWith('/held/') ? route.slice('/held/'.length) : null} />;
   }
+  else if (route === '/story') screen = <StoryPage />;
   // Update mode of the Accounts page (also where the payday reminder lands).
   else if (route === '/update') screen = <Accounts key="update" updating />;
   else if (route === '/sync') screen = <Sync />;
   else if (route === '/settings') screen = <Settings />;
   else screen = <Dashboard />;
 
-  const tabRoute = route === '/update' ? '/accounts' : route.startsWith('/held') ? '/' : route;
+  const tabRoute = route === '/update' ? '/accounts' : route.startsWith('/held') || route === '/story' ? '/' : route;
   const activeTab = TABS.find(
     (t) => tabRoute === t.route || (t.route !== '/' && tabRoute.startsWith(t.route)),
   );

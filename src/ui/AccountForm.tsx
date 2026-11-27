@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import { useApp, mutate, getStore } from '../model/store';
+import { partnerName } from './names';
 import { addAccount, updateAccount } from '../model/repo';
 import type { AccountKind, Owner } from '../model/types';
 import { ACCOUNT_KIND_LABELS, OWED_KINDS, POT_KINDS } from '../model/types';
@@ -38,6 +39,7 @@ export function AccountForm({ id }: Props) {
     );
   }
   const { state } = app;
+  const partner = partnerName(state.settings, app.device.me);
 
   const save = async () => {
     if (!name.trim()) return;
@@ -229,7 +231,7 @@ export function AccountForm({ id }: Props) {
           <p class="group-footer">
             {existing.archived
               ? 'This account is archived. Its history still counts up to the point it was archived.'
-              : "Closed this account? Archiving hides it; its history still counts up to today, and it stays synced to your partner's phone."}
+              : `Closed this account? Archiving hides it; its history still counts up to today, and it stays synced to ${partner ? `${partner}’s` : 'your partner’s'} phone.`}
           </p>
         </section>
       )}

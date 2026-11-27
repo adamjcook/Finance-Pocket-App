@@ -167,18 +167,28 @@ export function CheckInCard({
  * Shown on Home from the start of payday until the first update of it, so
  * the monthly update is one tap from where the app opens.
  */
-export function PaydayCard({ window, today, lastUpdate }: { window: PaydayWindow; today: string; lastUpdate: string | null }) {
+export function PaydayCard({
+  window,
+  today,
+  lastUpdate,
+  names,
+}: {
+  window: PaydayWindow;
+  today: string;
+  lastUpdate: string | null;
+  names: string;
+}) {
   const isToday = today <= window.closes;
   const since = lastUpdate ? daysBetween(lastUpdate, today) : null;
   return (
     <section class="home-card payday">
       <div class="home-card-head">
-        <h2>{isToday ? "It's payday" : 'Time for our payday update'}</h2>
+        <h2>{isToday ? `It’s payday, ${names}` : 'Time for our payday update'}</h2>
       </div>
       <p class="home-card-text">
         {lastUpdate
-          ? `Last updated ${formatDay(lastUpdate)}${since !== null && since > 0 ? ` · ${since} day${since === 1 ? '' : 's'} ago` : ''}`
-          : 'No balances typed in yet'}
+          ? `Last updated ${formatDay(lastUpdate)}${since !== null && since > 0 ? `, ${since} day${since === 1 ? '' : 's'} ago` : ''}. A minute now shows how you both did.`
+          : 'No balances typed in yet. A minute now starts the picture.'}
       </p>
       <button class="btn-primary btn-big" onClick={() => navigate('/update')}>
         <Icon name="update" size={18} />

@@ -481,7 +481,8 @@ button:disabled {
   .action-tile:hover:not(:disabled),
   .drag-handle:hover:not(:disabled),
   .double-check-row:hover:not(:disabled),
-  .held-row:hover {
+  .held-row:hover,
+  .story-link:hover {
     background: var(--surface-2);
   }
 
@@ -1908,6 +1909,141 @@ label.field > span:first-child,
 .reorder-toggle {
   display: flex;
   margin: 8px auto 0;
+}
+
+/* The debt card's finish line, at the pace of the last three months. */
+.forecast-note {
+  margin-top: 12px;
+  font-size: var(--fs-footnote);
+  color: var(--text-2);
+}
+
+.forecast-note strong {
+  color: var(--text);
+  font-weight: var(--fw-strong);
+}
+
+/* ---- Our story so far ------------------------------------------------------- */
+
+/* Home's way in: the count and the latest moment, under the cards. */
+.story-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 4px;
+  padding: 14px 10px 14px 16px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.story-link:active {
+  background: var(--surface-2);
+}
+
+.story-link-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.story-link-title {
+  font-weight: var(--fw-strong);
+}
+
+.story-link-sub {
+  font-size: var(--fs-footnote);
+  color: var(--text-2);
+}
+
+.story-year + .story-year {
+  margin-top: 22px;
+}
+
+/* A rail through the moments' marks, each moment hanging off it. */
+.story {
+  list-style: none;
+  padding: 4px 18px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
+}
+
+.moment {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 0;
+}
+
+.moment::before {
+  content: '';
+  position: absolute;
+  left: 13px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--surface-3);
+}
+
+.moment:first-child::before {
+  top: 26px;
+}
+
+.moment:last-child::before {
+  bottom: calc(100% - 26px);
+}
+
+.moment:only-child::before {
+  display: none;
+}
+
+.moment-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.moment-big .moment-mark,
+.story-link .moment-mark {
+  color: var(--on-accent);
+  background: var(--accent);
+}
+
+.moment-quiet .moment-mark {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+}
+
+.moment-plain .moment-mark {
+  color: var(--text-2);
+  background: var(--surface-3);
+}
+
+.moment-text {
+  min-width: 0;
+  padding-top: 3px;
+}
+
+.moment-title {
+  font-weight: var(--fw-label);
+  line-height: 1.35;
+}
+
+.moment-big .moment-title {
+  font-weight: var(--fw-strong);
+}
+
+.moment-meta {
+  margin-top: 2px;
+  font-size: var(--fs-footnote);
+  color: var(--text-2);
 }
 
 /* Update mode: a mistyped amount says so in words, not just a red border. */
