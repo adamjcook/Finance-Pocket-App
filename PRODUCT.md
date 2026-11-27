@@ -22,7 +22,7 @@ There's no server and no cloud account. All data lives on the two phones. They l
 
 ## Operating Context
 
-- **Main ritual: the payday check-in.** Once a month, on or around the last working day (a push reminder arrives at 9am UK time), they open Accounts, tap **Update**, type in the balances that changed, and save. Then they look at Home: did debt go down, did savings go up?
+- **Main ritual: the payday check-in.** Once a month, on payday — the working day before the last working day, when Monzo pays early from 4pm (a push reminder arrives at 4:30pm UK time), they open Accounts, tap **Update**, type in the balances that changed, and save. Then they look at Home: did debt go down, did savings go up?
 - **Sync session:** they sit together. One phone shows a loop of QR codes and the other scans it, then they swap. Both phones then display a 6-character check code, and matching codes mean the phones are identical.
 - **Between paydays:** occasional glances. A Trading 212 account updates itself daily through the Worker.
 - **Reminders:** payday, 0% deals ending (30, 7 and 1 days before, and on the day), and a Trading 212 drop of 5% or more over a week.

@@ -20,7 +20,9 @@ import {
   deleteRegistration,
   dropCheck,
   getRegistration,
+  isPaydayHour,
   isReminderHour,
+  paydayReminder,
   parseRegistration,
   saveRegistration,
 } from './reminders';
@@ -183,7 +185,8 @@ async function getStatus(env: Env): Promise<Status | null> {
  *   - 9pm UK: the day's Trading 212 reading. Runs every 15 minutes through
  *     the hour; once a final reading exists the rest are no-ops, so the later
  *     ones are automatic retries. A new reading then gets the weekly drop check.
- *   - 9am UK: reminder notifications (monthly update, 0% deals ending).
+ *   - 9am UK: 0% deal reminders.
+ *   - 4:30pm UK: the payday reminder (on payday only; see ukdates.ts).
  */
 export async function onSchedule(
   env: Env,
@@ -192,6 +195,10 @@ export async function onSchedule(
 ): Promise<'skipped' | 'taken' | 'reminded'> {
   if (isReminderHour(now)) {
     await dailyReminders(env, now, fetchImpl);
+    return 'reminded';
+  }
+  if (isPaydayHour(now)) {
+    await paydayReminder(env, now, fetchImpl);
     return 'reminded';
   }
   const { day, hour } = ukTime(now);

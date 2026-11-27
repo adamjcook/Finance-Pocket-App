@@ -1,6 +1,9 @@
 /**
- * UK (England & Wales) working days, for "the last working day of the month"
- * — payday, when the monthly "update your balances" reminder goes out.
+ * UK (England & Wales) working days, for payday: the working day before the
+ * last working day of the month. Salaries land on the last working day, and
+ * Monzo's "get paid early" pays them from 4pm the working day before, which
+ * at a weekend can be the Friday before a Monday month-end (27 Nov 2026 for
+ * Mon 30 Nov). The monthly "update your balances" reminder goes out then.
  *
  * Covers every regular bank holiday. The ones that can land at a month's end
  * are the late-May and August bank holidays (both the last Monday) and Good
@@ -82,4 +85,26 @@ export function lastWorkingDay(y: number, m: number): string {
 export function isLastWorkingDay(day: string): boolean {
   const [y, m] = day.split('-').map(Number);
   return lastWorkingDay(y, m) === day;
+}
+
+/** The UK hour pay arrives on payday (Monzo pays early from 4pm). */
+export const PAYDAY_HOUR = 16;
+
+/**
+ * Payday (YYYY-MM-DD): the working day before the month's last working day.
+ * Always in the same month, since the last working day is never before the 25th.
+ */
+export function paydayOf(y: number, m: number): string {
+  const holidays = ukBankHolidays(y);
+  const last = Number(lastWorkingDay(y, m).slice(8));
+  for (let d = last - 1; d >= 1; d--) {
+    const w = dow(y, m, d);
+    if (w !== 0 && w !== 6 && !holidays.has(iso(y, m, d))) return iso(y, m, d);
+  }
+  throw new Error('no working day'); // unreachable
+}
+
+export function isPayday(day: string): boolean {
+  const [y, m] = day.split('-').map(Number);
+  return paydayOf(y, m) === day;
 }

@@ -13,6 +13,7 @@ import {
 } from '../worker/src/push';
 import {
   dailyReminders,
+  paydayReminder,
   dropCheck,
   parseRegistration,
   promoMessages,
@@ -137,22 +138,24 @@ describe('sendPush', () => {
   });
 });
 
-describe('daily reminders (9am UK)', () => {
-  it('sends the payday reminder on the last working day, once, and only to phones that want it', async () => {
+describe('daily reminders', () => {
+  it('sends the payday reminder on payday, once, and only to phones that want it', async () => {
     const e = env();
     const wants = await fakeBrowser('https://push.example/a');
     const doesnt = await fakeBrowser('https://push.example/b');
     await register(e, wants.subscription);
     await register(e, doesnt.subscription, { prefs: { monthly: false, promo: true, drop: true } });
     const push = fakePushService();
-    const payday = new Date('2026-11-30T09:00:00Z'); // Monday 30 Nov, 9am GMT
-    expect(await dailyReminders(e, payday, push.impl)).toBe(1);
+    // The 9am run on payday doesn't send it: pay isn't in until 4pm.
+    expect(await dailyReminders(e, new Date('2026-11-27T09:00:00Z'), push.impl)).toBe(0);
+    const payday = new Date('2026-11-27T16:30:00Z'); // Friday 27 Nov (last working day Mon 30th), 4:30pm GMT
+    expect(await paydayReminder(e, payday, push.impl)).toBe(1);
     expect(push.sent[0].url).toBe('https://push.example/a');
     expect(JSON.parse(await wants.decrypt(push.sent[0].body))).toMatchObject({ tag: 'monthly', url: '#/update' });
     // A second run the same day does nothing.
-    expect(await dailyReminders(e, payday, push.impl)).toBe(0);
-    // The 1st is no longer payday: nothing.
-    expect(await dailyReminders(e, new Date('2026-12-01T09:00:00Z'), push.impl)).toBe(0);
+    expect(await paydayReminder(e, payday, push.impl)).toBe(0);
+    // The last working day itself is not payday: nothing.
+    expect(await paydayReminder(e, new Date('2026-11-30T16:30:00Z'), push.impl)).toBe(0);
   });
 
   it('warns 30, 7 and 1 days before a 0% deal ends, and on the day', () => {
@@ -169,7 +172,7 @@ describe('daily reminders (9am UK)', () => {
     const e = env();
     const browser = await fakeBrowser();
     await register(e, browser.subscription);
-    await dailyReminders(e, new Date('2026-11-30T09:00:00Z'), fakePushService(410).impl);
+    await paydayReminder(e, new Date('2026-11-27T16:30:00Z'), fakePushService(410).impl);
     expect([...e.DAYS.data.keys()].some((k) => k.startsWith('sub:'))).toBe(false);
   });
 });
@@ -257,5 +260,13 @@ describe('cron routing', () => {
     expect(await onSchedule(e, new Date('2026-12-01T09:00:00Z'), push.impl)).toBe('reminded'); // GMT
     expect(await onSchedule(e, new Date('2026-07-01T08:00:00Z'), push.impl)).toBe('reminded'); // BST
     expect(await onSchedule(e, new Date('2026-12-01T08:00:00Z'), push.impl)).toBe('skipped'); // 8am GMT
+  });
+
+  it('runs the payday reminder at 4:30pm UK in both GMT and BST', async () => {
+    const e = env();
+    const push = fakePushService();
+    expect(await onSchedule(e, new Date('2026-11-27T16:30:00Z'), push.impl)).toBe('reminded'); // GMT
+    expect(await onSchedule(e, new Date('2026-07-30T15:30:00Z'), push.impl)).toBe('reminded'); // BST
+    expect(await onSchedule(e, new Date('2026-11-27T15:30:00Z'), push.impl)).toBe('skipped'); // 3:30pm GMT
   });
 });

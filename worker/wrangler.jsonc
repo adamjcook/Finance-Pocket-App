@@ -11,8 +11,9 @@
   // Crons are UTC, so each UK time is scheduled at both its GMT and BST hour;
   // the Worker ignores runs that don't land on the right UK hour.
   //   9pm UK: Trading 212 reading (every 15 min through the hour = retries)
-  //   9am UK: reminder notifications
-  "triggers": { "crons": ["*/15 20,21 * * *", "0 8,9 * * *"] },
+  //   9am UK: 0% deal reminders
+  //   4:30pm UK: payday reminder (Monzo pays early from 4pm)
+  "triggers": { "crons": ["*/15 20,21 * * *", "0 8,9 * * *", "30 15,16 * * *"] },
   // One record per day plus a status record. No id: Wrangler creates the
   // namespace on first deploy.
   "kv_namespaces": [{ "binding": "DAYS" }],

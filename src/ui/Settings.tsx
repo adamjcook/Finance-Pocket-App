@@ -422,7 +422,7 @@ export function Settings() {
           </div>
           {push?.enabled && (
             <>
-              {reminderRow('monthly', 'Update your balances', '9am on payday — the last working day of each month')}
+              {reminderRow('monthly', 'Update your balances', '4pm on payday — the working day before the last working day of each month')}
               {reminderRow('promo', '0% deals ending', '30, 7 and 1 days before — set the date on each card')}
               {reminderRow('partner', 'Partner updates', 'When your partner saves a payday update (with automatic sync on)')}
               {linkReady(state.settings.t212) &&
