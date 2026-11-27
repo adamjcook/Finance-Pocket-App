@@ -50,7 +50,7 @@ export function Aliases() {
       <header class="page-header" style="display:block;padding-top:6px">
         <h1>Aliases</h1>
         <p class="lede">
-          An alias is a role — like "Main Savings" — pointed at whichever real account currently
+          An alias is a role — like “Main Savings” — pointed at whichever real account currently
           plays it. Change banks, switch the alias over, and its chart carries straight on.
         </p>
       </header>

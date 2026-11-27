@@ -461,6 +461,46 @@ button:disabled {
   background: var(--surface-2);
 }
 
+/* Mouse and trackpad only (the laptop): a phone never sees these, and a
+   tapped button on Android would otherwise stay "hovered" after the tap. */
+@media (hover: hover) and (pointer: fine) {
+  button:hover:not(:disabled),
+  .btn:hover {
+    background: var(--surface-3);
+  }
+
+  /* Mixing in the text colour lightens the green in dark and deepens it in light. */
+  .btn-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--primary) 88%, var(--text));
+  }
+
+  .btn-quiet:hover:not(:disabled),
+  .back-link:hover:not(:disabled),
+  .list-row.tappable:hover,
+  .account-row:has(.account-main:hover),
+  .action-tile:hover:not(:disabled),
+  .drag-handle:hover:not(:disabled),
+  .double-check-row:hover:not(:disabled),
+  .held-row:hover {
+    background: var(--surface-2);
+  }
+
+  .back-link:hover:not(:disabled),
+  .btn-quiet:hover:not(:disabled),
+  .tab:hover,
+  .segmented button:hover:not([aria-pressed='true']) {
+    color: var(--text);
+  }
+
+  .segmented button:hover:not([aria-pressed='true']) {
+    background: transparent;
+  }
+
+  .sync-line:hover .sync-line-action {
+    text-decoration-thickness: 2px;
+  }
+}
+
 .btn-big {
   width: 100%;
   min-height: 54px;

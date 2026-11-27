@@ -26,7 +26,17 @@ export function AccountForm({ id }: Props) {
   const [promoEndsOn, setPromoEndsOn] = useState(existing?.promoEndsOn ?? '');
 
   if (!app) return null;
-  if (id && !existing) return <p class="empty">Account not found.</p>;
+  if (id && !existing) {
+    return (
+      <div>
+        <button class="back-link" onClick={() => navigate('/accounts')}>
+          <Icon name="back" size={20} />
+          Accounts
+        </button>
+        <p class="empty">Account not found.</p>
+      </div>
+    );
+  }
   const { state } = app;
 
   const save = async () => {
