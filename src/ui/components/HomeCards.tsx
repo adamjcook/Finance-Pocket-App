@@ -150,11 +150,32 @@ export function CheckInCard({
 }
 
 /**
- * Shown on Home when balances haven't been updated since the latest payday,
- * so the monthly update is one tap from where the app opens.
+ * Shown on Home all of payday, and after that until balances are saved once
+ * the pay is in, so the monthly update is one tap from where the app opens.
+ * On payday morning it's a heads-up: no button until the pay has arrived.
  */
-export function PaydayCard({ payday, today, lastUpdate }: { payday: string; today: string; lastUpdate: string | null }) {
+export function PaydayCard({
+  payday,
+  payIn,
+  today,
+  lastUpdate,
+}: {
+  payday: string;
+  payIn: boolean;
+  today: string;
+  lastUpdate: string | null;
+}) {
   const isToday = payday === today;
+  if (!payIn) {
+    return (
+      <section class="home-card payday">
+        <div class="home-card-head">
+          <h2>It's payday</h2>
+        </div>
+        <p class="home-card-text">Your pay lands from 4pm. Update your balances once it's in.</p>
+      </section>
+    );
+  }
   const since = lastUpdate ? daysBetween(lastUpdate, today) : null;
   return (
     <section class="home-card payday">

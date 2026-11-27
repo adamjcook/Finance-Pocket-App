@@ -160,7 +160,7 @@ run in the background, so it can't remind you itself):
 - **4:30pm on payday**: time to update your balances. Payday is the working
   day before the last working day of the month (skipping weekends and UK bank
   holidays), because Monzo pays salaries early from 4pm that day: Friday
-  27 Nov 2026 for a Monday 30 Nov month-end. Home's payday card appears from 4pm too.
+  27 Nov 2026 for a Monday 30 Nov month-end. Home shows a payday card all of payday (a heads-up until 4pm) and keeps it up until balances are saved after the pay is in.
 - **0% deals:** 30, 7 and 1 days before (and on the day) a card's 0% deal ends —
   set the date on the card (Accounts → the card → "0% deal ends").
 - **Trading 212 drops:** after the 9pm reading, if the linked account is down

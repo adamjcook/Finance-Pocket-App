@@ -9,6 +9,8 @@ import {
   formatDay,
   growthProgress,
   lastManualUpdate,
+  lastManualUpdateAt,
+  paydayCard,
   latestPayday,
   loanProgress,
   monthlyToTarget,
@@ -227,7 +229,8 @@ export function Dashboard() {
   const hasAccounts = state.accounts.some((a) => !a.archived);
   const lastUpdate = lastManualUpdate(state);
   const payday = latestPayday(today, new Date().getHours(), paydayOf, PAYDAY_HOUR);
-  const paydayDue = hasAccounts && (lastUpdate === null || lastUpdate < payday);
+  const card = paydayCard(new Date(), lastManualUpdateAt(state), paydayOf, PAYDAY_HOUR);
+  const paydayDue = hasAccounts && card.due;
   // The month's verdict, every day: what's moved since the last payday. Not
   // shown while the check-in or payday card is already telling that story.
   const since = dayBefore(payday);
@@ -524,7 +527,7 @@ export function Dashboard() {
           onDismiss={dismissCheckIn}
         />
       ) : (
-        paydayDue && <PaydayCard payday={payday} today={today} lastUpdate={lastUpdate} />
+        paydayDue && <PaydayCard payday={card.payday} payIn={card.payIn} today={today} lastUpdate={lastUpdate} />
       )}
       <NewsLine state={state} device={device} today={today} hidden={showCheckIn || paydayDue} />
 

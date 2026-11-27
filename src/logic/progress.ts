@@ -255,15 +255,45 @@ export function latestPayday(
   return m === 1 ? paydayOf(y - 1, 12) : paydayOf(y, m - 1);
 }
 
-/** Day (YYYY-MM-DD) of the latest balance typed in by hand, or null if none. */
-export function lastManualUpdate(state: SyncedState): string | null {
+/** When (ISO timestamp) the latest balance was typed in by hand, or null if none. */
+export function lastManualUpdateAt(state: SyncedState): string | null {
   let last: string | null = null;
   for (const s of effectiveSnapshots(state.snapshots, state.voids)) {
     if (s.deviceId === 't212') continue; // the daily automatic readings
-    const day = toDay(s.at);
-    if (last === null || day > last) last = day;
+    if (last === null || s.at > last) last = s.at;
   }
   return last;
+}
+
+/** Day (YYYY-MM-DD) of the latest balance typed in by hand, or null if none. */
+export function lastManualUpdate(state: SyncedState): string | null {
+  const at = lastManualUpdateAt(state);
+  return at === null ? null : toDay(at);
+}
+
+/**
+ * Home's payday card. It's up for the whole of payday, and from then until
+ * balances are saved after pay arrives (`payHour`, local time), so updates
+ * made earlier that day, before the pay was in, don't count.
+ *   payday: the payday the card is about (this month's from its first minute)
+ *   due: whether to show the card
+ *   payIn: false on payday morning, before the pay has arrived
+ */
+export function paydayCard(
+  now: Date,
+  lastUpdateAt: string | null,
+  paydayOf: (y: number, m: number) => string,
+  payHour: number,
+): { payday: string; due: boolean; payIn: boolean } {
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  const today = `${y}-${String(m).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const thisMonth = paydayOf(y, m);
+  const payday = today >= thisMonth ? thisMonth : m === 1 ? paydayOf(y - 1, 12) : paydayOf(y, m - 1);
+  const [py, pm, pd] = payday.split('-').map(Number);
+  const payArrives = new Date(py, pm - 1, pd, payHour);
+  const due = lastUpdateAt === null || new Date(lastUpdateAt) < payArrives;
+  return { payday, due, payIn: now >= payArrives };
 }
 
 /**
