@@ -2,13 +2,20 @@ import type { SyncedState, SyncPayload } from '../model/types';
 import { APP_NAME } from '../appName';
 
 /**
- * QR frame codec: JSON -> deflate-raw -> 600-byte chunks -> text frames
+ * QR frame codec: JSON -> deflate-raw -> 600-byte chunks (150 for large
+ * codes) -> text frames
  *   FP1:<txId>:<seq>:<total>:<crc32hex>:<base64url(chunk)>
  * Frames are order-independent; the crc32 is over the whole compressed blob.
  */
 
 const FRAME_PREFIX = 'FP1';
 const CHUNK_BYTES = 600;
+/**
+ * "Bigger codes" on the Sync screen: a quarter of the data per frame, so each
+ * QR has far fewer, larger squares (about 53 across instead of about 117) that
+ * a laptop webcam or a poorly focusing camera can still read. More frames.
+ */
+export const LARGE_CHUNK_BYTES = 150;
 
 // ---- bytes helpers ----
 
@@ -63,16 +70,16 @@ export function buildPayload(state: SyncedState, deviceId: string): SyncPayload 
   return { v: 1, deviceId, sentAt: new Date().toISOString(), ...state };
 }
 
-export async function encodePayload(payload: SyncPayload): Promise<string[]> {
+export async function encodePayload(payload: SyncPayload, chunkBytes = CHUNK_BYTES): Promise<string[]> {
   const compressed = await deflate(new TextEncoder().encode(JSON.stringify(payload)));
   const crc = crc32(compressed);
   const txId = Array.from({ length: 4 }, () =>
     '0123456789abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 36)],
   ).join('');
-  const total = Math.max(1, Math.ceil(compressed.length / CHUNK_BYTES));
+  const total = Math.max(1, Math.ceil(compressed.length / chunkBytes));
   const frames: string[] = [];
   for (let seq = 0; seq < total; seq++) {
-    const chunk = compressed.subarray(seq * CHUNK_BYTES, (seq + 1) * CHUNK_BYTES);
+    const chunk = compressed.subarray(seq * chunkBytes, (seq + 1) * chunkBytes);
     frames.push(`${FRAME_PREFIX}:${txId}:${seq}:${total}:${crc}:${toBase64url(chunk)}`);
   }
   return frames;

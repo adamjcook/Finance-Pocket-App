@@ -1,7 +1,7 @@
 import type { SyncPayload } from '../model/types';
 import { mergeState, stateHash, summarizeMerge, type MergeSummary } from '../logic/merge';
 import { getStore, mutate, patchDevice } from '../model/store';
-import { buildPayload, encodePayload } from './codec';
+import { buildPayload, encodePayload, LARGE_CHUNK_BYTES } from './codec';
 import { newRelayKey, relayChannel, settleKey } from './relay';
 
 export interface ApplyResult {
@@ -38,9 +38,11 @@ export async function applyPayload(payload: SyncPayload): Promise<ApplyResult> {
 /**
  * Frames encoding this phone's current state, for the partner to scan. They
  * also carry the automatic-sync key (made now if this phone has none), which
- * only ever travels this way: phone to phone, screen to camera.
+ * only ever travels this way: phone to phone, screen to camera. `large`
+ * splits the data into smaller pieces, so each QR code is coarser and easier
+ * for a weak camera to read.
  */
-export async function currentFrames(): Promise<string[]> {
+export async function currentFrames(large = false): Promise<string[]> {
   let { device } = getStore();
   if (!device.relay?.key) {
     const key = newRelayKey();
@@ -48,5 +50,8 @@ export async function currentFrames(): Promise<string[]> {
     device = getStore().device;
   }
   const { state } = getStore();
-  return encodePayload({ ...buildPayload(state, device.deviceId), relayKey: device.relay!.key });
+  return encodePayload(
+    { ...buildPayload(state, device.deviceId), relayKey: device.relay!.key },
+    large ? LARGE_CHUNK_BYTES : undefined,
+  );
 }
