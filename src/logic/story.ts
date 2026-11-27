@@ -180,38 +180,56 @@ export function ourStory(state: SyncedState, today: string): Moment[] {
   return moments.sort((x, y) => x.day.localeCompare(y.day) || ORDER.indexOf(x.kind) - ORDER.indexOf(y.kind));
 }
 
+/** The same day `months` months before `day`, held to the end of a shorter month (31 Aug → 28 Feb). */
+function monthsBefore(day: string, months: number): string {
+  const [y, m, d] = day.split('-').map(Number);
+  const index = y * 12 + (m - 1) - months;
+  const year = Math.floor(index / 12);
+  const month = (index % 12) + 1;
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${year}-${String(month).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
+}
+
+const LOOK_BACKS = [
+  { months: 6, words: 'six months ago', over: 'in six months' },
+  { months: 12, words: 'a year ago', over: 'in a year' },
+] as const;
+
 /**
- * Home's news line, once a year of history exists: how things stood a year
- * ago against now. Only when it's good news; at most once a month.
+ * Home's news line, once there are six months of history: how things stood
+ * six months ago (and a year ago, once there's a year to look back on)
+ * against now. Only the comparisons that are good news are said, and the
+ * line comes at most once a month. Card debt leads; net worth otherwise.
  */
-export function yearAgoNews(state: SyncedState, today: string): { key: string; text: string } | null {
+export function lookBackNews(state: SyncedState, today: string): { key: string; text: string } | null {
   const currency = state.settings.currency;
   const money = (minor: number) => formatMoneyWhole(minor, currency);
-  const d = new Date(today + 'T00:00:00Z');
-  d.setUTCFullYear(d.getUTCFullYear() - 1);
-  const yearAgo = d.toISOString().slice(0, 10);
-  const key = `year:${today.slice(0, 7)}`;
+  const key = `lookback:${today.slice(0, 7)}`;
+  const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  /** The good comparisons for a series: what it was at each look-back that it's improved on. */
+  const better = (series: SeriesPoint[], good: (then: number) => boolean) =>
+    LOOK_BACKS.flatMap(({ months, words, over }) => {
+      const day = monthsBefore(today, months);
+      if (!series.length || series[0].day > day) return [];
+      const then = valueOn(series, day)!;
+      return good(then) ? [{ words, over, then }] : [];
+    });
 
   const debt = debtProgress(state, today);
-  if (debt.series.length && debt.series[0].day <= yearAgo) {
-    const then = valueOn(debt.series, yearAgo)!;
-    if (then > 0 && debt.current < then) {
-      return {
-        key,
-        text:
-          debt.current <= 0
-            ? `A year ago the cards were at ${money(then)}. Now they’re clear.`
-            : `A year ago the cards were at ${money(then)}. Now ${money(debt.current)}.`,
-      };
-    }
+  const cards = better(debt.series, (then) => then > 0 && debt.current < then);
+  if (cards.length) {
+    const was = cards.map((c, i) => (i === 0 ? `${c.words} the cards were at ${money(c.then)}` : `${c.words} ${money(c.then)}`));
+    const now = debt.current <= 0 ? 'Now they’re clear.' : `Now ${money(debt.current)}.`;
+    return { key, text: `${sentence(was.join(', and '))}. ${now}` };
   }
+
   const net = netWorthSeries(state, today);
-  if (net.length && net[0].day <= yearAgo) {
-    const then = valueOn(net, yearAgo)!;
-    const now = net[net.length - 1].value;
-    if (now > then) {
-      return { key, text: `Net worth is up ${money(now - then)} on this time last year.` };
-    }
+  const netNow = net.length ? net[net.length - 1].value : 0;
+  const up = better(net, (then) => netNow > then);
+  if (up.length) {
+    const parts = up.map((u) => `${money(netNow - u.then)} ${u.over}`);
+    return { key, text: `Net worth is up ${parts.join(', and ')}.` };
   }
   return null;
 }

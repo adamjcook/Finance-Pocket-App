@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ourStory, yearAgoNews } from '../src/logic/story';
+import { lookBackNews, ourStory } from '../src/logic/story';
 import { homeNews, EMPTY_NEWS_MEMORY } from '../src/logic/news';
 import { account, alias, snapshot, state } from './helpers';
 
@@ -86,30 +86,72 @@ describe('ourStory', () => {
   });
 });
 
-describe('yearAgoNews', () => {
+describe('lookBackNews', () => {
   const cards = state({
     accounts: [account({ id: 'card', kind: 'credit_card' })],
-    snapshots: [snap('card', '2025-10-31', 6800_00), snap('card', '2026-11-20', 3050_00)],
+    snapshots: [
+      snap('card', '2025-10-31', 6800_00),
+      snap('card', '2026-05-15', 5200_00),
+      snap('card', '2026-11-20', 3050_00),
+    ],
   });
 
-  it('compares the cards with a year ago', () => {
-    expect(yearAgoNews(cards, '2026-11-27')?.text).toBe('A year ago the cards were at £6,800. Now £3,050.');
+  it('compares the cards with six months and a year ago', () => {
+    expect(lookBackNews(cards, '2026-11-27')?.text).toBe(
+      'Six months ago the cards were at £5,200, and a year ago £6,800. Now £3,050.',
+    );
   });
 
-  it('stays quiet without a year of history', () => {
-    expect(yearAgoNews(cards, '2026-10-01')).toBeNull();
+  it('looks back six months before there is a year of history', () => {
+    const halfYear = state({
+      accounts: [account({ id: 'card', kind: 'credit_card' })],
+      snapshots: [snap('card', '2026-05-15', 5200_00), snap('card', '2026-11-20', 3050_00)],
+    });
+    expect(lookBackNews(halfYear, '2026-11-27')?.text).toBe('Six months ago the cards were at £5,200. Now £3,050.');
   });
 
-  it('never points out a year that went the wrong way', () => {
+  it('stays quiet without six months of history', () => {
+    expect(lookBackNews(cards, '2026-04-20')).toBeNull();
+  });
+
+  it('only says the comparisons that are good news', () => {
+    const bumpy = state({
+      accounts: [account({ id: 'card', kind: 'credit_card' })],
+      snapshots: [
+        snap('card', '2025-10-31', 6800_00),
+        snap('card', '2026-05-15', 2000_00),
+        snap('card', '2026-11-20', 3050_00),
+      ],
+    });
+    expect(lookBackNews(bumpy, '2026-11-27')?.text).toBe('A year ago the cards were at £6,800. Now £3,050.');
+  });
+
+  it('never points out a stretch that went the wrong way', () => {
     const worse = state({
       accounts: [account({ id: 'card', kind: 'credit_card' })],
       snapshots: [snap('card', '2025-10-31', 2000_00), snap('card', '2026-11-20', 3050_00)],
     });
-    expect(yearAgoNews(worse, '2026-11-27')).toBeNull();
+    expect(lookBackNews(worse, '2026-11-27')).toBeNull();
+  });
+
+  it('falls back to net worth when there are no cards to talk about', () => {
+    const savings = state({
+      accounts: [account({ id: 'pot', kind: 'savings' })],
+      snapshots: [snap('pot', '2025-11-01', 1000_00), snap('pot', '2026-05-01', 4000_00), snap('pot', '2026-11-20', 6000_00)],
+    });
+    expect(lookBackNews(savings, '2026-11-27')?.text).toBe('Net worth is up £2,000 in six months, and £5,000 in a year.');
+  });
+
+  it('holds the date to the end of a shorter month', () => {
+    const s = state({
+      accounts: [account({ id: 'card', kind: 'credit_card' })],
+      snapshots: [snap('card', '2026-02-28', 4000_00), snap('card', '2026-08-20', 3000_00)],
+    });
+    expect(lookBackNews(s, '2026-08-31')?.text).toBe('Six months ago the cards were at £4,000. Now £3,000.');
   });
 
   it('reaches Home as the quietest news, at most once a month', () => {
     // Once the week of "under £4,000" news has passed.
-    expect(homeNews(cards, '2026-12-05', EMPTY_NEWS_MEMORY)?.key).toBe('year:2026-12');
+    expect(homeNews(cards, '2026-12-05', EMPTY_NEWS_MEMORY)?.key).toBe('lookback:2026-12');
   });
 });
