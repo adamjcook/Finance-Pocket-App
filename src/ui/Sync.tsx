@@ -16,10 +16,13 @@ export function Sync() {
   const [frameInfo, setFrameInfo] = useState<[number, number]>([0, 0]);
   const [result, setResult] = useState<ApplyResult | null>(null);
   const [speed, setSpeed] = useState(400);
+  // Coarser codes for a camera that struggles (a laptop webcam, a soft focus).
+  const [large, setLarge] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const loopRef = useRef<QRLoop | null>(null);
+  const loopGen = useRef(0);
 
   const stopLoop = () => {
     loopRef.current?.stop();
@@ -27,16 +30,23 @@ export function Sync() {
   };
   useEffect(() => stopLoop, []);
 
-  const startShow = async (afterMerge: ApplyResult | null) => {
-    setResult(afterMerge);
-    setMode('show');
-    const frames = await currentFrames();
+  const startLoop = async (bigger: boolean) => {
+    const gen = ++loopGen.current;
+    const frames = await currentFrames(bigger);
     // wait a tick for the canvas to mount
     requestAnimationFrame(() => {
-      if (!canvasRef.current) return;
+      // a later tap of "Bigger codes" has already replaced this loop
+      if (!canvasRef.current || gen !== loopGen.current) return;
+      stopLoop();
       loopRef.current = new QRLoop(canvasRef.current, frames, (i, n) => setFrameInfo([i, n]), speed);
       loopRef.current.start();
     });
+  };
+
+  const startShow = async (afterMerge: ApplyResult | null) => {
+    setResult(afterMerge);
+    setMode('show');
+    await startLoop(large);
   };
 
   if (!app) return null;
@@ -90,16 +100,28 @@ export function Sync() {
             {speed >= 700 ? 'Back to normal speed' : 'Slow down'}
           </button>
           <button
-            class="btn-big btn-primary"
+            class="btn-big"
             style="flex:1"
             onClick={() => {
-              stopLoop();
-              setMode(result ? 'merged' : 'idle');
+              const bigger = !large;
+              setLarge(bigger);
+              void startLoop(bigger);
             }}
           >
-            {result ? "Partner's got it" : 'Done'}
+            {/* Like the speed button: says what tapping will do. */}
+            {large ? 'Smaller codes' : 'Bigger codes'}
           </button>
         </div>
+        <button
+          class="btn-big btn-primary"
+          style="width:100%;margin-top:10px"
+          onClick={() => {
+            stopLoop();
+            setMode(result ? 'merged' : 'idle');
+          }}
+        >
+          {result ? "Partner's got it" : 'Done'}
+        </button>
       </div>
     );
   }

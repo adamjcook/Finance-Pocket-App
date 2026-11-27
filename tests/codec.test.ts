@@ -5,6 +5,7 @@ import {
   decodeFrames,
   encodePayload,
   FrameCollector,
+  LARGE_CHUNK_BYTES,
   parseFrame,
 } from '../src/sync/codec';
 import { account, snapshot, state } from './helpers';
@@ -40,6 +41,17 @@ describe('codec', () => {
     for (const f of frames) expect(f.length).toBeLessThan(900);
     const shuffled = [...frames].reverse();
     const decoded = await decodeFrames(shuffled);
+    expect(decoded).toEqual(payload);
+  });
+
+  it('splits into smaller frames for bigger codes and still reassembles', async () => {
+    const payload = buildPayload(bigState(), 'device-a');
+    const normal = await encodePayload(payload);
+    const large = await encodePayload(payload, LARGE_CHUNK_BYTES);
+    expect(large.length).toBeGreaterThan(normal.length * 3);
+    // small enough for a QR of about 53 squares across at error correction L
+    for (const f of large) expect(f.length).toBeLessThanOrEqual(230);
+    const decoded = await decodeFrames([...large].reverse());
     expect(decoded).toEqual(payload);
   });
 

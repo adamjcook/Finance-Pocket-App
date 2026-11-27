@@ -50,7 +50,9 @@ export async function startScanner(
   onText: (text: string) => void,
 ): Promise<Scanner> {
   const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+    // Full HD where the camera has it: laptop webcams often default to a
+    // soft 720p picture that can't resolve the squares of a QR code.
+    video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
     audio: false,
   });
   let detector: Detector;
