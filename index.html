@@ -12,7 +12,8 @@
     <script>
       // Apply the theme saved by the app before first paint (see src/app.tsx).
       try {
-        if (localStorage.getItem('finpair-theme') === 'light') {
+        var theme = localStorage.getItem('finpair-theme');
+        if (theme === 'light' || (theme === 'system' && matchMedia('(prefers-color-scheme: light)').matches)) {
           document.documentElement.setAttribute('data-theme', 'light');
           document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f0f4f2');
         }

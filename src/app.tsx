@@ -54,15 +54,26 @@ function Screens() {
 
   useEffect(() => {
     if (!app) return;
-    document.documentElement.setAttribute('data-theme', app.device.theme);
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[app.device.theme]);
+    const choice = app.device.theme;
+    // 'system' resolves to the phone's own setting, and follows it live when the
+    // phone switches (e.g. its automatic dark mode at sunset).
+    const query = window.matchMedia('(prefers-color-scheme: light)');
+    const apply = () => {
+      const shown = choice === 'system' ? (query.matches ? 'light' : 'dark') : choice;
+      document.documentElement.setAttribute('data-theme', shown);
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[shown]);
+    };
+    apply();
     // Remembered for index.html, which applies it before the first frame so the
     // welcome splash opens in the right theme. Storage stays the real source.
     try {
-      localStorage.setItem('finpair-theme', app.device.theme);
+      localStorage.setItem('finpair-theme', choice);
     } catch {
       /* private mode etc. — the splash just starts dark */
     }
+    if (choice !== 'system') return;
+    query.addEventListener('change', apply);
+    return () => query.removeEventListener('change', apply);
   }, [app?.device.theme]);
 
   // Trading 212 link: pick up any new daily readings when the app opens or

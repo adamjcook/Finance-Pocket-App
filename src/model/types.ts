@@ -152,7 +152,8 @@ export interface T212DeviceStatus {
 /** Currencies offered at setup and in Settings (display-only; amounts aren't converted). */
 export const CURRENCIES = ['GBP', 'EUR', 'USD'];
 
-export type Theme = 'dark' | 'light';
+/** 'system' follows the phone's own light/dark setting; dark stays the default. */
+export type Theme = 'dark' | 'light' | 'system';
 
 /**
  * Home's cards. Savings goals live inside the savings card; pensions and

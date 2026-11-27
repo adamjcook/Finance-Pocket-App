@@ -65,4 +65,4 @@ There's no server and no cloud account. All data lives on the two phones. They l
 
 ## Accessibility & Inclusion
 
-No specific requirements have been set. Existing practice to keep: ARIA labels on charts, rings, and inputs, and a light theme you turn on per phone (dark is the default).
+No specific requirements have been set. Existing practice to keep: ARIA labels on charts, rings, and inputs, and a per-phone theme: dark by default, with Light, or System to follow the phone's own setting.
