@@ -17,7 +17,7 @@ import {
   todayISO,
 } from '../logic/progress';
 import { formatMoneyWhole } from '../logic/money';
-import { lastWorkingDay } from '../../worker/src/ukdates';
+import { PAYDAY_HOUR, paydayOf } from '../../worker/src/ukdates';
 import { checkInFor, latestUpdateBatch } from '../logic/checkin';
 import { heldAccounts, HeldRows } from './Held';
 import { whenSplashGone } from './components/Splash';
@@ -226,7 +226,7 @@ export function Dashboard() {
           : null;
   const hasAccounts = state.accounts.some((a) => !a.archived);
   const lastUpdate = lastManualUpdate(state);
-  const payday = latestPayday(today, lastWorkingDay);
+  const payday = latestPayday(today, new Date().getHours(), paydayOf, PAYDAY_HOUR);
   const paydayDue = hasAccounts && (lastUpdate === null || lastUpdate < payday);
   // The month's verdict, every day: what's moved since the last payday. Not
   // shown while the check-in or payday card is already telling that story.

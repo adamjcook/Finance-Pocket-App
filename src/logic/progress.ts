@@ -240,14 +240,19 @@ export function dueWithinMonth(today: string, targetDate: string): boolean {
 }
 
 /**
- * The most recent payday on or before `today`: the last working day of this
- * month once it has arrived, otherwise last month's.
+ * The most recent payday that has arrived: this month's once its day has come
+ * and pay is in (from `payHour`), otherwise last month's.
  */
-export function latestPayday(today: string, lastWorkingDay: (y: number, m: number) => string): string {
+export function latestPayday(
+  today: string,
+  hour: number,
+  paydayOf: (y: number, m: number) => string,
+  payHour: number,
+): string {
   const [y, m] = today.split('-').map(Number);
-  const thisMonth = lastWorkingDay(y, m);
-  if (today >= thisMonth) return thisMonth;
-  return m === 1 ? lastWorkingDay(y - 1, 12) : lastWorkingDay(y, m - 1);
+  const thisMonth = paydayOf(y, m);
+  if (today > thisMonth || (today === thisMonth && hour >= payHour)) return thisMonth;
+  return m === 1 ? paydayOf(y - 1, 12) : paydayOf(y, m - 1);
 }
 
 /** Day (YYYY-MM-DD) of the latest balance typed in by hand, or null if none. */

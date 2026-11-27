@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { easterSunday, isLastWorkingDay, lastWorkingDay, ukBankHolidays } from '../worker/src/ukdates';
+import { easterSunday, isLastWorkingDay, isPayday, lastWorkingDay, paydayOf, ukBankHolidays } from '../worker/src/ukdates';
+import { latestPayday } from '../src/logic/progress';
 
 describe('UK working days', () => {
   it('computes Easter correctly', () => {
@@ -41,5 +42,30 @@ describe('UK working days', () => {
     expect(isLastWorkingDay('2026-08-28')).toBe(true);
     expect(isLastWorkingDay('2026-08-31')).toBe(false);
     expect(isLastWorkingDay('2026-12-01')).toBe(false);
+  });
+
+  it('puts payday on the working day before the last working day', () => {
+    expect(paydayOf(2026, 11)).toBe('2026-11-27'); // last working day Mon 30th → Fri 27th
+    expect(paydayOf(2026, 12)).toBe('2026-12-30'); // Thu 31st → Wed 30th
+    expect(paydayOf(2026, 1)).toBe('2026-01-29'); // Fri 30th → Thu 29th
+    expect(paydayOf(2026, 8)).toBe('2026-08-27'); // Mon 31st is a bank holiday, so Fri 28th → Thu 27th
+    expect(paydayOf(2026, 6)).toBe('2026-06-29'); // Tue 30th → Mon 29th
+    expect(paydayOf(2027, 3)).toBe('2027-03-30'); // Wed 31st → Tue 30th
+    expect(paydayOf(2029, 3)).toBe('2029-03-28'); // Thu 29th (Good Friday next) → Wed 28th
+    expect(paydayOf(2027, 5)).toBe('2027-05-27'); // Fri 28th → Thu 27th
+    expect(paydayOf(2025, 6)).toBe('2025-06-27'); // Mon 30th → Fri 27th
+  });
+
+  it('isPayday', () => {
+    expect(isPayday('2026-11-27')).toBe(true);
+    expect(isPayday('2026-11-30')).toBe(false);
+  });
+
+  it('latest payday only counts once pay is in at 4pm', () => {
+    expect(latestPayday('2026-11-27', 15, paydayOf, 16)).toBe('2026-10-29'); // Fri 30 Oct last working day
+    expect(latestPayday('2026-11-27', 16, paydayOf, 16)).toBe('2026-11-27');
+    expect(latestPayday('2026-11-30', 9, paydayOf, 16)).toBe('2026-11-27');
+    expect(latestPayday('2026-11-26', 20, paydayOf, 16)).toBe('2026-10-29');
+    expect(latestPayday('2027-01-10', 9, paydayOf, 16)).toBe('2026-12-30');
   });
 });
