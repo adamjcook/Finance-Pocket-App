@@ -33,7 +33,7 @@ import { APP_NAME } from '../../appName';
 export function CheckInCard({
   checkIn,
   names,
-  subtitle,
+  payday,
   open = false,
   perspective,
   currency,
@@ -44,8 +44,8 @@ export function CheckInCard({
   /** Null once the payday's only update has been undone. */
   checkIn: CheckIn | null;
   names: string;
-  /** "Our payday so far · 24–30 Nov", or "Our November payday · 24–30 Nov". */
-  subtitle: string;
+  /** "Our payday so far" or "Our November payday", and its days ("24 Nov – 2 Dec"). */
+  payday: { label: string; days: string } | null;
   /** Payday is still on: more updates count. */
   open?: boolean;
   /** For a month that went the wrong way: what's still true. */
@@ -63,7 +63,8 @@ export function CheckInCard({
     return (
       <section class="home-card checkin" aria-live="polite">
         <div class="home-card-head">
-          <h2>Update undone</h2>
+          <PaydayMark />
+          <h2 class="grow">Update undone</h2>
           {onDismiss && (
             <button class="btn-icon btn-quiet" aria-label="Dismiss" onClick={onDismiss}>
               <Icon name="x" size={18} />
@@ -114,9 +115,12 @@ export function CheckInCard({
   return (
     <section class={`home-card checkin ${celebrate ? 'celebrate' : ''}`} aria-live="polite">
       <div class="home-card-head">
-        <h2>{anyGood ? `Nicely done, ${names}` : `All up to date, ${names}`}</h2>
+        <PaydayMark />
+        <div class="grow">
+          <h2>{anyGood ? `Nicely done, ${names}` : `All up to date, ${names}`}</h2>
+          {payday && <PaydayLine {...payday} />}
+        </div>
       </div>
-      <p class="home-card-text">{subtitle}</p>
       {lines.length > 0 ? (
         <ul class="checkin-lines">
           {lines.map((l) => (
@@ -164,21 +168,59 @@ export function CheckInCard({
 }
 
 /**
+ * The payday card and the payday summary it turns into share a calendar
+ * mark and a "Our payday" line, so the two read as one thing: payday's own
+ * card, apart from the news line under it.
+ */
+function PaydayMark() {
+  return (
+    <span class="payday-mark" aria-hidden="true">
+      <Icon name="calendar" size={18} />
+    </span>
+  );
+}
+
+function PaydayLine({ label, days }: { label: string; days: string }) {
+  return (
+    <p class="payday-line">
+      <strong>{label}</strong> · {days}
+    </p>
+  );
+}
+
+/**
  * Shown on Home from the start of payday until the first update of it, so
  * the monthly update is one tap from where the app opens.
  */
-export function PaydayCard({ window, today, lastUpdate }: { window: PaydayWindow; today: string; lastUpdate: string | null }) {
+export function PaydayCard({
+  window,
+  today,
+  lastUpdate,
+  names,
+  days,
+}: {
+  window: PaydayWindow;
+  today: string;
+  lastUpdate: string | null;
+  names: string;
+  /** The payday's days, as its summary will show them. */
+  days: string;
+}) {
   const isToday = today <= window.closes;
   const since = lastUpdate ? daysBetween(lastUpdate, today) : null;
   return (
     <section class="home-card payday">
       <div class="home-card-head">
-        <h2>{isToday ? "It's payday" : 'Time for our payday update'}</h2>
+        <PaydayMark />
+        <div class="grow">
+          <h2>{isToday ? `It’s payday, ${names}` : 'Time for our payday update'}</h2>
+          <PaydayLine label="Our payday" days={days} />
+        </div>
       </div>
       <p class="home-card-text">
         {lastUpdate
-          ? `Last updated ${formatDay(lastUpdate)}${since !== null && since > 0 ? ` · ${since} day${since === 1 ? '' : 's'} ago` : ''}`
-          : 'No balances typed in yet'}
+          ? `Last updated ${formatDay(lastUpdate)}${since !== null && since > 0 ? `, ${since} day${since === 1 ? '' : 's'} ago` : ''}. A minute now shows how you both did.`
+          : 'No balances typed in yet. A minute now starts the picture.'}
       </p>
       <button class="btn-primary btn-big" onClick={() => navigate('/update')}>
         <Icon name="update" size={18} />
@@ -191,9 +233,21 @@ export function PaydayCard({ window, today, lastUpdate }: { window: PaydayWindow
 /**
  * One line of news, only on days there is some (see logic/news.ts). Always
  * mounted so this phone keeps noticing forecast changes; renders nothing when
- * quiet or when a check-in or payday card already has the top of Home.
+ * quiet. It has its own place under the payday card or summary rather than
+ * waiting for payday to pass; beside the summary it leaves out the
+ * milestones the summary already names.
  */
-export function NewsLine({ state, device, today, hidden }: { state: SyncedState; device: DeviceState; today: string; hidden: boolean }) {
+export function NewsLine({
+  state,
+  device,
+  today,
+  besideSummary,
+}: {
+  state: SyncedState;
+  device: DeviceState;
+  today: string;
+  besideSummary: boolean;
+}) {
   const memory = device.news ?? EMPTY_NEWS_MEMORY;
   const forecast = cardForecast(state, today);
   useEffect(() => {
@@ -201,7 +255,7 @@ export function NewsLine({ state, device, today, hidden }: { state: SyncedState;
     if (next !== memory) void patchDevice({ news: next });
   }, [forecast]);
 
-  const news = hidden ? null : homeNews(state, today, memory);
+  const news = homeNews(state, today, memory, { besideSummary });
   useEffect(() => {
     if (!news) return;
     const next = rememberShown(memory, news.key, today);

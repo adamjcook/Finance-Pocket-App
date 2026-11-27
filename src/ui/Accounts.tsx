@@ -119,7 +119,7 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
     const me = device.me === 'A' ? settings.partnerAName : device.me === 'B' ? settings.partnerBName : null;
     void pushNow({
       title: `${me ?? 'Your partner'} just updated the balances`,
-      body: `Open ${APP_NAME} to see how you did.`,
+      body: `Open ${APP_NAME} to see how you both did.`,
     }).catch(() => {
       // offline or Worker down: the next change or app open uploads it anyway
     });

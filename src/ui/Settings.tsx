@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import { useApp, mutate, getStore, patchDevice } from '../model/store';
+import { partnerName } from './names';
 import { updateSettings, voidSnapshot } from '../model/repo';
 import { effectiveSnapshots, formatDay } from '../logic/progress';
 import { asSyncPayload, buildPayload } from '../sync/codec';
@@ -117,6 +118,8 @@ export function Settings() {
   );
 
   const nameOf = (who: 'A' | 'B') => (who === 'A' ? state.settings.partnerAName : state.settings.partnerBName);
+  const partner = partnerName(state.settings, device.me);
+  const theirPhone = partner ? `${partner}’s phone` : 'your partner’s phone';
 
   // Each partner's payday. Shared, so both phones agree on the payday window.
   const rules = paydayRules(state.settings);
@@ -206,7 +209,7 @@ export function Settings() {
           </div>
         </div>
         <p class="group-footer">
-          System follows your phone's light or dark setting. Just for this phone — it doesn't sync to your partner's.
+          System follows your phone's light or dark setting. Just for this phone: it doesn't change {theirPhone}.
         </p>
       </section>
 
@@ -259,7 +262,7 @@ export function Settings() {
         </div>
         <p class="group-footer">
           {device.me
-            ? 'The names are shared: change one here and it changes on your partner’s phone too. Each phone shows its own owner as “You”.'
+            ? `The names are shared: change one here and it changes on ${theirPhone} too. Each phone shows its own owner as “You”.`
             : 'The names are shared: change one here and it changes on your partner’s phone too.'}
         </p>
       </section>
@@ -268,7 +271,7 @@ export function Settings() {
         <h2 class="group-label">Paydays</h2>
         <div class="list">
           {people.map((who, i) =>
-            paydayRow(who, device.me ? (i === 0 ? 'Your payday' : 'Your partner’s payday') : `${nameOf(who)}’s payday`),
+            paydayRow(who, device.me ? (i === 0 ? 'Your payday' : `${nameOf(who)}’s payday`) : `${nameOf(who)}’s payday`),
           )}
         </div>
         <p class="group-footer">
@@ -491,7 +494,7 @@ export function Settings() {
             <>
               {reminderRow('monthly', 'Update your balances', device.me ? 'On your payday, once the pay is in (set under Paydays)' : 'On payday, once the pay is in — choose whose phone this is under You two')}
               {reminderRow('promo', '0% deals ending', '30, 7 and 1 days before — set the date on each card')}
-              {reminderRow('partner', 'Partner updates', 'When your partner saves a payday update (with automatic sync on)')}
+              {reminderRow('partner', partner ? `${partner}’s updates` : 'Partner updates', `When ${partner ?? 'your partner'} saves a payday update (with automatic sync on)`)}
               {linkReady(state.settings.t212) &&
                 reminderRow('drop', 'Trading 212 drops', 'When the linked account is down 5% or more on the week')}
               <div class="list-row">

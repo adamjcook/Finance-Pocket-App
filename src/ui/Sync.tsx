@@ -5,6 +5,7 @@ import { workerReady } from '../integrations/t212';
 import { currentFrames, type ApplyResult } from '../sync/apply';
 import { QRLoop } from '../sync/send';
 import { ScanPanel } from './components/ScanPanel';
+import { myName, partnerName } from './names';
 import { Icon } from './components/Icon';
 import { APP_NAME } from '../appName';
 
@@ -51,16 +52,21 @@ export function Sync() {
 
   if (!app) return null;
   const { device } = app;
+  // "Sam" rather than "your partner", once this phone knows whose it is.
+  const partner = partnerName(app.state.settings, device.me);
+  const me = myName(app.state.settings, device.me);
+  const them = partner ?? 'your partner';
+  const Them = partner ?? 'Your partner';
 
   if (mode === 'show') {
     return (
       <div>
         <header class="page-header" style="display:block">
-          <h1>{result ? 'Now show this back' : 'Show your partner'}</h1>
+          <h1>{result ? 'Now show this back' : `Show ${them}`}</h1>
           <p class="lede">
             {result
-              ? 'Your partner scans this to pick up the combined result.'
-              : 'Your partner taps “Scan partner’s screen” and points their camera here.'}
+              ? `${Them} scans this to pick up what you both have.`
+              : `${Them} taps “Scan ${me ? `${me}’s` : 'partner’s'} screen” and points their camera here.`}
           </p>
         </header>
         {result && (
@@ -84,7 +90,7 @@ export function Sync() {
           <canvas ref={canvasRef} />
         </div>
         <p class="small faint num" style="text-align:center;margin-top:10px">
-          Code {frameInfo[0] + 1} of {frameInfo[1]} · loops until your partner has them all
+          Code {frameInfo[0] + 1} of {frameInfo[1]} · loops until {them} has them all
         </p>
         <div class="row" style="margin-top:16px">
           <button
@@ -120,7 +126,7 @@ export function Sync() {
             setMode(result ? 'merged' : 'idle');
           }}
         >
-          {result ? "Partner's got it" : 'Done'}
+          {result ? `${partner ?? 'Partner'}’s got it` : 'Done'}
         </button>
       </div>
     );
@@ -131,7 +137,7 @@ export function Sync() {
       <div>
         <header class="page-header" style="display:block">
           <h1>Scan</h1>
-          <p class="lede">Point the camera at the code on your partner's phone.</p>
+          <p class="lede">Point the camera at the code on {partner ? `${partner}’s` : 'your partner’s'} phone.</p>
         </header>
         <ScanPanel onComplete={(r) => void startShow(r)} onCancel={() => setMode('idle')} />
       </div>
@@ -144,14 +150,13 @@ export function Sync() {
         <div class="success-mark">
           <Icon name="check" size={30} />
         </div>
-        <h1>Sync complete</h1>
+        <h1>All synced up</h1>
         <p class="lede" style="margin:8px auto 22px;max-width:32ch">
-          Both phones should show this check code. If they match, you're fully in sync.
+          Both phones should show this check code. If they match, you’re looking at the same picture.
         </p>
         <div class="hash-code">{result?.hash}</div>
         <p class="small faint" style="margin:14px auto 26px;max-width:36ch">
-          Codes don't match? Run the sync once more in either direction — it's always safe to
-          repeat.
+          Codes don’t match? Just sync once more, either way round. It’s always safe to repeat.
         </p>
         <button class="btn-big btn-primary" onClick={() => setMode('idle')}>
           Done
@@ -239,7 +244,7 @@ export function Sync() {
         <p class="lede">
           {autoOn
             ? 'Your phones keep each other up to date through your Worker. Sync by QR code to link a new phone, or if they ever disagree.'
-            : 'Sit together — one phone shows, the other scans. No internet involved.'}
+            : 'Sit together: one of you shows, the other scans. No internet involved.'}
         </p>
       </header>
 
@@ -253,7 +258,7 @@ export function Sync() {
           </span>
           <span class="grow">
             <span class="tile-title">Show my data</span>
-            <span class="tile-sub">Display a looping code for your partner to scan</span>
+            <span class="tile-sub">Display a looping code for {them} to scan</span>
           </span>
           <Icon name="chevron" size={18} class="row-chevron" />
         </button>
@@ -262,7 +267,7 @@ export function Sync() {
             <Icon name="camera" />
           </span>
           <span class="grow">
-            <span class="tile-title">Scan partner's screen</span>
+            <span class="tile-title">Scan {partner ? `${partner}’s` : 'partner’s'} screen</span>
             <span class="tile-sub">Use the camera to read their code</span>
           </span>
           <Icon name="chevron" size={18} class="row-chevron" />
@@ -277,7 +282,7 @@ export function Sync() {
           <ol class="steps">
             <li>One phone taps <strong>Show my data</strong>; the other scans it.</li>
             <li>The scanning phone merges everything and shows the combined result back.</li>
-            <li>The first phone scans that — now you're both up to date.</li>
+            <li>The first phone scans that, and now you’re both up to date.</li>
             <li>Check codes match on both phones? You're identical.</li>
           </ol>
         </div>

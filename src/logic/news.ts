@@ -2,6 +2,7 @@ import type { SyncedState } from '../model/types';
 import { latestBalances } from '../model/repo';
 import { formatMoneyWhole } from './money';
 import { daysBetween, debtProgress, formatDay, netWorthLines, netWorthSeries, type SeriesPoint } from './progress';
+import { lookBackNews } from './story';
 
 /**
  * The one line of news at the top of Home. It only appears when something
@@ -193,15 +194,36 @@ function candidates(state: SyncedState, today: string, memory: NewsMemory, curre
     }
   }
 
+  // How things stood six months and a year ago, once there's that much to
+  // look back on: the quietest news, only when nothing else has something to say.
+  const lookBack = lookBackNews(state, today);
+  if (lookBack) rest.push(lookBack);
+
   return [...urgent, ...rest];
 }
 
-/** Today's news for Home, or null on a quiet day. */
-export function homeNews(state: SyncedState, today: string, memory: NewsMemory): NewsItem | null {
+/**
+ * News the payday summary already tells, as one of its milestones: all the
+ * card debt cleared, a new low, net worth past a round number. Held back
+ * while the summary is on Home so the two don't say the same thing twice.
+ */
+const TOLD_BY_PAYDAY_SUMMARY = ['cleared:', 'low:', 'net:'];
+
+/**
+ * Today's news for Home, or null on a quiet day. With `besideSummary`, it
+ * sits under the payday summary, so it skips what the summary already says.
+ */
+export function homeNews(
+  state: SyncedState,
+  today: string,
+  memory: NewsMemory,
+  { besideSummary = false }: { besideSummary?: boolean } = {},
+): NewsItem | null {
   const currency = state.settings.currency;
   return (
     candidates(state, today, memory, currency).find((n) => {
       if (memory.dismissed.includes(n.key)) return false;
+      if (besideSummary && TOLD_BY_PAYDAY_SUMMARY.some((p) => n.key.startsWith(p))) return false;
       const firstSeen = memory.seen[n.key];
       return !firstSeen || daysBetween(firstSeen, today) < SHOW_FOR_DAYS;
     }) ?? null

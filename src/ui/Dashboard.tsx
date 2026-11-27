@@ -16,6 +16,9 @@ import {
 import { formatMoneyWhole } from '../logic/money';
 import { dayRange, localDay, paydaySummary, windowMonthName } from '../logic/payday';
 import { checkInFor, latestUpdateBatch } from '../logic/checkin';
+import { cardForecast } from '../logic/news';
+import { ourStory } from '../logic/story';
+import { storyTeaser } from './Story';
 import { heldAccounts, HeldRows } from './Held';
 import { whenSplashGone } from './components/Splash';
 import { LogoMark } from './components/LogoMark';
@@ -226,6 +229,9 @@ export function Dashboard() {
           ? `Your savings still stand at ${formatMoneyWhole(growth.current, currency)}.`
           : null;
   const hasAccounts = state.accounts.some((a) => !a.archived);
+  // When the cards would be clear at the last three months' pace (as of the last update).
+  const forecast = debt.current > 0 ? cardForecast(state, today) : null;
+  const teaser = storyTeaser(ourStory(state, today));
   const lastUpdate = lastManualUpdate(state);
   const paydayDue = hasAccounts && summary!.status === 'waiting' && !undone;
   const paydayOpen = !!summary?.checkIn && summary.status === 'open';
@@ -336,7 +342,7 @@ export function Dashboard() {
               <div class="pot-note">
                 {p.current <= 0 ? (
                   <span class="positive done-note">
-                    <Icon name="check" size={14} /> Paid off
+                    <Icon name="check" size={14} /> Paid off, well done
                   </span>
                 ) : p.monthly !== null && dueWithinMonth(today, p.account.goalDate!) ? (
                   <>Pay off by {formatDay(p.account.goalDate!)}, this month</>
@@ -346,7 +352,7 @@ export function Dashboard() {
                     <strong class="num">{formatMoneyWhole(p.monthly, currency)}/month</strong>
                   </>
                 ) : (
-                  <>Pay-off date {formatDay(p.account.goalDate!)} has passed — set a new one on the account</>
+                  <>The pay-off date ({formatDay(p.account.goalDate!)}) has been and gone. Set a new one on the account when you’re ready</>
                 )}
               </div>
             </div>
@@ -375,7 +381,7 @@ export function Dashboard() {
               <div class="pot-note">
                 {p.current >= p.goal ? (
                   <span class="positive done-note">
-                    <Icon name="check" size={14} /> Goal reached
+                    <Icon name="check" size={14} /> Goal reached, well done
                   </span>
                 ) : (
                   <>
@@ -390,7 +396,7 @@ export function Dashboard() {
                           reach it by {formatDay(p.account.goalDate)}
                         </>
                       ) : (
-                        <> · goal date {formatDay(p.account.goalDate)} has passed</>
+                        <> · the goal date ({formatDay(p.account.goalDate)}) has been and gone</>
                       ))}
                   </>
                 )}
@@ -425,6 +431,11 @@ export function Dashboard() {
                 </div>
               </div>
               <Chart series={debt.series} currency={currency} color="var(--debt)" />
+              {forecast && (
+                <p class="forecast-note">
+                  At this pace, the cards are clear by <strong>{monthName(forecast)}</strong>
+                </p>
+              )}
               {payoffList('credit_card')}
             </>
           ) : (
@@ -461,7 +472,7 @@ export function Dashboard() {
             <div class="figure-row">
               <div class="grow">
                 <div class="big-number">{formatMoneyWhole(growth.current, currency)}</div>
-                <div class="figure-caption">combined savings &amp; investments</div>
+                <div class="figure-caption">saved and invested between you</div>
               </div>
               <Change
                 change={checkIn ? checkIn.savingsChange : growth.delta30}
@@ -496,7 +507,7 @@ export function Dashboard() {
             {savingsPots.length > 0 && <div class="pots payoffs">{potList(savingsPots)}</div>}
           </>
         ) : (
-          <p class="empty-note">No savings or investment accounts yet.</p>
+          <p class="empty-note">No savings or investments yet. Add a pot from Accounts and watch it grow here.</p>
         )}
       </div>
     );
@@ -516,11 +527,10 @@ export function Dashboard() {
         <CheckInCard
           checkIn={summary!.checkIn}
           names={names}
-          subtitle={
-            paydayOpen
-              ? `Our payday so far · ${dayRange(summary!.window.opens, summary!.closes)}`
-              : `Our ${windowMonthName(summary!.window)} payday · ${dayRange(summary!.window.opens, summary!.closes)}`
-          }
+          payday={{
+            label: paydayOpen ? 'Our payday so far' : `Our ${windowMonthName(summary!.window)} payday`,
+            days: dayRange(summary!.window.opens, summary!.closes),
+          }}
           open={paydayOpen}
           perspective={perspective}
           currency={currency}
@@ -528,11 +538,14 @@ export function Dashboard() {
           celebrate={celebrating}
         />
       ) : undone ? (
-        <CheckInCard checkIn={null} names={names} subtitle="" currency={currency} perspective={null} onDismiss={dismissCheckIn} />
+        <CheckInCard checkIn={null} names={names} payday={null} currency={currency} perspective={null} onDismiss={dismissCheckIn} />
       ) : (
-        paydayDue && <PaydayCard window={summary!.window} today={localDay(new Date())} lastUpdate={lastUpdate} />
+        paydayDue && <PaydayCard window={summary!.window} today={localDay(new Date())} lastUpdate={lastUpdate}
+            names={names}
+            days={dayRange(summary!.window.opens, summary!.closes)}
+          />
       )}
-      <NewsLine state={state} device={device} today={today} hidden={summary!.status !== 'closed' && hasAccounts} />
+      <NewsLine state={state} device={device} today={today} besideSummary={paydayOpen} />
 
       <section class="hero">
         <div class="hero-label">Net worth</div>
@@ -649,6 +662,21 @@ export function Dashboard() {
         );
       })}
 
+      {teaser && !reordering && (
+        <a class="home-card story-link" href="#/story">
+          <span class="moment-mark" aria-hidden="true">
+            <Icon name="sparkle" size={15} />
+          </span>
+          <span class="story-link-text">
+            <span class="story-link-title">Our story so far</span>
+            <span class="story-link-sub">
+              {teaser.count} moment{teaser.count === 1 ? '' : 's'} · latest: {teaser.latest.title}
+            </span>
+          </span>
+          <Icon name="chevron" size={18} class="row-chevron" />
+        </a>
+      )}
+
       {visible.length > 1 && (
         <button class={`btn-sm ${editing ? 'btn-primary' : 'btn-quiet'} reorder-toggle`} onClick={() => setEditing(!editing)}>
           {editing ? 'Done' : 'Reorder cards'}
@@ -657,6 +685,9 @@ export function Dashboard() {
     </div>
   );
 }
+
+const monthName = (ym: string) =>
+  new Date(ym + '-01T00:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 /**
  * A total's recent move. Teal only for good news (debt down, savings up);
