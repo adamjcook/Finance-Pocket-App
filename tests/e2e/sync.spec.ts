@@ -294,6 +294,25 @@ test('light mode is opt-in, applies live, and persists across a reload', async (
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 
+test('system mode follows the phone, live and after a reload', async ({ page }) => {
+  await completeSetup(page, 'Adam', 'Sam');
+  await page.emulateMedia({ colorScheme: 'light' });
+
+  await page.goto('.#/settings');
+  await page.getByRole('button', { name: 'System', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect.poll(async () => (await storedDevice(page))?.theme).toBe('system');
+
+  // The phone switches to dark: the app follows without a reload
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+  // And it's still 'system' after a reload, resolved before the first frame
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+});
+
 test('dashboard shows net worth, defaults to debt first, and cards are reorderable', async ({ page }) => {
   await completeSetup(page, 'Adam', 'Sam');
   await addAccount(page, 'Barclaycard', 'Credit card', '1500');

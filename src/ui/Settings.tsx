@@ -146,10 +146,15 @@ export function Settings() {
               <button aria-pressed={device.theme === 'light'} onClick={() => void patchDevice({ theme: 'light' })}>
                 Light
               </button>
+              <button aria-pressed={device.theme === 'system'} onClick={() => void patchDevice({ theme: 'system' })}>
+                System
+              </button>
             </div>
           </div>
         </div>
-        <p class="group-footer">Just for this phone — it doesn't sync to your partner's.</p>
+        <p class="group-footer">
+          System follows your phone's light or dark setting. Just for this phone — it doesn't sync to your partner's.
+        </p>
       </section>
 
       <section class="group">
