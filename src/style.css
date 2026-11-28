@@ -12,9 +12,9 @@
   --bg: #0b0e0c;
   /* The page behind the cards: a wash of the icon's green from the top
      corner and faint contour lines (see body::before / ::after). */
-  --bg-wash: color-mix(in srgb, var(--brand) 26%, transparent);
-  --bg-wash-low: color-mix(in srgb, var(--brand) 12%, transparent);
-  --bg-line: rgb(150 205 175 / 0.075);
+  --bg-wash: color-mix(in srgb, var(--brand) 36%, transparent);
+  --bg-wash-low: color-mix(in srgb, var(--brand) 17%, transparent);
+  --bg-line: rgb(150 205 175 / 0.12);
   --surface: #151917;
   --surface-2: #1e2321;
   --surface-3: #2b302d;
@@ -74,9 +74,9 @@
 
 :root[data-theme='light'] {
   --bg: #f0f4f2;
-  --bg-wash: color-mix(in srgb, var(--brand) 13%, transparent);
-  --bg-wash-low: color-mix(in srgb, var(--brand) 6%, transparent);
-  --bg-line: rgb(47 94 72 / 0.11);
+  --bg-wash: color-mix(in srgb, var(--brand) 19%, transparent);
+  --bg-wash-low: color-mix(in srgb, var(--brand) 9%, transparent);
+  --bg-line: rgb(47 94 72 / 0.17);
   --surface: #ffffff;
   --surface-2: #eff2f0;
   --surface-3: #e3e7e5;
