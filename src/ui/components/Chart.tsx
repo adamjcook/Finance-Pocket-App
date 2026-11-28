@@ -1,21 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
 import { formatDay, type SeriesPoint } from '../../logic/progress';
 import { formatMoney, formatMoneyCompact } from '../../logic/money';
-import { reducedMotion, runSpring, spring } from '../motion';
 
 interface Props {
   series: SeriesPoint[];
   currency: string;
   color: string;
   height?: number;
-  /**
-   * Payday reveal: the latest update moved every day from `sinceDay` on by
-   * `change`. The line shows them where they were until `play`, then the
-   * tail springs to where they are now.
-   */
-  tail?: { sinceDay: string; change: number };
-  play?: boolean;
-  delay?: number;
 }
 
 const W = 320;
@@ -30,23 +21,8 @@ const SLOP_PX = 10;
  * A swipe that starts on the chart still scrolls the page; a mouse reads out
  * days immediately on click-and-drag.
  */
-export function Chart({ series, currency, color, height = 110, tail, play = false, delay = 0 }: Props) {
+export function Chart({ series, currency, color, height = 110 }: Props) {
   const [picked, setPicked] = useState<number | null>(null);
-  const moving = !!tail && tail.change !== 0 && !reducedMotion() && series.some((p) => p.day >= tail.sinceDay);
-  // 0: the tail where it was; 1: where it is now (springs past 1 a little).
-  const [progress, setProgress] = useState(moving ? 0 : 1);
-  const [landed, setLanded] = useState(false);
-  useEffect(() => {
-    if (!moving) return;
-    if (!play) {
-      setProgress(0);
-      return;
-    }
-    return runSpring(spring(120, 15), delay, setProgress, () => {
-      setProgress(1);
-      setLanded(true);
-    });
-  }, [play, moving]);
   const gradientId = `chart-fill-${useId()}`;
   const svgRef = useRef<SVGSVGElement>(null);
   const lengthRef = useRef(series.length);
@@ -133,26 +109,18 @@ export function Chart({ series, currency, color, height = 110, tail, play = fals
   }
 
   const LABEL_BAND = 16; // reserved row above the plot so labels never hit the line
-  const real = series.map((p) => p.value);
-  const values = series.map((p) =>
-    tail && p.day >= tail.sinceDay ? p.value - tail.change * (1 - progress) : p.value,
-  );
-  // The scale holds still while the tail moves: it already fits both the old
-  // and new figures, so only the line moves, never the axes.
-  const before = tail ? series.map((p) => (p.day >= tail.sinceDay ? p.value - tail.change : p.value)) : [];
-  const max = Math.max(...real);
-  const min = Math.min(...real);
-  const fitMax = Math.max(max, ...before);
-  const fitMin = Math.min(min, ...before);
-  const pad = Math.max((fitMax - fitMin) * 0.1, 1);
-  const top = fitMax + pad;
+  const values = series.map((p) => p.value);
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const pad = Math.max((max - min) * 0.1, 1);
+  const top = max + pad;
   // A series that never goes negative never gets an axis below zero.
-  const bottom = fitMin >= 0 ? Math.max(0, fitMin - pad) : fitMin - pad;
+  const bottom = min >= 0 ? Math.max(0, min - pad) : min - pad;
   const x = (i: number) => (i / (series.length - 1)) * W;
   const y = (v: number) => LABEL_BAND + ((top - v) / (top - bottom)) * height;
 
   const floor = LABEL_BAND + height;
-  const line = values.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  const line = series.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join('');
   const area = `${line}L${W},${floor}L0,${floor}Z`;
 
   // Mouse (and pen): read out immediately on press, follow while held. Touch
@@ -221,10 +189,6 @@ export function Chart({ series, currency, color, height = 110, tail, play = fals
           vector-effect="non-scaling-stroke"
         />
         <circle cx={x(series.length - 1)} cy={y(values[values.length - 1])} r="7" fill={color} opacity="0.2" />
-        {/* As the tail lands: one ripple out from the new end of the line. */}
-        {landed && (
-          <circle class="chart-ripple" cx={x(series.length - 1)} cy={y(values[values.length - 1])} r="7" fill="none" stroke={color} />
-        )}
         <circle cx={x(series.length - 1)} cy={y(values[values.length - 1])} r="3.5" fill={color} />
         {pickedPoint && (
           <g>

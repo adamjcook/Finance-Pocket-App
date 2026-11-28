@@ -6,7 +6,6 @@ import { ACCOUNT_KIND_LABELS, GROWTH_KINDS, JUNIOR_KINDS, OWED_KINDS, PENSION_KI
 import { currencySymbol, formatMoney } from '../logic/money';
 import { MoneyInput } from './components/MoneyInput';
 import { navigate } from '../router';
-import { goHomeFrom } from './reveal';
 import { daysBetween, formatDay, PENSION_STALE_DAYS, STALE_AFTER_DAYS, toDay, todayISO } from '../logic/progress';
 import { Icon } from './components/Icon';
 import { looksLikeATypo } from '../logic/checkin';
@@ -97,8 +96,7 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
   };
 
   // Save, then go Home to see how the two of you did (the check-in card).
-  const saveAll = (e?: Event) => {
-    const button = (e?.currentTarget as HTMLElement | null) ?? null;
+  const saveAll = async () => {
     if (changed.length === 0 || invalid.size > 0) return;
     if (typos.length > 0 && !confirming) {
       setConfirming(true);
@@ -106,29 +104,26 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
     }
     const { device } = getStore();
     const at = new Date().toISOString();
-    // Saved inside the move Home, so the Save button is captured as it was
-    // tapped and grows into the summary the save produced.
-    goHomeFrom(button, async () => {
-      await mutate((s) =>
-        addSnapshots(
-          s,
-          { deviceId: device.deviceId, now: at },
-          changed.map((a) => ({ accountId: a.id, balance: drafts.get(a.id)!, at })),
-          device.me ?? null,
-        ),
-      );
-      // Home works the check-in card out from the history just saved.
-      clearDraft();
-      // With automatic sync on, send it straight away and tell the other phone.
-      const { settings } = getStore().state;
-      const me = device.me === 'A' ? settings.partnerAName : device.me === 'B' ? settings.partnerBName : null;
-      void pushNow({
-        title: `${me ?? 'Your partner'} just updated the balances`,
-        body: `Open ${APP_NAME} to see how you both did.`,
-      }).catch(() => {
-        // offline or Worker down: the next change or app open uploads it anyway
-      });
+    await mutate((s) =>
+      addSnapshots(
+        s,
+        { deviceId: device.deviceId, now: at },
+        changed.map((a) => ({ accountId: a.id, balance: drafts.get(a.id)!, at })),
+        device.me ?? null,
+      ),
+    );
+    // Home works the check-in card out from the history just saved.
+    clearDraft();
+    // With automatic sync on, send it straight away and tell the other phone.
+    const { settings } = getStore().state;
+    const me = device.me === 'A' ? settings.partnerAName : device.me === 'B' ? settings.partnerBName : null;
+    void pushNow({
+      title: `${me ?? 'Your partner'} just updated the balances`,
+      body: `Open ${APP_NAME} to see how you both did.`,
+    }).catch(() => {
+      // offline or Worker down: the next change or app open uploads it anyway
     });
+    navigate('/');
   };
 
   const cancel = () => {
@@ -329,7 +324,7 @@ export function Accounts({ updating = false }: { updating?: boolean }) {
             <button
               class="btn-primary btn-big"
               disabled={changed.length === 0 || invalid.size > 0}
-              onClick={(e) => void saveAll(e)}
+              onClick={() => void saveAll()}
             >
               {invalid.size > 0
                 ? `Fix the amount${invalid.size === 1 ? '' : 's'} in red first`

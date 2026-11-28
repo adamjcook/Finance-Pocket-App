@@ -29,8 +29,6 @@ import { GROWTH_KINDS, OWED_KINDS, POT_KINDS, type DashboardSectionKey } from '.
 import { latestBalances } from '../model/repo';
 import { Chart } from './components/Chart';
 import { ProgressRing } from './components/ProgressRing';
-import { Odometer } from './components/Odometer';
-import { reducedMotion } from './motion';
 import { Icon } from './components/Icon';
 import { APP_NAME } from '../appName';
 
@@ -119,56 +117,6 @@ export function Dashboard() {
       clearTimeout(buzz);
     };
   }, [batch?.key, shouldCelebrate]);
-  // The payday reveal: during the celebration each card shows its figures as
-  // they were before the update, then plays its own move (number rolls, ring
-  // sweeps, line settles) the first time it's on screen, so the moves follow
-  // you down the page instead of all happening out of sight at once.
-  const [revealed, setRevealed] = useState<ReadonlySet<DashboardSectionKey>>(new Set());
-  const celebrationStart = useRef(0);
-  const settledQuietly = useRef(false);
-  useEffect(() => {
-    if (!celebrating) return;
-    celebrationStart.current = performance.now();
-    if (reducedMotion() || typeof IntersectionObserver !== 'function') {
-      setRevealed(new Set(['debt', 'loans', 'growth', 'held']));
-      return;
-    }
-    const timers: number[] = [];
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (!e.isIntersecting) continue;
-          io.unobserve(e.target);
-          const key = (e.target as HTMLElement).dataset.section as DashboardSectionKey;
-          // Nothing below starts before the net worth has had its moment.
-          const wait = Math.max(0, celebrationStart.current + 650 - performance.now());
-          timers.push(window.setTimeout(() => setRevealed((r) => new Set(r).add(key)), wait));
-        }
-      },
-      // Plays once the card is properly in view, not as its edge peeks in.
-      { rootMargin: '0px 0px -12% 0px' },
-    );
-    for (const el of sectionRefs.current.values()) io.observe(el);
-    // No card is left showing its old figure for long: whatever hasn't
-    // played after a few seconds settles on its new one quietly.
-    const settle = window.setTimeout(() => {
-      io.disconnect();
-      settledQuietly.current = true;
-      setRevealed(new Set(['debt', 'loans', 'growth', 'held']));
-    }, 6000);
-    return () => {
-      io.disconnect();
-      clearTimeout(settle);
-      timers.forEach(clearTimeout);
-    };
-  }, [celebrating]);
-  // Each card that has played its move gives one light tap as it lands.
-  useEffect(() => {
-    if (revealed.size === 0 || reducedMotion() || settledQuietly.current) return;
-    const t = window.setTimeout(() => navigator.vibrate?.(8), 900);
-    return () => clearTimeout(t);
-  }, [revealed.size]);
-
   const dismissCheckIn = () => {
     if (batch) void patchDevice({ checkIn: { key: batch.key, celebrated: memo?.celebrated ?? true, dismissed: true } });
   };
@@ -248,18 +196,6 @@ export function Dashboard() {
     }
   }
   const headingFor = (key: DashboardSectionKey) => SECTION_META[key].heading;
-
-  // What each card plays in the reveal: its figure before → after the update.
-  // From the first render a celebration is due, not only once it starts, so
-  // no card ever flashes its new figure before rewinding to the old one.
-  const revealing = (celebrating || shouldCelebrate) && !!checkIn;
-  const sinceDay = batch ? toDay(batch.at) : '';
-  const pctOf = (baseline: number, owed: number) =>
-    baseline > 0 ? Math.min(100, Math.max(0, ((baseline - owed) / baseline) * 100)) : 0;
-  const move = (key: DashboardSectionKey, now: number, change: number) =>
-    revealing && change !== 0
-      ? { from: now - change, play: revealed.has(key), tail: { sinceDay, change } }
-      : null;
 
   // Trading 212 link: the linked account's move on its latest day, and its
   // overall gain from the Worker's latest reading.
@@ -470,15 +406,6 @@ export function Dashboard() {
       </>
     );
 
-  type Move = ReturnType<typeof move>;
-  const cardMove = checkIn ? move('debt', debt.current, checkIn.cardChange) : null;
-  const loanMove = checkIn ? move('loans', loans.current, checkIn.loanChange) : null;
-  const growthMove = checkIn ? move('growth', growth.current, checkIn.savingsChange) : null;
-  const figure = (now: number, m: Move) =>
-    m ? <Odometer from={m.from} to={now} currency={currency} play={m.play} delay={120} /> : formatMoneyWhole(now, currency);
-  const ringMove = (m: Move, baseline: number) => (m ? { from: pctOf(baseline, m.from), play: m.play } : {});
-  const chartMove = (m: Move) => (m ? { tail: m.tail, play: m.play, delay: 220 } : {});
-
   const sectionBody = (key: DashboardSectionKey) => {
     if (key === 'held') {
       return (
@@ -496,14 +423,14 @@ export function Dashboard() {
           {debt.baseline > 0 ? (
             <>
               <div class="debt-hero">
-                <ProgressRing pct={debt.pct} {...ringMove(cardMove, debt.baseline)} />
+                <ProgressRing pct={debt.pct} />
                 <div class="grow">
-                  <div class="big-number">{figure(debt.current, cardMove)}</div>
+                  <div class="big-number">{formatMoneyWhole(debt.current, currency)}</div>
                   <div class="figure-caption">left to clear</div>
                   <Change change={checkIn ? checkIn.cardChange : debt.delta30} goodWhen="down" window={changeWindow} currency={currency} />
                 </div>
               </div>
-              <Chart series={debt.series} currency={currency} color="var(--debt)" {...chartMove(cardMove)} />
+              <Chart series={debt.series} currency={currency} color="var(--debt)" />
               {forecast && (
                 <p class="forecast-note">
                   At this pace, the cards are clear by <strong>{monthName(forecast)}</strong>
@@ -524,15 +451,15 @@ export function Dashboard() {
       return (
         <div class="dash-body">
           <div class="debt-hero">
-            <ProgressRing pct={loans.pct} {...ringMove(loanMove, loans.baseline)} />
+            <ProgressRing pct={loans.pct} />
             <div class="grow">
-              <div class="big-number">{figure(loans.current, loanMove)}</div>
+              <div class="big-number">{formatMoneyWhole(loans.current, currency)}</div>
               <div class="figure-caption">still owed on loans</div>
               <Change change={checkIn ? checkIn.loanChange : loans.delta30} goodWhen="down" window={changeWindow} currency={currency} />
             </div>
           </div>
           {loans.series.length > 1 && (
-            <Chart series={loans.series} currency={currency} color="var(--debt)" {...chartMove(loanMove)} />
+            <Chart series={loans.series} currency={currency} color="var(--debt)" />
           )}
           {payoffList('loan')}
         </div>
@@ -544,7 +471,7 @@ export function Dashboard() {
           <>
             <div class="figure-row">
               <div class="grow">
-                <div class="big-number">{figure(growth.current, growthMove)}</div>
+                <div class="big-number">{formatMoneyWhole(growth.current, currency)}</div>
                 <div class="figure-caption">saved and invested between you</div>
               </div>
               <Change
@@ -575,7 +502,7 @@ export function Dashboard() {
                 )}
               </div>
             )}
-            <Chart series={growth.series} currency={currency} color="var(--accent)" {...chartMove(growthMove)} />
+            <Chart series={growth.series} currency={currency} color="var(--accent)" />
             {/* Savings goals live here, with the money they're saved from. */}
             {savingsPots.length > 0 && <div class="pots payoffs">{potList(savingsPots)}</div>}
           </>
@@ -624,7 +551,7 @@ export function Dashboard() {
         <div class="hero-label">Net worth</div>
         <div class={`net-worth num ${netWorth < 0 ? 'negative' : ''}`}>
           {celebrating && checkIn ? (
-            <Odometer from={netWorth - checkIn.netChange} to={netWorth} currency={currency} play delay={150} />
+            <CountUp from={netWorth - checkIn.netChange} to={netWorth} currency={currency} />
           ) : (
             formatMoneyWhole(netWorth, currency)
           )}
@@ -685,10 +612,7 @@ export function Dashboard() {
               if (el) sectionRefs.current.set(key, el);
               else sectionRefs.current.delete(key);
             }}
-            data-section={key}
-            class={`dash-section ${dragging ? 'dragging' : ''} ${shift ? 'shifting' : ''} ${
-              revealing ? (revealed.has(key) ? 'revealing' : 'awaiting') : ''
-            }`}
+            class={`dash-section ${dragging ? 'dragging' : ''} ${shift ? 'shifting' : ''}`}
             style={
               dragging
                 ? `transform:translateY(${dragOffset}px)`
@@ -805,5 +729,39 @@ function Change({
       {pill}
       <span class="delta-note">{window}</span>
     </div>
+  );
+}
+
+/**
+ * Net worth rolling from where it was to where it is now. Decelerates into
+ * the new figure; with reduced motion it simply shows the new figure.
+ */
+function CountUp({ from, to, currency }: { from: number; to: number; currency: string }) {
+  const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [value, setValue] = useState(reduce ? to : from);
+  const [done, setDone] = useState(reduce);
+  useEffect(() => {
+    if (reduce) return;
+    const delay = 150;
+    const duration = 900;
+    let raf = 0;
+    const start = performance.now() + delay;
+    const tick = (now: number) => {
+      const t = Math.min(1, Math.max(0, (now - start) / duration));
+      const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t); // ease-out expo
+      setValue(Math.round(from + (to - from) * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else setDone(true);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return (
+    <>
+      {/* Screen readers get the final figure, not every frame of the count. */}
+      {/* Once landed it always shows the live figure, so nothing can go stale. */}
+      <span aria-hidden="true">{formatMoneyWhole(done ? to : value, currency)}</span>
+      <span class="visually-hidden">{formatMoneyWhole(to, currency)}</span>
+    </>
   );
 }
