@@ -2246,6 +2246,160 @@ label.field > span:first-child,
   }
 }
 
+/* ---- payday reveal ------------------------------------------------------------
+   Saving an update morphs the Save button into the summary it made, then each
+   figure on Home moves from where it was to where it is now: digits roll like
+   a counter, rings sweep, chart tails settle, on one shared spring (motion.ts). */
+
+.odometer,
+.odo-face {
+  display: inline-flex;
+  white-space: nowrap;
+}
+
+/* Every character sits in a box exactly one line tall, so rolling digits,
+   separators and the currency sign share one baseline. */
+.odo-face {
+  align-items: flex-start;
+  vertical-align: top;
+}
+
+.odo-cell {
+  display: block;
+  height: 1.15em;
+  height: 1lh;
+}
+
+.odo-col {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Rolling digits fade in and out at the window's edges, like a counter's
+   drum seen through its slot. Only while moving, so resting glyphs are crisp. */
+.odometer.rolling .odo-col {
+  mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+}
+
+.odo-sizer {
+  visibility: hidden;
+}
+
+.odo-strip {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+
+.odo-strip > span {
+  display: block;
+  height: 1.15em;
+  height: 1lh;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The Save button grows into the summary: the box morphs (clipped, with the
+     card's corners), the button's face lets go quickly, the card's comes in. */
+  ::view-transition-group(payday-reveal) {
+    animation-duration: 560ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    overflow: clip;
+    border-radius: var(--radius-lg);
+  }
+
+  ::view-transition-image-pair(payday-reveal) {
+    isolation: isolate;
+  }
+
+  ::view-transition-old(payday-reveal),
+  ::view-transition-new(payday-reveal) {
+    height: 100%;
+    width: 100%;
+    object-fit: none;
+    object-position: 50% 0;
+    mix-blend-mode: normal;
+  }
+
+  ::view-transition-old(payday-reveal) {
+    animation: vt-face-out 180ms ease-out both;
+  }
+
+  ::view-transition-new(payday-reveal) {
+    animation: vt-face-in 380ms cubic-bezier(0.22, 1, 0.36, 1) 110ms both;
+  }
+
+  ::view-transition-old(root) {
+    animation: vt-face-out 220ms ease-out both;
+  }
+
+  ::view-transition-new(root) {
+    animation: vt-face-in 320ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+  }
+
+  /* Arriving by the morph, the summary already has its entrance. */
+  :root[data-reveal] .home-card.checkin.celebrate,
+  :root[data-reveal] .screen > * {
+    animation: none;
+  }
+
+  /* Cards waiting their turn keep their change pill back; it lands with them. */
+  .dash-section.awaiting .delta {
+    opacity: 0;
+  }
+
+  .dash-section.revealing .delta {
+    animation: gain-in 420ms cubic-bezier(0.16, 1, 0.3, 1) 760ms both;
+  }
+
+  /* The ring's arc gives one soft swell as it settles on the new figure. */
+  .progress-ring.landed .ring-arc {
+    animation: arc-settle 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .chart-ripple {
+    transform-box: fill-box;
+    transform-origin: center;
+    stroke-width: 1.5;
+    animation: chart-ripple 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+.chart-ripple {
+  opacity: 0;
+}
+
+@keyframes vt-face-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes vt-face-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes arc-settle {
+  40% {
+    stroke-width: 12px;
+  }
+}
+
+@keyframes chart-ripple {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(3.2);
+  }
+}
+
 /* ---- motion ---------------------------------------------------------------- */
 
 @media (prefers-reduced-motion: no-preference) {
